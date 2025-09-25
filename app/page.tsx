@@ -1,4 +1,8 @@
-import { supabase } from './lib/supabase'; // NOTE: relative path
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from './lib/supabase';
 
 type Listing = {
   id: string;
@@ -13,31 +17,48 @@ type Listing = {
   status: string;
 };
 
-export default async function DealsPage() {
-  const { data: listings, error } = await supabase
-    .from('listings')
-    .select('id,address,city,state,zip,price,arv,repairs,image_url,status')
-    .eq('status', 'live')
-    .order('created_at', { ascending: false })
-    .limit(50);
+export default function DealsPage() {
+  const [listings, setListings] = useState<Listing[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  if (error) {
-    return <main style={{ padding: 24 }}>Supabase error: {error.message}</main>;
-  }
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('listings')
+          .select('id,address,city,state,zip,price,arv,repairs,image_url,status')
+          .eq('status', 'live')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        setListings(data || []);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setErr(msg);
+      }
+    })();
+  }, []);
 
-  if (!listings || listings.length === 0) {
-    return <main style={{ padding: 24 }}>No live deals yet. Try adding one in Supabase or at /post.</main>;
-  }
+  if (err) return <main style={{ padding: 24 }}>Browser fetch error: {err}</main>;
+  if (!listings) return <main style={{ padding: 24 }}>Loading…</main>;
+  if (listings.length === 0) return <main style={{ padding: 24 }}>No live deals yet. Add one at /post or in Supabase.</main>;
 
   return (
     <main style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Deals</h1>
-      <a href="/post" style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, textDecoration: 'none' }}>
-        Post
-      </a>
-      <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <Link href="/" style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, textDecoration: 'none' }}>
+          Deals
+        </Link>
+        <Link href="/post" style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, textDecoration: 'none' }}>
+          Post
+        </Link>
+      </div>
+
+      <div style={{ display: 'grid', gap: 12 }}>
         {listings.map((l) => (
-          <a
+          <Link
             key={l.id}
             href={`/listing/${l.id}`}
             style={{
@@ -65,7 +86,7 @@ export default async function DealsPage() {
                 ARV ${Number(l.arv || 0).toLocaleString()} · Repairs ${Number(l.repairs || 0).toLocaleString()}
               </div>
             </div>
-          </a>
+          </Link>
         ))}
       </div>
     </main>

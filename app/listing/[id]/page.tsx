@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase'; // NOTE: two dots to go up to /app
+import Link from 'next/link';
+import { supabase } from '../../lib/supabase';
 
 type Listing = {
   id: string;
@@ -26,15 +27,12 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
   useEffect(() => {
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from('listings')
-          .select('*')
-          .eq('id', params.id)
-          .single();
+        const { data, error } = await supabase.from('listings').select('*').eq('id', params.id).single();
         if (error) throw error;
         setL(data);
-      } catch (e: any) {
-        setErr(e.message || String(e));
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setErr(msg);
       }
     })();
   }, [params.id]);
@@ -42,9 +40,7 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
   if (err) return <main style={{ padding: 16 }}>Error: {err}</main>;
   if (!l) return <main style={{ padding: 16 }}>Loading…</main>;
 
-  const mailto = l.contact_email
-    ? `mailto:${l.contact_email}?subject=Interested in ${encodeURIComponent(l.address)}`
-    : null;
+  const mailto = l.contact_email ? `mailto:${l.contact_email}?subject=Interested in ${encodeURIComponent(l.address)}` : null;
   const tel = l.contact_phone ? `tel:${l.contact_phone.replace(/[^+\d]/g, '')}` : null;
 
   return (
@@ -56,9 +52,7 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
         )}
       </div>
 
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 12 }}>
-        ${Number(l.price).toLocaleString()}
-      </h1>
+      <h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 12 }}>${Number(l.price).toLocaleString()}</h1>
       <div style={{ opacity: 0.8, marginBottom: 8 }}>
         {l.address}{l.city ? `, ${l.city}` : ''}{l.state ? `, ${l.state}` : ''}{l.zip ? ` ${l.zip}` : ''}
       </div>
@@ -72,7 +66,7 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
         {l.contact_email && <div>Email: {l.contact_email}</div>}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
         {mailto && (
           <a href={mailto} style={{ padding: '10px 14px', background: '#198754', color: '#fff', borderRadius: 8, textDecoration: 'none' }}>
             Email Seller
@@ -83,9 +77,9 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
             Call/Text
           </a>
         )}
-        <a href="/" style={{ padding: '10px 14px', border: '1px solid #ddd', borderRadius: 8, textDecoration: 'none' }}>
+        <Link href="/" style={{ padding: '10px 14px', border: '1px solid #ddd', borderRadius: 8, textDecoration: 'none' }}>
           Back
-        </a>
+        </Link>
       </div>
     </main>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 
 export default function PostPage() {
@@ -26,8 +27,9 @@ export default function PostPage() {
       const { data, error } = await supabase.from('listings').insert(payload).select('id').single();
       if (error) throw error;
       window.location.href = `/listing/${data.id}`;
-    } catch (err: any) {
-      setMsg(err.message || String(err));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setMsg(msg);
     } finally {
       setBusy(false);
     }
@@ -70,7 +72,7 @@ export default function PostPage() {
           {busy ? 'Posting…' : 'Post Deal'}
         </button>
         {msg && <div style={{ color:'crimson' }}>{msg}</div>}
-        <a href="/" style={{ textDecoration:'none' }}>Back to Deals</a>
+        <Link href="/" style={{ textDecoration:'none' }}>Back to Deals</Link>
       </form>
     </main>
   );
