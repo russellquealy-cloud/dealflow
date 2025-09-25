@@ -4,8 +4,23 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 
+// Strongly-typed form model (all fields are strings in the UI)
+type Form = {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  price: string;
+  arv: string;
+  repairs: string;
+  image_url: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+};
+
 export default function PostPage() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Form>({
     address: '', city: '', state: '', zip: '',
     price: '', arv: '', repairs: '',
     image_url: '', contact_name: '', contact_email: '', contact_phone: ''
@@ -13,7 +28,7 @@ export default function PostPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true); setMsg(null);
     try {
@@ -22,27 +37,32 @@ export default function PostPage() {
         price: Number(form.price || 0),
         arv: Number(form.arv || 0),
         repairs: Number(form.repairs || 0),
-        status: 'live',
+        status: 'live' as const,
       };
-      const { data, error } = await supabase.from('listings').insert(payload).select('id').single();
+      const { data, error } = await supabase
+        .from('listings')
+        .insert(payload)
+        .select('id')
+        .single();
+
       if (error) throw error;
       window.location.href = `/listing/${data.id}`;
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setMsg(msg);
+      const message = e instanceof Error ? e.message : String(e);
+      setMsg(message);
     } finally {
       setBusy(false);
     }
   }
 
-  function field(name: keyof typeof form, placeholder: string, type='text') {
+  function field(name: keyof Form, placeholder: string, type: 'text' | 'email' | 'number' = 'text') {
     return (
       <input
         required={['address','price','contact_email'].includes(name)}
         type={type}
         placeholder={placeholder}
-        value={(form as any)[name] ?? ''}
-        onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
+        value={form[name]}                                {/* <- no any */}
+        onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}  {/* <- no any */}
         style={{ width:'100%', padding:'10px 12px', border:'1px solid #ddd', borderRadius:8 }}
       />
     );
