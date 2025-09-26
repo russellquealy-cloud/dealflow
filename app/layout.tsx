@@ -1,12 +1,8 @@
-// C:\Users\Russe\dealflow\app\layout.tsx
-import './globals.css';
+export const metadata = {
+  title: 'Dealflow',
+  // ...remove themeColor here
+};
 
-export const metadata = { title: 'DealFlow' };
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
+export const viewport = {
+  themeColor: '#0b1220',
+};
