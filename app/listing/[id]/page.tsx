@@ -1,6 +1,7 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
@@ -21,13 +22,9 @@ type Listing = {
   owner_id: string | null;
 };
 
-export default function ListingDetail({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  // Next 15 params must be unwrapped with React.use()
-  const { id } = use(params);
+export default function ListingDetail() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
 
   const [l, setL] = useState<Listing | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -35,12 +32,13 @@ export default function ListingDetail({
 
   // Fetch the listing
   useEffect(() => {
+    if (!id) return;
     (async () => {
       try {
         const { data, error } = await supabase
           .from('listings')
           .select('*')
-          .eq('id', id)
+          .eq('id', String(id))
           .single();
         if (error) throw error;
         setL(data as Listing);
@@ -60,32 +58,29 @@ export default function ListingDetail({
     })();
   }, [l]);
 
-  if (err) return <main className="container" style={{ padding: 16 }}>Error: {err}</main>;
-  if (!l) return <main className="container" style={{ padding: 16 }}>Loading…</main>;
+  if (err) return <main style={{ padding: 16 }}>Error: {err}</main>;
+  if (!l) return <main style={{ padding: 16 }}>Loading…</main>;
 
   const mailto = l.contact_email
     ? `mailto:${l.contact_email}?subject=Interested in ${encodeURIComponent(l.address)}`
     : null;
   const tel = l.contact_phone ? `tel:${l.contact_phone.replace(/[^+\d]/g, '')}` : null;
 
+  const isSold = l.status?.toLowerCase() === 'sold';
+
   return (
     <main style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
       {/* Image + SOLD badge */}
-      <div
-        style={{
-          position: 'relative',
-          height: 220,
-          background: '#f2f2f2',
-          borderRadius: 12,
-          overflow: 'hidden',
-        }}
-      >
+      <div style={{ position: 'relative', height: 220, background: '#f2f2f2', borderRadius: 12, overflow: 'hidden' }}>
         {l.image_url && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={l.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img
+            src={l.image_url}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isSold ? 'grayscale(100%)' : undefined }}
+          />
         )}
-
-        {l.status === 'sold' && (
+        {isSold && (
           <div
             style={{
               position: 'absolute',
@@ -93,10 +88,11 @@ export default function ListingDetail({
               left: 10,
               background: '#dc3545',
               color: '#fff',
-              fontWeight: 700,
+              fontWeight: 800,
+              letterSpacing: 1,
               padding: '6px 10px',
               borderRadius: 8,
-              letterSpacing: 1,
+              boxShadow: '0 2px 8px rgba(0,0,0,.2)',
             }}
           >
             SOLD
@@ -108,10 +104,7 @@ export default function ListingDetail({
         ${Number(l.price).toLocaleString()}
       </h1>
       <div style={{ opacity: 0.8, marginBottom: 8 }}>
-        {l.address}
-        {l.city ? `, ${l.city}` : ''}
-        {l.state ? `, ${l.state}` : ''}
-        {l.zip ? ` ${l.zip}` : ''}
+        {l.address}{l.city ? `, ${l.city}` : ''}{l.state ? `, ${l.state}` : ''}{l.zip ? ` ${l.zip}` : ''}
       </div>
 
       <div style={{ display: 'grid', gap: 4, fontSize: 14 }}>
@@ -123,27 +116,17 @@ export default function ListingDetail({
         {l.contact_email && <div>Email: {l.contact_email}</div>}
       </div>
 
-      {/* Owner-only actions (styled) */}
+      {/* Owner-only actions */}
       {isOwner && (
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <button
             onClick={async () => {
               if (!confirm('Mark as SOLD?')) return;
-              const { error } = await supabase
-                .from('listings')
-                .update({ status: 'sold' })
-                .eq('id', l.id);
+              const { error } = await supabase.from('listings').update({ status: 'sold' }).eq('id', l.id);
               if (error) alert(error.message);
               else window.location.href = '/';
             }}
-            style={{
-              padding: '10px 14px',
-              background: '#28a745', // green
-              color: '#fff',
-              borderRadius: 8,
-              border: 'none',
-              cursor: 'pointer',
-            }}
+            style={{ padding: '10px 14px', background: '#28a745', color: '#fff', borderRadius: 8, border: 'none', cursor: 'pointer' }}
           >
             Mark as Sold
           </button>
@@ -151,54 +134,30 @@ export default function ListingDetail({
           <button
             onClick={async () => {
               if (!confirm('Delete this listing? This cannot be undone.')) return;
-              const { error } = await supabase
-                .from('listings')
-                .delete()
-                .eq('id', l.id);
+              const { error } = await supabase.from('listings').delete().eq('id', l.id);
               if (error) alert(error.message);
               else window.location.href = '/';
             }}
-            style={{
-              padding: '10px 14px',
-              background: '#dc3545', // red
-              color: '#fff',
-              borderRadius: 8,
-              border: 'none',
-              cursor: 'pointer',
-            }}
+            style={{ padding: '10px 14px', background: '#dc3545', color: '#fff', borderRadius: 8, border: 'none', cursor: 'pointer' }}
           >
             Delete
           </button>
         </div>
       )}
 
+      {/* Contact + Back */}
       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-        {mailto && (
-          <a
-            href={mailto}
-            style={{ padding: '10px 14px', background: '#198754', color: '#fff', borderRadius: 8, textDecoration: 'none' }}
-          >
+        {mailto && !isSold && (
+          <a href={mailto} style={{ padding: '10px 14px', background: '#198754', color: '#fff', borderRadius: 8, textDecoration: 'none' }}>
             Email Seller
           </a>
         )}
-        {tel && (
-          <a
-            href={tel}
-            style={{ padding: '10px 14px', background: '#e9ecef', color: '#000', borderRadius: 8, textDecoration: 'none' }}
-          >
+        {tel && !isSold && (
+          <a href={tel} style={{ padding: '10px 14px', background: '#e9ecef', color: '#000', borderRadius: 8, textDecoration: 'none' }}>
             Call/Text
           </a>
         )}
-        <Link
-          href="/"
-          style={{
-            padding: '10px 14px',
-            background: '#e9ecef', // neutral gray
-            color: '#000',
-            borderRadius: 8,
-            textDecoration: 'none',
-          }}
-        >
+        <Link href="/" style={{ padding: '10px 14px', background: '#e9ecef', color: '#000', borderRadius: 8, textDecoration: 'none' }}>
           Back
         </Link>
       </div>
