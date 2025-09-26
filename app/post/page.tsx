@@ -1,12 +1,42 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
+type UserLite = { id: string; email?: string | null };
+
 export default function PostPage() {
+  const [user, setUser] = useState<UserLite | null>(null);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  // On mount, check auth
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user ? { id: data.user.id, email: data.user.email } : null);
+      setLoading(false);
+    })();
+  }, []);
+
+  // Not logged in → friendly prompt with Login button that preserves the return path
+  if (loading) {
+    return <main className="container"><p>Loading…</p></main>;
+  }
+  if (!user) {
+    return (
+      <main className="container" style={{ maxWidth: 520 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Post a Deal</h1>
+        <p style={{ marginBottom: 12 }}>You need to be logged in to post a deal.</p>
+        <Link href="/login?next=/post" className="btnPrimary">Login</Link>
+        <div style={{ marginTop: 12 }}>
+          <Link href="/" className="btnGhost">Back to Deals</Link>
+        </div>
+      </main>
+    );
+  }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -15,6 +45,7 @@ export default function PostPage() {
 
     const fd = new FormData(e.currentTarget);
 
+    // NOTE: image_file handling will be added in the next step.
     const payload = {
       address: String(fd.get('address') ?? ''),
       city: String(fd.get('city') ?? ''),
@@ -28,6 +59,7 @@ export default function PostPage() {
       contact_email: String(fd.get('contact_email') ?? ''),
       contact_phone: (fd.get('contact_phone') ? String(fd.get('contact_phone')) : null) as string | null,
       status: 'live' as const,
+      owner_id: user.id, // required by RLS
     };
 
     try {
@@ -46,7 +78,7 @@ export default function PostPage() {
     }
   }
 
-  // simple helper to render inputs without React state
+  // helper to render inputs quickly
   function input(
     name: string,
     placeholder: string,
@@ -59,39 +91,39 @@ export default function PostPage() {
         required={required}
         type={type}
         placeholder={placeholder}
-        style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8 }}
+        style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--ring)', borderRadius: 10 }}
       />
     );
   }
 
   return (
-    <main style={{ maxWidth: 520, margin: '0 auto', padding: 16 }}>
+    <main className="container" style={{ maxWidth: 520 }}>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Post a Deal</h1>
-
       <form onSubmit={submit} style={{ display: 'grid', gap: 10 }}>
         {input('address', 'Address', 'text', true)}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: 8 }}>
-          {input('city', 'City')}
-          {input('state', 'State')}
-          {input('zip', 'Zip')}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 80px 100px', gap: 8 }}>
+          {input('city','City')}
+          {input('state','State')}
+          {input('zip','Zip')}
         </div>
-        {input('price', 'Asking Price', 'number', true)}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {input('arv', 'ARV', 'number')}
-          {input('repairs', 'Estimated Repairs', 'number')}
+        {input('price','Asking Price','number', true)}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8 }}>
+          {input('arv','ARV','number')}
+          {input('repairs','Estimated Repairs','number')}
         </div>
-        {input('image_url', 'Image URL (optional)')}
-        {input('contact_name', 'Your Name (optional)')}
-        {input('contact_email', 'Your Email', 'email', true)}
-        {input('contact_phone', 'Your Phone (optional)')}
 
-        <button disabled={busy} style={{ padding: '12px 16px', background: '#198754', color: '#fff', borderRadius: 8, border: 0 }}>
+        {/* TEMP: keep URL until we switch to real uploads in the next step */}
+        {input('image_url','Image URL (temporary until upload is enabled)')}
+
+        {input('contact_name','Your Name (optional)')}
+        {input('contact_email','Your Email','email', true)}
+        {input('contact_phone','Your Phone (optional)')}
+
+        <button disabled={busy} className="btnPrimary" style={{ border: 0 }}>
           {busy ? 'Posting…' : 'Post Deal'}
         </button>
-        {msg && <div style={{ color: 'crimson' }}>{msg}</div>}
-        <Link href="/" style={{ textDecoration: 'none' }}>
-          Back to Deals
-        </Link>
+        {msg && <div style={{ color:'crimson' }}>{msg}</div>}
+        <Link href="/" className="btnGhost">Back to Deals</Link>
       </form>
     </main>
   );
