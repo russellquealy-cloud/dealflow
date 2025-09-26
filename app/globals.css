@@ -53,10 +53,21 @@ body {
 .grid {
   display: grid;
   gap: 12px;
+  grid-template-columns: 1fr;            /* default: 1 */
+}
+
+@media (min-width: 640px) {
+  .grid { grid-template-columns: 1fr 1fr; }   /* ≥640px: 2 */
+}
+@media (min-width: 980px) {
+  .grid { grid-template-columns: 1fr 1fr 1fr; } /* ≥980px: 3 */
+}
+@media (min-width: 1280px) {
+  .grid { grid-template-columns: 1fr 1fr 1fr 1fr; } /* ≥1280px: 4 */
 }
 
 /* Two-column on wider screens */
-@media (min-width: 520px) {
+@media (min-width: 1000px) {
   .grid {
     grid-template-columns: 1fr 1fr;
   }
