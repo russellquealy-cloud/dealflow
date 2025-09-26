@@ -1,44 +1,36 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Strongly-typed form model (all fields are strings in the UI)
-type Form = {
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  price: string;
-  arv: string;
-  repairs: string;
-  image_url: string;
-  contact_name: string;
-  contact_email: string;
-  contact_phone: string;
-};
-
 export default function PostPage() {
-  const [form, setForm] = useState<Form>({
-    address: '', city: '', state: '', zip: '',
-    price: '', arv: '', repairs: '',
-    image_url: '', contact_name: '', contact_email: '', contact_phone: ''
-  });
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true); setMsg(null);
+    setBusy(true);
+    setMsg(null);
+
+    const fd = new FormData(e.currentTarget);
+
+    const payload = {
+      address: String(fd.get('address') ?? ''),
+      city: String(fd.get('city') ?? ''),
+      state: String(fd.get('state') ?? ''),
+      zip: String(fd.get('zip') ?? ''),
+      price: Number(fd.get('price') ?? 0),
+      arv: Number(fd.get('arv') ?? 0),
+      repairs: Number(fd.get('repairs') ?? 0),
+      image_url: (fd.get('image_url') ? String(fd.get('image_url')) : null) as string | null,
+      contact_name: (fd.get('contact_name') ? String(fd.get('contact_name')) : null) as string | null,
+      contact_email: String(fd.get('contact_email') ?? ''),
+      contact_phone: (fd.get('contact_phone') ? String(fd.get('contact_phone')) : null) as string | null,
+      status: 'live' as const,
+    };
+
     try {
-      const payload = {
-        ...form,
-        price: Number(form.price || 0),
-        arv: Number(form.arv || 0),
-        repairs: Number(form.repairs || 0),
-        status: 'live' as const,
-      };
       const { data, error } = await supabase
         .from('listings')
         .insert(payload)
@@ -48,22 +40,26 @@ export default function PostPage() {
       if (error) throw error;
       window.location.href = `/listing/${data.id}`;
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      setMsg(message);
+      setMsg(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   }
 
-  function field(name: keyof Form, placeholder: string, type: 'text' | 'email' | 'number' = 'text') {
+  // simple helper to render inputs without React state
+  function input(
+    name: string,
+    placeholder: string,
+    type: 'text' | 'email' | 'number' = 'text',
+    required = false
+  ) {
     return (
       <input
-        required={['address','price','contact_email'].includes(name)}
+        name={name}
+        required={required}
         type={type}
         placeholder={placeholder}
-        value={form[name]}                                {/* <- no any */}
-        onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}  {/* <- no any */}
-        style={{ width:'100%', padding:'10px 12px', border:'1px solid #ddd', borderRadius:8 }}
+        style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8 }}
       />
     );
   }
@@ -71,28 +67,31 @@ export default function PostPage() {
   return (
     <main style={{ maxWidth: 520, margin: '0 auto', padding: 16 }}>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Post a Deal</h1>
-      <form onSubmit={submit} style={{ display:'grid', gap: 10 }}>
-        {field('address','Address')}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 80px 100px', gap: 8 }}>
-          {field('city','City')}
-          {field('state','State')}
-          {field('zip','Zip')}
-        </div>
-        {field('price','Asking Price','number')}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8 }}>
-          {field('arv','ARV','number')}
-          {field('repairs','Estimated Repairs','number')}
-        </div>
-        {field('image_url','Image URL (optional)')}
-        {field('contact_name','Your Name (optional)')}
-        {field('contact_email','Your Email','email')}
-        {field('contact_phone','Your Phone (optional)')}
 
-        <button disabled={busy} style={{ padding:'12px 16px', background:'#198754', color:'#fff', borderRadius:8, border:0 }}>
+      <form onSubmit={submit} style={{ display: 'grid', gap: 10 }}>
+        {input('address', 'Address', 'text', true)}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: 8 }}>
+          {input('city', 'City')}
+          {input('state', 'State')}
+          {input('zip', 'Zip')}
+        </div>
+        {input('price', 'Asking Price', 'number', true)}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {input('arv', 'ARV', 'number')}
+          {input('repairs', 'Estimated Repairs', 'number')}
+        </div>
+        {input('image_url', 'Image URL (optional)')}
+        {input('contact_name', 'Your Name (optional)')}
+        {input('contact_email', 'Your Email', 'email', true)}
+        {input('contact_phone', 'Your Phone (optional)')}
+
+        <button disabled={busy} style={{ padding: '12px 16px', background: '#198754', color: '#fff', borderRadius: 8, border: 0 }}>
           {busy ? 'Posting…' : 'Post Deal'}
         </button>
-        {msg && <div style={{ color:'crimson' }}>{msg}</div>}
-        <Link href="/" style={{ textDecoration:'none' }}>Back to Deals</Link>
+        {msg && <div style={{ color: 'crimson' }}>{msg}</div>}
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          Back to Deals
+        </Link>
       </form>
     </main>
   );
