@@ -45,22 +45,21 @@ export default function PostPage() {
 
     const fd = new FormData(e.currentTarget);
 
-    // NOTE: image_file handling will be added in the next step.
-    const payload = {
-      address: String(fd.get('address') ?? ''),
-      city: String(fd.get('city') ?? ''),
-      state: String(fd.get('state') ?? ''),
-      zip: String(fd.get('zip') ?? ''),
-      price: Number(fd.get('price') ?? 0),
-      arv: Number(fd.get('arv') ?? 0),
-      repairs: Number(fd.get('repairs') ?? 0),
-      image_url: (fd.get('image_url') ? String(fd.get('image_url')) : null) as string | null,
-      contact_name: (fd.get('contact_name') ? String(fd.get('contact_name')) : null) as string | null,
-      contact_email: String(fd.get('contact_email') ?? ''),
-      contact_phone: (fd.get('contact_phone') ? String(fd.get('contact_phone')) : null) as string | null,
-      status: 'live' as const,
-      owner_id: user.id, // required by RLS
-    };
+const payload = {
+  address: String(fd.get('address') ?? ''),
+  city: String(fd.get('city') ?? ''),
+  state: String(fd.get('state') ?? ''),
+  zip: String(fd.get('zip') ?? ''),
+  price: Number(fd.get('price') ?? 0),
+  arv: Number(fd.get('arv') ?? 0),
+  repairs: Number(fd.get('repairs') ?? 0),
+  image_url: (fd.get('image_url') ? String(fd.get('image_url')) : null) as string | null,
+  contact_name: (fd.get('contact_name') ? String(fd.get('contact_name')) : null) as string | null,
+  contact_email: String(fd.get('contact_email') ?? ''),
+  contact_phone: (fd.get('contact_phone') ? String(fd.get('contact_phone')) : null) as string | null,
+  status: 'live' as const,
+  owner_id: user ? user.id : '', // <-- Fix here
+};
 
     try {
       const { data, error } = await supabase
@@ -71,8 +70,8 @@ export default function PostPage() {
 
       if (error) throw error;
       window.location.href = `/listing/${data.id}`;
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : String(e));
+    } catch (err: unknown) {
+      setMsg(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
