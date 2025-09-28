@@ -20,6 +20,14 @@ type Listing = {
   contact_email: string | null;
   contact_phone: string | null;
   owner_id: string | null;
+
+  // NEW
+  bedrooms: number | null;
+  bathrooms: number | null;   // stored as numeric(3,1)
+  garage_spaces: number | null;
+  home_sqft: number | null;
+  lot_sqft: number | null;
+  description: string | null;
 };
 
 export default function ListingDetail() {
@@ -30,7 +38,6 @@ export default function ListingDetail() {
   const [err, setErr] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
 
-  // Fetch the listing
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -48,7 +55,6 @@ export default function ListingDetail() {
     })();
   }, [id]);
 
-  // Determine if current user owns this listing
   useEffect(() => {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -58,20 +64,18 @@ export default function ListingDetail() {
     })();
   }, [l]);
 
-  if (err) {
+  if (err)
     return (
       <main style={{ padding: 16, color: '#fff', background: '#0f172a', minHeight: '100vh' }}>
         Error: {err}
       </main>
     );
-  }
-  if (!l) {
+  if (!l)
     return (
       <main style={{ padding: 16, color: '#fff', background: '#0f172a', minHeight: '100vh' }}>
         Loading…
       </main>
     );
-  }
 
   const isSold = l.status?.toLowerCase() === 'sold';
   const mailto = l.contact_email
@@ -83,7 +87,7 @@ export default function ListingDetail() {
     <main
       style={{
         minHeight: '100vh',
-        background: '#0f172a', // slate-900
+        background: '#0f172a',
         color: '#fff',
         padding: 16,
       }}
@@ -132,7 +136,7 @@ export default function ListingDetail() {
           )}
         </div>
 
-        <h1 style={{ fontSize: 26, fontWeight: 800, marginTop: 12, color: '#fff' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, marginTop: 12 }}>
           ${Number(l.price).toLocaleString()}
         </h1>
 
@@ -143,15 +147,43 @@ export default function ListingDetail() {
           {l.zip ? ` ${l.zip}` : ''}
         </div>
 
-        <div style={{ display: 'grid', gap: 6, fontSize: 14 }}>
+        {/* NEW: property details block */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+            fontSize: 14,
+            marginBottom: 8,
+          }}
+        >
+          {l.bedrooms !== null && <div>Bedrooms: {l.bedrooms}</div>}
+          {l.bathrooms !== null && <div>Bathrooms: {Number(l.bathrooms).toLocaleString()}</div>}
+          {l.garage_spaces !== null && <div>Garage: {l.garage_spaces}</div>}
+          {l.home_sqft !== null && <div>Home Sq Ft: {Number(l.home_sqft).toLocaleString()}</div>}
+          {l.lot_sqft !== null && <div>Lot Size (sq ft): {Number(l.lot_sqft).toLocaleString()}</div>}
+        </div>
+
+        {l.description && (
+          <div
+            style={{
+              background: '#111827',
+              border: '1px solid #27272a',
+              borderRadius: 10,
+              padding: 12,
+              whiteSpace: 'pre-wrap',
+              marginBottom: 8,
+            }}
+          >
+            {l.description}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gap: 4, fontSize: 14 }}>
           <div>ARV: ${Number(l.arv || 0).toLocaleString()}</div>
           <div>Repairs: ${Number(l.repairs || 0).toLocaleString()}</div>
           <div>Status: {l.status}</div>
-
-          {/* Contact info intentionally hidden to route inquiries through the app */}
-          {/* {l.contact_name && <div>Contact: {l.contact_name}</div>}
-          {l.contact_phone && <div>Phone: {l.contact_phone}</div>}
-          {l.contact_email && <div>Email: {l.contact_email}</div>} */}
+          {/* raw contact info intentionally hidden */}
         </div>
 
         {/* Owner-only actions */}
@@ -160,7 +192,7 @@ export default function ListingDetail() {
             <button
               style={{
                 padding: '10px 14px',
-                background: '#0ea5e9', // sky-500
+                background: '#0ea5e9',
                 color: '#fff',
                 border: '0',
                 borderRadius: 8,
@@ -182,7 +214,7 @@ export default function ListingDetail() {
             <button
               style={{
                 padding: '10px 14px',
-                background: '#ef4444', // red-500
+                background: '#ef4444',
                 color: '#fff',
                 border: '0',
                 borderRadius: 8,
@@ -200,14 +232,14 @@ export default function ListingDetail() {
           </div>
         )}
 
-        {/* Contact (buttons only; actual info hidden) */}
+        {/* Contact buttons only (info hidden) */}
         <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
           {mailto && !isSold && (
             <a
               href={mailto}
               style={{
                 padding: '10px 14px',
-                background: '#22c55e', // green-500
+                background: '#22c55e',
                 color: '#0b1220',
                 borderRadius: 8,
                 textDecoration: 'none',
@@ -222,7 +254,7 @@ export default function ListingDetail() {
               href={tel}
               style={{
                 padding: '10px 14px',
-                background: '#e2e8f0', // slate-200
+                background: '#e2e8f0',
                 color: '#0b1220',
                 borderRadius: 8,
                 textDecoration: 'none',
