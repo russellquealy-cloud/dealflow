@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -16,12 +17,17 @@ type Listing = {
   image_url: string | null;
   status: string;
   created_at?: string;
+
+  bedrooms: number | null;
+  bathrooms: number | null;
+  home_sqft: number | null;
 };
 
 export default function HomePage() {
   // UI state
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false);
 
   // Listings
   const [listings, setListings] = useState<Listing[]>([]);
@@ -59,7 +65,7 @@ export default function HomePage() {
     let query = supabase
       .from('listings')
       .select(
-        'id,address,city,state,zip,price,arv,repairs,image_url,status,created_at'
+        'id,address,city,state,zip,price,arv,repairs,image_url,status,created_at,bedrooms,bathrooms,home_sqft'
       )
       .eq('status', 'live')
       .order('created_at', { ascending: false });
@@ -115,17 +121,38 @@ export default function HomePage() {
       }}
     >
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        {/* Title in white */}
-        <h1
-          style={{
-            fontSize: 28,
-            fontWeight: 800,
-            marginBottom: 12,
-            color: '#fff',
-          }}
-        >
-          Deals
-        </h1>
+        {/* Top nav actions (white text blocks) */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <Link href="/post" style={navBtn}>Post Deal</Link>
+          <Link href="/listings" style={navBtn}>My Listings</Link>
+          <Link href="/login" style={navBtn}>Login</Link>
+          <Link href="/" style={navBtn}>Deals</Link>
+        </div>
+
+        {/* Title + mobile filter toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              marginBottom: 12,
+              color: '#fff',
+            }}
+          >
+            Deals
+          </h1>
+
+          {/* Mobile-only toggle */}
+          <button
+            type="button"
+            onClick={() => setShowFiltersMobile((v) => !v)}
+            className="filters-toggle"
+            style={filtersToggle}
+            aria-label="Toggle filters"
+          >
+            {showFiltersMobile ? 'Hide Filters' : 'Show Filters'}
+          </button>
+        </div>
 
         {/* Search / Filter Bar */}
         <form
@@ -133,13 +160,7 @@ export default function HomePage() {
             e.preventDefault();
             fetchListings();
           }}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 1fr 80px 1fr 1fr auto auto',
-            gap: 8,
-            alignItems: 'center',
-            marginBottom: 12,
-          }}
+          className={`filters ${showFiltersMobile ? 'open' : ''}`}
         >
           <input
             value={keyword}
@@ -247,14 +268,80 @@ export default function HomePage() {
                     {l.state ? `, ${l.state}` : ''}
                     {l.zip ? ` ${l.zip}` : ''}
                   </div>
+
+                  {/* quick specs row */}
+                  {(l.bedrooms || l.bathrooms || l.home_sqft) ? (
+                    <div style={{ marginTop: 6, opacity: 0.9, fontSize: 13 }}>
+                      {numOrDash(l.bedrooms)} bd • {numOrDash(l.bathrooms)} ba
+                      {l.home_sqft ? ` • ${Number(l.home_sqft).toLocaleString()} sf` : ''}
+                    </div>
+                  ) : null}
+
+                  {/* ARV / Repairs chips */}
+                  {(l.arv || l.repairs) ? (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      {l.arv ? (
+                        <span style={chip}>ARV ${Number(l.arv).toLocaleString()}</span>
+                      ) : null}
+                      {l.repairs ? (
+                        <span style={chip}>Repairs ${Number(l.repairs).toLocaleString()}</span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </Link>
             ))}
           </div>
         )}
       </div>
+
+      {/* Responsive styles for the filter grid */}
+      <style jsx>{`
+        .filters {
+          display: grid;
+          grid-template-columns: 2fr 1fr 80px 1fr 1fr auto auto;
+          gap: 8px;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+        .filters-toggle {
+          display: none;
+        }
+
+        /* Tablet */
+        @media (max-width: 900px) {
+          .filters {
+            grid-template-columns: 1fr 1fr 80px;
+            grid-auto-rows: minmax(0, auto);
+          }
+        }
+
+        /* Phones: collapse with a toggle for room */
+        @media (max-width: 640px) {
+          .filters-toggle {
+            display: inline-flex;
+          }
+          .filters {
+            display: none;
+            grid-template-columns: 1fr;
+            width: 100%;
+            margin-bottom: 12px;
+          }
+          .filters.open {
+            display: grid;
+          }
+          .filters > * {
+            width: 100%;
+          }
+        }
+      `}</style>
     </main>
   );
+}
+
+/* ——— helpers ——— */
+function numOrDash(n: number | null) {
+  return typeof n === 'number' && Number.isFinite(n) ? String(n) : '—';
 }
 
 /* ——— styles ——— */
@@ -274,6 +361,7 @@ const btnPrimary: React.CSSProperties = {
   background: '#0ea5e9', // sky-500
   color: '#fff',
   border: '0',
+  fontWeight: 700,
 };
 
 const btnGhost: React.CSSProperties = {
@@ -282,4 +370,36 @@ const btnGhost: React.CSSProperties = {
   background: '#0b1220',
   color: '#fff',
   border: '1px solid #334155',
+  fontWeight: 700,
+};
+
+const navBtn: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 10,
+  background: '#0b1220',
+  color: '#fff',
+  border: '1px solid rgba(255,255,255,0.12)',
+  textDecoration: 'none',
+  fontWeight: 700,
+  fontSize: 14,
+};
+
+const chip: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 8px',
+  borderRadius: 999,
+  background: '#0b1220',
+  border: '1px solid #334155',
+  fontSize: 12,
+  opacity: 0.95,
+};
+const filtersToggle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 10,
+  background: '#0b1220',
+  color: '#fff',
+  border: '1px solid rgba(255,255,255,0.2)',
+  fontWeight: 700,
+  cursor: 'pointer',
 };

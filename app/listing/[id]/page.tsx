@@ -1,3 +1,4 @@
+// app/listing/[id]/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -16,269 +17,267 @@ type Listing = {
   repairs: number | null;
   image_url: string | null;
   status: string;
-  contact_name: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  owner_id: string | null;
+  created_at?: string;
 
-  // NEW
   bedrooms: number | null;
-  bathrooms: number | null;   // stored as numeric(3,1)
-  garage_spaces: number | null;
+  bathrooms: number | null;
   home_sqft: number | null;
-  lot_sqft: number | null;
+  lot_size: number | null;
+  lot_unit: 'sqft' | 'acre' | null;
+  garage: number | null;
   description: string | null;
 };
 
-export default function ListingDetail() {
+type ExtraImage = { id: string; url: string };
+
+export default function ListingDetailPage() {
   const params = useParams<{ id: string }>();
-  const id = params?.id;
+  const listingId = params?.id;
 
-  const [l, setL] = useState<Listing | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [isOwner, setIsOwner] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [images, setImages] = useState<ExtraImage[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!listingId) return;
     (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('listings')
-          .select('*')
-          .eq('id', String(id))
-          .single();
-        if (error) throw error;
-        setL(data as Listing);
-      } catch (e: unknown) {
-        setErr(e instanceof Error ? e.message : String(e));
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('listings')
+        .select(
+          [
+            'id',
+            'address',
+            'city',
+            'state',
+            'zip',
+            'price',
+            'arv',
+            'repairs',
+            'image_url',
+            'status',
+            'created_at',
+            'bedrooms',
+            'bathrooms',
+            'home_sqft',
+            'lot_size',
+            'lot_unit',
+            'garage',
+            'description',
+          ].join(',')
+        )
+        .eq('id', listingId)
+        .single();
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
       }
-    })();
-  }, [id]);
 
-  useEffect(() => {
-    (async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const me = userData.user;
-      if (me && l?.owner_id && me.id === l.owner_id) setIsOwner(true);
-      else setIsOwner(false);
-    })();
-  }, [l]);
+      setListing(data as Listing);
 
-  if (err)
+      // load extra images if table exists
+      const { data: imgs } = await supabase
+        .from('listing_images')
+        .select('id, url')
+        .eq('listing_id', listingId);
+
+      setImages(imgs || []);
+      setLoading(false);
+    })();
+  }, [listingId]);
+
+  if (loading) {
     return (
-      <main style={{ padding: 16, color: '#fff', background: '#0f172a', minHeight: '100vh' }}>
-        Error: {err}
+      <main style={wrapper}>
+        <div style={{ color: '#fff' }}>Loading…</div>
       </main>
     );
-  if (!l)
+  }
+
+  if (error || !listing) {
     return (
-      <main style={{ padding: 16, color: '#fff', background: '#0f172a', minHeight: '100vh' }}>
-        Loading…
+      <main style={wrapper}>
+        <div style={{ color: '#fecaca' }}>{error || 'Listing not found.'}</div>
+        <div style={{ marginTop: 8 }}>
+          <Link href="/" style={linkBtn}>← Back to Deals</Link>
+        </div>
       </main>
     );
-
-  const isSold = l.status?.toLowerCase() === 'sold';
-  const mailto = l.contact_email
-    ? `mailto:${l.contact_email}?subject=Interested in ${encodeURIComponent(l.address)}`
-    : null;
-  const tel = l.contact_phone ? `tel:${l.contact_phone.replace(/[^+\d]/g, '')}` : null;
+  }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: '#0f172a',
-        color: '#fff',
-        padding: 16,
-      }}
-    >
-      <div style={{ maxWidth: 520, margin: '0 auto' }}>
-        <div
-          style={{
-            height: 240,
-            background: '#111827',
-            borderRadius: 12,
-            overflow: 'hidden',
-            border: '1px solid #27272a',
-            position: 'relative',
-          }}
-        >
-          {l.image_url && (
+    <main style={wrapper}>
+      <div style={container}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+          {/* Title + address */}
+          <h1 style={{ margin: 0, color: '#fff', fontSize: 24, fontWeight: 800 }}>
+            ${Number(listing.price).toLocaleString()}
+          </h1>
+          <div style={{ color: '#cbd5e1' }}>
+            {listing.address}
+            {listing.city ? `, ${listing.city}` : ''}
+            {listing.state ? `, ${listing.state}` : ''} {listing.zip || ''}
+          </div>
+
+          {/* Hero image */}
+          {listing.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={l.image_url}
+              src={listing.image_url}
               alt=""
               style={{
                 width: '100%',
-                height: '100%',
+                height: 300,
                 objectFit: 'cover',
-                filter: isSold ? 'grayscale(100%)' : undefined,
+                borderRadius: 12,
+                border: '1px solid #27272a',
               }}
             />
-          )}
-          {isSold && (
+          ) : null}
+
+          {/* Extra images */}
+          {images.length ? (
+            <div>
+              <h2 style={sectionH2}>Photos</h2>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {images.map((im) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={im.id}
+                    src={im.url}
+                    alt=""
+                    style={{
+                      width: 180,
+                      height: 120,
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                      border: '1px solid #27272a',
+                      background: '#0b0f1a',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* NEW: Key Numbers (prominent ARV & Repairs) */}
+          <section style={card}>
+            <h2 style={sectionH2}>Key Numbers</h2>
             <div
               style={{
-                position: 'absolute',
-                top: 10,
-                left: 10,
-                background: '#dc3545',
-                color: '#fff',
-                fontWeight: 800,
-                letterSpacing: 1,
-                padding: '6px 10px',
-                borderRadius: 8,
-                boxShadow: '0 2px 8px rgba(0,0,0,.2)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 8,
               }}
             >
-              SOLD
+              <Spec label="Price" value={moneyOrDash(listing.price)} />
+              <Spec label="ARV" value={moneyOrDash(listing.arv)} />
+              <Spec label="Repairs" value={moneyOrDash(listing.repairs)} />
             </div>
-          )}
-        </div>
+          </section>
 
-        <h1 style={{ fontSize: 26, fontWeight: 800, marginTop: 12 }}>
-          ${Number(l.price).toLocaleString()}
-        </h1>
+          {/* Property details */}
+          <section style={card}>
+            <h2 style={sectionH2}>Property Details</h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 8,
+              }}
+            >
+              <Spec label="Bedrooms" value={numOrDash(listing.bedrooms)} />
+              <Spec label="Bathrooms" value={numOrDash(listing.bathrooms)} />
+              <Spec label="Home Sq Ft" value={numOrDash(listing.home_sqft)} />
+              <Spec
+                label="Lot Size"
+                value={
+                  listing.lot_size
+                    ? `${Number(listing.lot_size).toLocaleString()} ${listing.lot_unit || ''}`.trim()
+                    : '—'
+                }
+              />
+              <Spec label="Garage" value={numOrDash(listing.garage)} />
+              <Spec label="Status" value={listing.status || '—'} />
+            </div>
+          </section>
 
-        <div style={{ opacity: 0.9, marginBottom: 10 }}>
-          {l.address}
-          {l.city ? `, ${l.city}` : ''}
-          {l.state ? `, ${l.state}` : ''}
-          {l.zip ? ` ${l.zip}` : ''}
-        </div>
+          {/* Description */}
+          {listing.description ? (
+            <section style={card}>
+              <h2 style={sectionH2}>Description</h2>
+              <p style={{ margin: 0, color: '#e5e7eb', whiteSpace: 'pre-wrap' }}>
+                {listing.description}
+              </p>
+            </section>
+          ) : null}
 
-        {/* NEW: property details block */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 8,
-            fontSize: 14,
-            marginBottom: 8,
-          }}
-        >
-          {l.bedrooms !== null && <div>Bedrooms: {l.bedrooms}</div>}
-          {l.bathrooms !== null && <div>Bathrooms: {Number(l.bathrooms).toLocaleString()}</div>}
-          {l.garage_spaces !== null && <div>Garage: {l.garage_spaces}</div>}
-          {l.home_sqft !== null && <div>Home Sq Ft: {Number(l.home_sqft).toLocaleString()}</div>}
-          {l.lot_sqft !== null && <div>Lot Size (sq ft): {Number(l.lot_sqft).toLocaleString()}</div>}
-        </div>
-
-        {l.description && (
-          <div
-            style={{
-              background: '#111827',
-              border: '1px solid #27272a',
-              borderRadius: 10,
-              padding: 12,
-              whiteSpace: 'pre-wrap',
-              marginBottom: 8,
-            }}
-          >
-            {l.description}
+          <div>
+            <Link href="/" style={linkBtn}>
+              ← Back to Deals
+            </Link>
           </div>
-        )}
-
-        <div style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-          <div>ARV: ${Number(l.arv || 0).toLocaleString()}</div>
-          <div>Repairs: ${Number(l.repairs || 0).toLocaleString()}</div>
-          <div>Status: {l.status}</div>
-          {/* raw contact info intentionally hidden */}
-        </div>
-
-        {/* Owner-only actions */}
-        {isOwner && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <button
-              style={{
-                padding: '10px 14px',
-                background: '#0ea5e9',
-                color: '#fff',
-                border: '0',
-                borderRadius: 8,
-                cursor: 'pointer',
-              }}
-              onClick={async () => {
-                if (!confirm('Mark as SOLD?')) return;
-                const { error } = await supabase
-                  .from('listings')
-                  .update({ status: 'sold' })
-                  .eq('id', l.id);
-                if (error) alert(error.message);
-                else window.location.href = '/';
-              }}
-            >
-              Mark as Sold
-            </button>
-
-            <button
-              style={{
-                padding: '10px 14px',
-                background: '#ef4444',
-                color: '#fff',
-                border: '0',
-                borderRadius: 8,
-                cursor: 'pointer',
-              }}
-              onClick={async () => {
-                if (!confirm('Delete this listing? This cannot be undone.')) return;
-                const { error } = await supabase.from('listings').delete().eq('id', l.id);
-                if (error) alert(error.message);
-                else window.location.href = '/';
-              }}
-            >
-              Delete
-            </button>
-          </div>
-        )}
-
-        {/* Contact buttons only (info hidden) */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-          {mailto && !isSold && (
-            <a
-              href={mailto}
-              style={{
-                padding: '10px 14px',
-                background: '#22c55e',
-                color: '#0b1220',
-                borderRadius: 8,
-                textDecoration: 'none',
-                fontWeight: 700,
-              }}
-            >
-              Email Seller
-            </a>
-          )}
-          {tel && !isSold && (
-            <a
-              href={tel}
-              style={{
-                padding: '10px 14px',
-                background: '#e2e8f0',
-                color: '#0b1220',
-                borderRadius: 8,
-                textDecoration: 'none',
-                fontWeight: 700,
-              }}
-            >
-              Call/Text
-            </a>
-          )}
-          <Link
-            href="/"
-            style={{
-              padding: '10px 14px',
-              border: '1px solid #334155',
-              borderRadius: 8,
-              textDecoration: 'none',
-              color: '#fff',
-              background: '#0b1220',
-            }}
-          >
-            Back
-          </Link>
         </div>
       </div>
     </main>
   );
 }
+
+/* ---- small pieces ---- */
+function Spec({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        background: '#0b1220',
+        border: '1px solid #334155',
+        borderRadius: 10,
+        padding: '10px 12px',
+      }}
+    >
+      <div style={{ color: '#9ca3af', fontSize: 12 }}>{label}</div>
+      <div style={{ color: '#fff', fontWeight: 700 }}>{value}</div>
+    </div>
+  );
+}
+
+function numOrDash(n: number | null) {
+  return typeof n === 'number' && Number.isFinite(n) ? String(n) : '—';
+}
+function moneyOrDash(n: number | null) {
+  if (typeof n === 'number' && Number.isFinite(n)) {
+    return `$${n.toLocaleString()}`;
+  }
+  return '—';
+}
+
+/* ---- styles ---- */
+const wrapper: React.CSSProperties = {
+  minHeight: '100vh',
+  background: '#0f172a',
+  color: '#fff',
+  padding: 16,
+};
+const container: React.CSSProperties = { maxWidth: 900, margin: '0 auto' };
+const sectionH2: React.CSSProperties = { margin: '0 0 8px', fontSize: 18, fontWeight: 800 };
+const card: React.CSSProperties = {
+  background: '#111827',
+  border: '1px solid #27272a',
+  borderRadius: 12,
+  padding: 12,
+};
+const linkBtn: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 12px',
+  borderRadius: 10,
+  textDecoration: 'none',
+  background: '#0b0f1a',
+  color: '#fff',
+  border: '1px solid rgba(255,255,255,0.12)',
+};
