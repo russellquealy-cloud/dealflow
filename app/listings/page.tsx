@@ -95,8 +95,12 @@ export default function MyListingsPage() {
       return;
     }
 
-    const listings = (data ?? []) as Listing[];
+    // TS-safe narrowing for Vercel strict types
+    const listings: Listing[] = Array.isArray(data)
+      ? (data as unknown as Listing[])
+      : [];
 
+    // fetch thumbnails for these listings
     const ids = listings.map((d) => d.id);
     const imagesByListing: Record<string, { id: string; url: string }[]> = {};
     if (ids.length) {
@@ -104,7 +108,8 @@ export default function MyListingsPage() {
         .from('listing_images')
         .select('id, listing_id, url')
         .in('listing_id', ids);
-      (imgData ?? []).forEach((im) => {
+
+      (Array.isArray(imgData) ? imgData : []).forEach((im) => {
         const row = im as ImageRow;
         (imagesByListing[row.listing_id] ||= []).push({ id: row.id, url: row.url });
       });
@@ -165,7 +170,9 @@ export default function MyListingsPage() {
     if (error) setError(error.message);
 
     const { data } = await supabase.from('listings').select('*').eq('id', l.id).single();
-    setRows((rows) => rows.map((r) => (r.id === l.id ? { ...r, ...(data as Listing) } : r)));
+    if (data) {
+      setRows((rows) => rows.map((r) => (r.id === l.id ? { ...r, ...(data as unknown as Listing) } : r)));
+    }
     setSavingId(null);
   };
 
@@ -354,20 +361,11 @@ export default function MyListingsPage() {
                     </div>
                   </div>
 
-                  {/* price, ARV, repairs, status */}
+                  {/* price + ARV + repairs + status */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
-                    <div>
-                      <Label>Price</Label>
-                      <Input value={e?.price ?? ''} onChange={(ev) => onEdit(l.id, { price: ev.target.value })} inputMode="numeric" />
-                    </div>
-                    <div>
-                      <Label>ARV</Label>
-                      <Input value={e?.arv ?? ''} onChange={(ev) => onEdit(l.id, { arv: ev.target.value })} inputMode="numeric" />
-                    </div>
-                    <div>
-                      <Label>Repairs</Label>
-                      <Input value={e?.repairs ?? ''} onChange={(ev) => onEdit(l.id, { repairs: ev.target.value })} inputMode="numeric" />
-                    </div>
+                    <div><Label>Price</Label><Input value={e?.price ?? ''} onChange={(ev) => onEdit(l.id, { price: ev.target.value })} inputMode="numeric" /></div>
+                    <div><Label>ARV</Label><Input value={e?.arv ?? ''} onChange={(ev) => onEdit(l.id, { arv: ev.target.value })} inputMode="numeric" /></div>
+                    <div><Label>Repairs</Label><Input value={e?.repairs ?? ''} onChange={(ev) => onEdit(l.id, { repairs: ev.target.value })} inputMode="numeric" /></div>
                     <div>
                       <Label>Status</Label>
                       <Select
