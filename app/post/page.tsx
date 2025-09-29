@@ -139,17 +139,15 @@ export default function PostDealPage() {
 
         if (updErr) throw updErr;
 
-        // Also add a row in listing_images (via RPC if you created it; otherwise direct insert):
+        // Also add a row in listing_images
         const { error: imgInsErr } = await supabase
           .from('listing_images')
           .insert({ listing_id: listingId, url });
         if (imgInsErr) {
-          // Not fatal — we can continue, but log it
           console.warn('listing_images insert failed:', imgInsErr.message);
         }
       }
 
-      // go to detail page
       router.replace(`/listing/${listingId}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -429,7 +427,7 @@ function Textarea(
   const base: React.CSSProperties = {
     width: '100%',
     padding: '10px 12px',
-    border: '1px solid '#334155'",
+    border: '1px solid #334155', // <-- fixed
     borderRadius: 10,
     background: '#0b1220',
     color: '#fff',
