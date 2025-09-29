@@ -77,16 +77,26 @@ export default function ListingDetailPage() {
         setLoading(false);
         return;
       }
+      if (!data) {
+        setError('Listing not found.');
+        setLoading(false);
+        return;
+      }
 
-      setListing(data as Listing);
+      // TS-safe: narrow to unknown first, then our shape
+      setListing(data as unknown as Listing);
 
       // load extra images if table exists
-      const { data: imgs } = await supabase
+      const { data: imgs, error: imgErr } = await supabase
         .from('listing_images')
         .select('id, url')
         .eq('listing_id', listingId);
 
-      setImages(imgs || []);
+      if (imgErr) {
+        // non-fatal; just show listing without extra images
+        console.warn('listing_images query failed', imgErr);
+      }
+      setImages((imgs ?? []) as ExtraImage[]);
       setLoading(false);
     })();
   }, [listingId]);
@@ -165,16 +175,10 @@ export default function ListingDetailPage() {
             </div>
           ) : null}
 
-          {/* NEW: Key Numbers (prominent ARV & Repairs) */}
+          {/* Key Numbers */}
           <section style={card}>
             <h2 style={sectionH2}>Key Numbers</h2>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: 8,
-              }}
-            >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
               <Spec label="Price" value={moneyOrDash(listing.price)} />
               <Spec label="ARV" value={moneyOrDash(listing.arv)} />
               <Spec label="Repairs" value={moneyOrDash(listing.repairs)} />
@@ -184,13 +188,7 @@ export default function ListingDetailPage() {
           {/* Property details */}
           <section style={card}>
             <h2 style={sectionH2}>Property Details</h2>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: 8,
-              }}
-            >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
               <Spec label="Bedrooms" value={numOrDash(listing.bedrooms)} />
               <Spec label="Bathrooms" value={numOrDash(listing.bathrooms)} />
               <Spec label="Home Sq Ft" value={numOrDash(listing.home_sqft)} />
@@ -231,28 +229,17 @@ export default function ListingDetailPage() {
 /* ---- small pieces ---- */
 function Spec({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        background: '#0b1220',
-        border: '1px solid #334155',
-        borderRadius: 10,
-        padding: '10px 12px',
-      }}
-    >
+    <div style={{ background: '#0b1220', border: '1px solid #334155', borderRadius: 10, padding: '10px 12px' }}>
       <div style={{ color: '#9ca3af', fontSize: 12 }}>{label}</div>
       <div style={{ color: '#fff', fontWeight: 700 }}>{value}</div>
     </div>
   );
 }
-
 function numOrDash(n: number | null) {
   return typeof n === 'number' && Number.isFinite(n) ? String(n) : '—';
 }
 function moneyOrDash(n: number | null) {
-  if (typeof n === 'number' && Number.isFinite(n)) {
-    return `$${n.toLocaleString()}`;
-  }
-  return '—';
+  return typeof n === 'number' && Number.isFinite(n) ? `$${n.toLocaleString()}` : '—';
 }
 
 /* ---- styles ---- */
@@ -264,12 +251,7 @@ const wrapper: React.CSSProperties = {
 };
 const container: React.CSSProperties = { maxWidth: 900, margin: '0 auto' };
 const sectionH2: React.CSSProperties = { margin: '0 0 8px', fontSize: 18, fontWeight: 800 };
-const card: React.CSSProperties = {
-  background: '#111827',
-  border: '1px solid #27272a',
-  borderRadius: 12,
-  padding: 12,
-};
+const card: React.CSSProperties = { background: '#111827', border: '1px solid #27272a', borderRadius: 12, padding: 12 };
 const linkBtn: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
