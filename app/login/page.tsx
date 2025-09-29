@@ -21,6 +21,10 @@ export default function LoginPage() {
     })();
   }, []);
 
+  function msg(err: unknown) {
+    return err instanceof Error ? err.message : String(err);
+  }
+
   async function sendMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -37,8 +41,8 @@ export default function LoginPage() {
       });
       if (error) throw error;
       setView('sent');
-    } catch (err: any) {
-      setError(err?.message || 'Could not send magic link.');
+    } catch (err: unknown) {
+      setError(msg(err) || 'Could not send magic link.');
     } finally {
       setLoading(false);
     }
@@ -58,9 +62,8 @@ export default function LoginPage() {
         },
       });
       if (error) throw error;
-      // redirected by Supabase
-    } catch (err: any) {
-      setError(err?.message || 'Google sign-in failed.');
+    } catch (err: unknown) {
+      setError(msg(err) || 'Google sign-in failed.');
       setLoading(false);
     }
   }
@@ -72,8 +75,8 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUserEmail(null);
-    } catch (err: any) {
-      setError(err?.message || 'Sign out failed.');
+    } catch (err: unknown) {
+      setError(msg(err) || 'Sign out failed.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +85,6 @@ export default function LoginPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#0f172a', color: '#fff', padding: 16 }}>
       <div style={{ maxWidth: 520, margin: '0 auto' }}>
-        {/* top nav (consistent with app) */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           <Link href="/" style={navBtn}>Deals</Link>
           <Link href="/post" style={navBtn}>Post Deal</Link>
@@ -133,9 +135,6 @@ export default function LoginPage() {
                 <button onClick={signInWithGoogle} disabled={loading} style={btnSecondary}>
                   {loading ? 'Opening…' : 'Continue with Google'}
                 </button>
-
-                {/* Placeholder for SMS if/when you enable it */}
-                {/* <button onClick={signInWithSms} style={btnSecondary}>Continue with SMS</button> */}
               </>
             ) : (
               <div>
@@ -152,89 +151,13 @@ export default function LoginPage() {
   );
 }
 
-/* ---------- styles (fixed borders) ---------- */
-
-const card: React.CSSProperties = {
-  background: '#111827',
-  border: '1px solid #27272a',
-  borderRadius: 12,
-  padding: 12,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  marginBottom: 6,
-  color: '#cbd5e1',
-  fontSize: 13,
-  fontWeight: 600,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  border: '1px solid #334155', // <— fixed quoting
-  borderRadius: 10,
-  background: '#0b1220',
-  color: '#fff',
-  outline: 'none',
-};
-
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 14px',
-  borderRadius: 10,
-  background: '#0ea5e9',
-  color: '#fff',
-  border: '0',
-  fontWeight: 700,
-  cursor: 'pointer',
-};
-
-const btnSecondary: React.CSSProperties = {
-  padding: '10px 14px',
-  borderRadius: 10,
-  background: '#0b1220',
-  color: '#fff',
-  border: '1px solid #334155',
-  fontWeight: 700,
-  cursor: 'pointer',
-};
-
-const btnGhost: React.CSSProperties = {
-  padding: '10px 14px',
-  borderRadius: 10,
-  background: '#0b1220',
-  color: '#fff',
-  border: '1px solid rgba(255,255,255,0.2)',
-  fontWeight: 700,
-  cursor: 'pointer',
-};
-
-const btnDanger: React.CSSProperties = {
-  padding: '10px 14px',
-  borderRadius: 10,
-  background: '#7f1d1d',
-  color: '#fff',
-  border: '1px solid #991b1b',
-  fontWeight: 700,
-  cursor: 'pointer',
-};
-
-const navBtn: React.CSSProperties = {
-  padding: '8px 12px',
-  borderRadius: 10,
-  background: '#0b1220',
-  color: '#fff',
-  border: '1px solid rgba(255,255,255,0.12)',
-  textDecoration: 'none',
-  fontWeight: 700,
-  fontSize: 14,
-};
-
-const errBox: React.CSSProperties = {
-  background: '#7f1d1d',
-  color: '#fecaca',
-  border: '1px solid #991b1b',
-  padding: '10px 12px',
-  borderRadius: 10,
-  marginBottom: 10,
-};
+/* styles */
+const card: React.CSSProperties = { background: '#111827', border: '1px solid #27272a', borderRadius: 12, padding: 12 };
+const labelStyle: React.CSSProperties = { display: 'block', marginBottom: 6, color: '#cbd5e1', fontSize: 13, fontWeight: 600 };
+const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #334155', borderRadius: 10, background: '#0b1220', color: '#fff', outline: 'none' };
+const btnPrimary: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#0ea5e9', color: '#fff', border: '0', fontWeight: 700, cursor: 'pointer' };
+const btnSecondary: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#0b1220', color: '#fff', border: '1px solid #334155', fontWeight: 700, cursor: 'pointer' };
+const btnGhost: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#0b1220', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', fontWeight: 700, cursor: 'pointer' };
+const btnDanger: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#7f1d1d', color: '#fff', border: '1px solid #991b1b', fontWeight: 700, cursor: 'pointer' };
+const navBtn: React.CSSProperties = { padding: '8px 12px', borderRadius: 10, background: '#0b1220', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', textDecoration: 'none', fontWeight: 700, fontSize: 14 };
+const errBox: React.CSSProperties = { background: '#7f1d1d', color: '#fecaca', border: '1px solid #991b1b', padding: '10px 12px', borderRadius: 10, marginBottom: 10 };

@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 
+type ImageRow = { id: string; listing_id: string; url: string };
+
 type Listing = {
   id: string;
   owner_id: string | null;
@@ -19,7 +21,6 @@ type Listing = {
   image_url: string | null;
   status: 'live' | 'draft' | 'sold';
   created_at?: string;
-
   bedrooms: number | null;
   bathrooms: number | null;
   home_sqft: number | null;
@@ -27,7 +28,6 @@ type Listing = {
   lot_unit: 'sqft' | 'acre' | null;
   garage: number | null;
   description: string | null;
-
   images?: { id: string; url: string }[];
 };
 
@@ -81,25 +81,9 @@ export default function MyListingsPage() {
       .from('listings')
       .select(
         [
-          'id',
-          'owner_id',
-          'address',
-          'city',
-          'state',
-          'zip',
-          'price',
-          'arv',
-          'repairs',
-          'image_url',
-          'status',
-          'created_at',
-          'bedrooms',
-          'bathrooms',
-          'home_sqft',
-          'lot_size',
-          'lot_unit',
-          'garage',
-          'description',
+          'id','owner_id','address','city','state','zip','price','arv','repairs',
+          'image_url','status','created_at','bedrooms','bathrooms','home_sqft',
+          'lot_size','lot_unit','garage','description',
         ].join(',')
       )
       .eq('owner_id', uid)
@@ -111,20 +95,22 @@ export default function MyListingsPage() {
       return;
     }
 
-    const ids = (data || []).map((d) => d.id);
-    let imagesByListing: Record<string, { id: string; url: string }[]> = {};
+    const listings = (data ?? []) as Listing[];
+
+    const ids = listings.map((d) => d.id);
+    const imagesByListing: Record<string, { id: string; url: string }[]> = {};
     if (ids.length) {
       const { data: imgData } = await supabase
         .from('listing_images')
         .select('id, listing_id, url')
         .in('listing_id', ids);
-
-      (imgData || []).forEach((im) => {
-        (imagesByListing[im.listing_id] ||= []).push({ id: im.id, url: im.url });
+      (imgData ?? []).forEach((im) => {
+        const row = im as ImageRow;
+        (imagesByListing[row.listing_id] ||= []).push({ id: row.id, url: row.url });
       });
     }
 
-    const withImgs: Listing[] = (data || []).map((d: any) => ({
+    const withImgs: Listing[] = listings.map((d) => ({
       ...d,
       images: imagesByListing[d.id] || [],
     }));
@@ -205,18 +191,14 @@ export default function MyListingsPage() {
     setDeletingId(null);
   };
 
-  // --- Helpers for storage paths ---
   const storagePathFromPublicUrl = (url: string) => {
-    // public URL looks like: https://<proj>.supabase.co/storage/v1/object/public/listing-images/<PATH>
     const marker = '/storage/v1/object/public/listing-images/';
     const idx = url.indexOf(marker);
     if (idx === -1) return null;
     return url.slice(idx + marker.length);
   };
 
-  // === MULTI-IMAGE UPLOAD using secure RPC ===========================
   const addPhoto = async (l: Listing, file: File) => {
-    // basic guardrails
     if (!file.type.startsWith('image/')) {
       setError('Only images are allowed.');
       return;
@@ -232,52 +214,44 @@ export default function MyListingsPage() {
     setError(null);
 
     try {
-      // Create a tracked upload using the fetch uploader (gives progress)
       const ext = extOf(file.name) || 'jpg';
       const fileName = `listing-${l.id}/${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}.${ext}`;
 
-      // Supabase JS v2 doesn't expose onProgress for storage upload,
-      // but we can still show a fake linear progress while awaiting.
-      // (set to 25/50/75 then 100 on completion)
       setUploadPct(25);
-
       const { error: upErr } = await supabase
         .storage
         .from('listing-images')
         .upload(fileName, file, { cacheControl: '3600', upsert: false });
-
       if (upErr) throw upErr;
-      setUploadPct(60);
 
+      setUploadPct(60);
       const { data: urlData } = supabase.storage.from('listing-images').getPublicUrl(fileName);
       const publicUrl = urlData?.publicUrl;
       if (!publicUrl) throw new Error('Could not resolve public URL for image');
 
       setUploadPct(85);
-
-      // DB row via RPC (ownership enforced even with RLS)
       const { data: inserted, error: rpcErr } = await supabase.rpc(
         'fn_add_listing_image',
         { p_listing_id: l.id, p_url: publicUrl }
       );
       if (rpcErr) throw rpcErr;
 
-      const newImg = inserted && Array.isArray(inserted) ? inserted[0] : null;
-      if (newImg) {
+      const newArray = Array.isArray(inserted) ? inserted : [];
+      if (newArray.length > 0) {
+        const first = newArray[0] as { id: string; listing_id: string; url: string };
         setRows((rows) =>
           rows.map((r) =>
-            r.id === l.id
-              ? { ...r, images: [...(r.images || []), { id: newImg.id, url: newImg.url }] }
-              : r
+            r.id === l.id ? { ...r, images: [...(r.images || []), { id: first.id, url: first.url }] } : r
           )
         );
       }
 
       setUploadPct(100);
-    } catch (e: any) {
-      setError(e?.message || 'Image upload failed');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg || 'Image upload failed');
     } finally {
       setAddingPhotoId(null);
       setTimeout(() => setUploadPct(0), 600);
@@ -289,7 +263,6 @@ export default function MyListingsPage() {
     setAddingPhotoId(l.id);
     setError(null);
 
-    // 1) delete DB row
     const { error } = await supabase.from('listing_images').delete().eq('id', imgId);
     if (error) {
       setError(error.message);
@@ -297,7 +270,6 @@ export default function MyListingsPage() {
       return;
     }
 
-    // 2) delete file in storage (best effort)
     const path = storagePathFromPublicUrl(url);
     if (path) {
       await supabase.storage.from('listing-images').remove([path]);
@@ -312,7 +284,6 @@ export default function MyListingsPage() {
   };
 
   const makePrimary = async (l: Listing, url: string) => {
-    // simply set listings.image_url = url
     setSavingId(l.id);
     setError(null);
     const { error } = await supabase.from('listings').update({ image_url: url }).eq('id', l.id);
@@ -374,10 +345,10 @@ export default function MyListingsPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => markSold(l)} disabled={savingId === l.id} style={btnSecondary} title="Mark this listing as Sold">
+                      <button onClick={() => markSold(l)} disabled={savingId === l.id} style={btnSecondary} title="Mark Sold">
                         {savingId === l.id ? 'Saving…' : 'Mark Sold'}
                       </button>
-                      <button onClick={() => deleteRow(l)} disabled={deletingId === l.id} style={btnDanger} title="Delete this listing">
+                      <button onClick={() => deleteRow(l)} disabled={deletingId === l.id} style={btnDanger} title="Delete">
                         {deletingId === l.id ? 'Deleting…' : 'Delete'}
                       </button>
                     </div>
@@ -402,11 +373,7 @@ export default function MyListingsPage() {
                       <Select
                         value={e?.status ?? 'live'}
                         onChange={(ev) => onEdit(l.id, { status: ev.target.value as Editable['status'] })}
-                        options={[
-                          { value: 'live', label: 'Live' },
-                          { value: 'draft', label: 'Draft' },
-                          { value: 'sold', label: 'Sold' },
-                        ]}
+                        options={[{ value: 'live', label: 'Live' }, { value: 'draft', label: 'Draft' }, { value: 'sold', label: 'Sold' }]}
                       />
                     </div>
                   </div>
@@ -449,20 +416,8 @@ export default function MyListingsPage() {
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={im.url} alt="" style={thumbImg} />
                           <div style={{ position: 'absolute', left: 6, bottom: 6, display: 'flex', gap: 6 }}>
-                            <button
-                              onClick={() => makePrimary(l, im.url)}
-                              style={miniBtn}
-                              title="Set as primary"
-                            >
-                              Set primary
-                            </button>
-                            <button
-                              onClick={() => removePhoto(l, im.id, im.url)}
-                              style={miniDanger}
-                              title="Remove photo"
-                            >
-                              ×
-                            </button>
+                            <button onClick={() => makePrimary(l, im.url)} style={miniBtn} title="Set as primary">Set primary</button>
+                            <button onClick={() => removePhoto(l, im.id, im.url)} style={miniDanger} title="Remove photo">×</button>
                           </div>
                         </div>
                       ))}
@@ -512,53 +467,23 @@ export default function MyListingsPage() {
   );
 }
 
-/* ---------- small UI bits ---------- */
+/* ---------- UI bits ---------- */
 function Label(props: React.HTMLAttributes<HTMLLabelElement>) {
   return <label {...props} style={{ display: 'block', marginBottom: 6, color: '#cbd5e1', fontSize: 13, fontWeight: 600 }} />;
 }
-function Input(
-  props: React.InputHTMLAttributes<HTMLInputElement> & { style?: React.CSSProperties }
-) {
-  const base: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #334155',
-    borderRadius: 10,
-    background: '#0b1220',
-    color: '#fff',
-    outline: 'none',
-  };
+function Input(props: React.InputHTMLAttributes<HTMLInputElement> & { style?: React.CSSProperties }) {
+  const base: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #334155', borderRadius: 10, background: '#0b1220', color: '#fff', outline: 'none' };
   return <input {...props} style={{ ...base, ...(props.style || {}) }} />;
 }
-function Textarea(
-  props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { style?: React.CSSProperties }
-) {
-  const base: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #334155',
-    borderRadius: 10,
-    background: '#0b1220',
-    color: '#fff',
-    outline: 'none',
-    resize: 'vertical',
-  };
+function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { style?: React.CSSProperties }) {
+  const base: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #334155', borderRadius: 10, background: '#0b1220', color: '#fff', outline: 'none', resize: 'vertical' };
   return <textarea {...props} style={{ ...base, ...(props.style || {}) }} />;
 }
 function Select(
   props: React.SelectHTMLAttributes<HTMLSelectElement> & { options: { value: string; label: string }[] }
 ) {
   const { options, style, ...rest } = props;
-  const base: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #334155',
-    borderRadius: 10,
-    background: '#0b1220',
-    color: '#fff',
-    outline: 'none',
-    appearance: 'none',
-  };
+  const base: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #334155', borderRadius: 10, background: '#0b1220', color: '#fff', outline: 'none', appearance: 'none' };
   return (
     <select {...rest} style={{ ...base, ...(style || {}) }}>
       {options.map((opt) => (
