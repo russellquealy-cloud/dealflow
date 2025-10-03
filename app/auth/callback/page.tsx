@@ -1,28 +1,29 @@
 // app/auth/callback/page.tsx
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '../../../lib/supabase';
+import { useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 
-export default function AuthCallbackPage() {
-  const router = useRouter();
+export default function AuthCallback() {
+  const router = useRouter()
+  const params = useSearchParams()
 
   useEffect(() => {
-    (async () => {
-      // Let Supabase handle the OAuth redirect session
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error(error);
-      }
-      // Redirect back home after login
-      router.push('/');
-    })();
-  }, [router]);
+    const code = params.get('code')
+    if (!code) { router.replace('/'); return }
 
-  return (
-    <main style={{ padding: 32 }}>
-      <p>Completing sign-in…</p>
-    </main>
-  );
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    supabase.auth.exchangeCodeForSession(code)
+      .then(({ error }) => {
+        if (error) console.error('exchangeCodeForSession failed', error)
+        router.replace('/')
+      })
+  }, [params, router])
+
+  return <main style={{ padding: 24 }}>Signing you in…</main>
 }
