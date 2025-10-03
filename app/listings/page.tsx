@@ -2,7 +2,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 
@@ -28,6 +27,10 @@ type Listing = {
   lot_unit: 'sqft' | 'acre' | null;
   garage: number | null;
   description: string | null;
+  // NEW:
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
   images?: { id: string; url: string }[];
 };
 
@@ -43,105 +46,107 @@ type Editable = {
   lot_size: string;
   lot_unit: 'sqft' | 'acre';
   garage: string;
+  // NEW:
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
 };
 
 export default function MyListingsPage() {
-  const router = useRouter();
-
-  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [addingPhotoId, setAddingPhotoId] = useState<string | null>(null);
-  const [uploadPct, setUploadPct] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState<number>(0);
 
   const [rows, setRows] = useState<Listing[]>([]);
   const [edit, setEdit] = useState<Record<string, Editable>>({});
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id ?? null;
-      setUserId(uid);
+      setLoading(true);
+      setError(null);
+
+      // Only load current user's listings
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id ?? null;
       if (!uid) {
-        router.replace('/login');
+        window.location.href = '/login';
         return;
       }
-      await load(uid);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  async function load(uid: string) {
-    setLoading(true);
-    setError(null);
+      const { data, error } = await supabase
+        .from('listings')
+        .select(
+          [
+            'id','owner_id','address','city','state','zip','price','arv','repairs',
+            'image_url','status','created_at','bedrooms','bathrooms','home_sqft',
+            'lot_size','lot_unit','garage','description',
+            // contact
+            'contact_name','contact_phone','contact_email',
+          ].join(',')
+        )
+        .eq('owner_id', uid)
+        .order('created_at', { ascending: false });
 
-    const { data, error } = await supabase
-      .from('listings')
-      .select(
-        [
-          'id','owner_id','address','city','state','zip','price','arv','repairs',
-          'image_url','status','created_at','bedrooms','bathrooms','home_sqft',
-          'lot_size','lot_unit','garage','description',
-        ].join(',')
-      )
-      .eq('owner_id', uid)
-      .order('created_at', { ascending: false });
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
+      const listings: Listing[] = Array.isArray(data)
+        ? (data as unknown as Listing[])
+        : [];
 
-    // TS-safe narrowing for Vercel strict types
-    const listings: Listing[] = Array.isArray(data)
-      ? (data as unknown as Listing[])
-      : [];
+      // images
+      const ids = listings.map((d) => d.id);
+      const imagesByListing: Record<string, { id: string; url: string }[]> = {};
+      if (ids.length) {
+        const { data: imgData } = await supabase
+          .from('listing_images')
+          .select('id, listing_id, url')
+          .in('listing_id', ids);
 
-    // fetch thumbnails for these listings
-    const ids = listings.map((d) => d.id);
-    const imagesByListing: Record<string, { id: string; url: string }[]> = {};
-    if (ids.length) {
-      const { data: imgData } = await supabase
-        .from('listing_images')
-        .select('id, listing_id, url')
-        .in('listing_id', ids);
+        (Array.isArray(imgData) ? imgData : []).forEach((im) => {
+          const row = im as ImageRow;
+          (imagesByListing[row.listing_id] ||= []).push({ id: row.id, url: row.url });
+        });
+      }
 
-      (Array.isArray(imgData) ? imgData : []).forEach((im) => {
-        const row = im as ImageRow;
-        (imagesByListing[row.listing_id] ||= []).push({ id: row.id, url: row.url });
+      const withImgs: Listing[] = listings.map((d) => ({
+        ...d,
+        images: imagesByListing[d.id] || [],
+      }));
+
+      setRows(withImgs);
+
+      // seed edit
+      const seed: Record<string, Editable> = {};
+      withImgs.forEach((l) => {
+        seed[l.id] = {
+          price: l.price?.toString() ?? '',
+          arv: l.arv?.toString() ?? '',
+          repairs: l.repairs?.toString() ?? '',
+          status: l.status || 'live',
+          description: l.description || '',
+          bedrooms: nOrEmpty(l.bedrooms),
+          bathrooms: nOrEmpty(l.bathrooms),
+          home_sqft: nOrEmpty(l.home_sqft),
+          lot_size: nOrEmpty(l.lot_size),
+          lot_unit: (l.lot_unit as 'sqft' | 'acre') || 'sqft',
+          garage: nOrEmpty(l.garage),
+          contact_name: l.contact_name || '',
+          contact_phone: l.contact_phone || '',
+          contact_email: l.contact_email || '',
+        };
       });
-    }
+      setEdit(seed);
 
-    const withImgs: Listing[] = listings.map((d) => ({
-      ...d,
-      images: imagesByListing[d.id] || [],
-    }));
-
-    setRows(withImgs);
-
-    const seed: Record<string, Editable> = {};
-    withImgs.forEach((l) => {
-      seed[l.id] = {
-        price: l.price?.toString() ?? '',
-        arv: l.arv?.toString() ?? '',
-        repairs: l.repairs?.toString() ?? '',
-        status: l.status || 'live',
-        description: l.description || '',
-        bedrooms: nOrEmpty(l.bedrooms),
-        bathrooms: nOrEmpty(l.bathrooms),
-        home_sqft: nOrEmpty(l.home_sqft),
-        lot_size: nOrEmpty(l.lot_size),
-        lot_unit: (l.lot_unit as 'sqft' | 'acre') || 'sqft',
-        garage: nOrEmpty(l.garage),
-      };
-    });
-    setEdit(seed);
-
-    setLoading(false);
-  }
+      setLoading(false);
+    })();
+  }, []);
 
   const onEdit = (id: string, patch: Partial<Editable>) =>
     setEdit((e) => ({ ...e, [id]: { ...e[id], ...patch } }));
@@ -164,6 +169,10 @@ export default function MyListingsPage() {
       lot_size: safeNumOrNull(e.lot_size),
       lot_unit: (e.lot_size.trim() ? e.lot_unit : null) as 'sqft' | 'acre' | null,
       garage: safeNumOrNull(e.garage),
+      // contact
+      contact_name: e.contact_name.trim() || null,
+      contact_phone: e.contact_phone.trim() || null,
+      contact_email: e.contact_email.trim() || null,
     };
 
     const { error } = await supabase.from('listings').update(payload).eq('id', l.id);
@@ -222,15 +231,13 @@ export default function MyListingsPage() {
 
     try {
       const ext = extOf(file.name) || 'jpg';
-      const fileName = `listing-${l.id}/${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.${ext}`;
+      const fileName = `listing-${l.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       setUploadPct(25);
-      const { error: upErr } = await supabase
-        .storage
-        .from('listing-images')
-        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+      const { error: upErr } = await supabase.storage.from('listing-images').upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
       if (upErr) throw upErr;
 
       setUploadPct(60);
@@ -239,21 +246,18 @@ export default function MyListingsPage() {
       if (!publicUrl) throw new Error('Could not resolve public URL for image');
 
       setUploadPct(85);
-      const { data: inserted, error: rpcErr } = await supabase.rpc(
-        'fn_add_listing_image',
-        { p_listing_id: l.id, p_url: publicUrl }
-      );
-      if (rpcErr) throw rpcErr;
+      const { data: inserted, error: imgErr } = await supabase
+        .from('listing_images')
+        .insert({ listing_id: l.id, url: publicUrl })
+        .select('id, url')
+        .single();
+      if (imgErr) throw imgErr;
 
-      const newArray = Array.isArray(inserted) ? inserted : [];
-      if (newArray.length > 0) {
-        const first = newArray[0] as { id: string; listing_id: string; url: string };
-        setRows((rows) =>
-          rows.map((r) =>
-            r.id === l.id ? { ...r, images: [...(r.images || []), { id: first.id, url: first.url }] } : r
-          )
-        );
-      }
+      setRows((rows) =>
+        rows.map((r) =>
+          r.id === l.id ? { ...r, images: [...(r.images || []), { id: inserted!.id, url: inserted!.url }] } : r
+        )
+      );
 
       setUploadPct(100);
     } catch (e) {
@@ -278,9 +282,7 @@ export default function MyListingsPage() {
     }
 
     const path = storagePathFromPublicUrl(url);
-    if (path) {
-      await supabase.storage.from('listing-images').remove([path]);
-    }
+    if (path) await supabase.storage.from('listing-images').remove([path]);
 
     setRows((rows) =>
       rows.map((r) =>
@@ -327,7 +329,7 @@ export default function MyListingsPage() {
         </div>
 
         <p style={{ color: '#9ca3af', marginTop: 6 }}>
-          Edit price, ARV, repairs, description, specs — add/remove photos — or delete a listing.
+          Edit price, ARV, repairs, description, specs — contact info — photos — or delete a listing.
         </p>
 
         {error ? <div style={errBox}>{error}</div> : null}
@@ -342,6 +344,7 @@ export default function MyListingsPage() {
               const e = edit[l.id];
               return (
                 <section key={l.id} style={card}>
+                  {/* Header */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 700 }}>
@@ -361,7 +364,7 @@ export default function MyListingsPage() {
                     </div>
                   </div>
 
-                  {/* price + ARV + repairs + status */}
+                  {/* Price/ARV/Repairs/Status */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
                     <div><Label>Price</Label><Input value={e?.price ?? ''} onChange={(ev) => onEdit(l.id, { price: ev.target.value })} inputMode="numeric" /></div>
                     <div><Label>ARV</Label><Input value={e?.arv ?? ''} onChange={(ev) => onEdit(l.id, { arv: ev.target.value })} inputMode="numeric" /></div>
@@ -376,7 +379,14 @@ export default function MyListingsPage() {
                     </div>
                   </div>
 
-                  {/* specs */}
+                  {/* Contact */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 10 }}>
+                    <div><Label>Contact Name</Label><Input value={e?.contact_name ?? ''} onChange={(ev) => onEdit(l.id, { contact_name: ev.target.value })} /></div>
+                    <div><Label>Contact Phone</Label><Input value={e?.contact_phone ?? ''} onChange={(ev) => onEdit(l.id, { contact_phone: ev.target.value })} /></div>
+                    <div><Label>Contact Email</Label><Input type="email" value={e?.contact_email ?? ''} onChange={(ev) => onEdit(l.id, { contact_email: ev.target.value })} /></div>
+                  </div>
+
+                  {/* Specs */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 10 }}>
                     <div><Label>Bedrooms</Label><Input value={e?.bedrooms ?? ''} onChange={(ev) => onEdit(l.id, { bedrooms: ev.target.value })} inputMode="numeric" /></div>
                     <div><Label>Bathrooms</Label><Input value={e?.bathrooms ?? ''} onChange={(ev) => onEdit(l.id, { bathrooms: ev.target.value })} inputMode="numeric" /></div>
@@ -393,26 +403,26 @@ export default function MyListingsPage() {
                     <div><Label>Garage (spaces)</Label><Input value={e?.garage ?? ''} onChange={(ev) => onEdit(l.id, { garage: ev.target.value })} inputMode="numeric" /></div>
                   </div>
 
-                  {/* description */}
+                  {/* Description */}
                   <div style={{ marginTop: 10 }}>
                     <Label>Description</Label>
                     <Textarea value={e?.description ?? ''} onChange={(ev) => onEdit(l.id, { description: ev.target.value })} rows={4} />
                   </div>
 
-                  {/* images */}
+                  {/* Images */}
                   <div style={{ marginTop: 10 }}>
                     <Label>Images</Label>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {l.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={l.image_url} alt="" style={{ ...thumbImg, outline: '2px solid #0ea5e9' }} />
+                        <img src={l.image_url} alt="" style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #27272a', background: '#0b0f1a', outline: '2px solid #0ea5e9' }} />
                       ) : (
                         <span style={{ opacity: 0.6, fontSize: 13 }}>No primary image</span>
                       )}
                       {(l.images || []).map((im) => (
                         <div key={im.id} style={{ position: 'relative' }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={im.url} alt="" style={thumbImg} />
+                          <img src={im.url} alt="" style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #27272a', background: '#0b0f1a' }} />
                           <div style={{ position: 'absolute', left: 6, bottom: 6, display: 'flex', gap: 6 }}>
                             <button onClick={() => makePrimary(l, im.url)} style={miniBtn} title="Set as primary">Set primary</button>
                             <button onClick={() => removePhoto(l, im.id, im.url)} style={miniDanger} title="Remove photo">×</button>
@@ -444,12 +454,16 @@ export default function MyListingsPage() {
                     </div>
                   </div>
 
-                  {/* save */}
+                  {/* Save */}
                   <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                     <button
                       onClick={() => saveRow(l)}
                       disabled={savingId === l.id}
-                      style={{ ...btnPrimary, opacity: savingId === l.id ? 0.7 : 1, cursor: savingId === l.id ? 'not-allowed' : 'pointer' }}
+                      style={{
+                        ...btnPrimary,
+                        opacity: savingId === l.id ? 0.7 : 1,
+                        cursor: savingId === l.id ? 'not-allowed' : 'pointer',
+                      }}
                       title="Save changes"
                     >
                       {savingId === l.id ? 'Saving…' : 'Save Changes'}
@@ -467,23 +481,49 @@ export default function MyListingsPage() {
 
 /* ---------- UI bits ---------- */
 function Label(props: React.HTMLAttributes<HTMLLabelElement>) {
-  return <label {...props} style={{ display: 'block', marginBottom: 6, color: '#cbd5e1', fontSize: 13, fontWeight: 600 }} />;
+  return (
+    <label
+      {...props}
+      style={{
+        display: 'block',
+        marginBottom: 6,
+        color: '#cbd5e1',
+        fontSize: 13,
+        fontWeight: 600,
+      }}
+    />
+  );
 }
-function Input(props: React.InputHTMLAttributes<HTMLInputElement> & { style?: React.CSSProperties }) {
+function Input(
+  props: React.InputHTMLAttributes<HTMLInputElement> & { style?: React.CSSProperties }
+) {
   const base: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #334155', borderRadius: 10, background: '#0b1220', color: '#fff', outline: 'none' };
   return <input {...props} style={{ ...base, ...(props.style || {}) }} />;
 }
-function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { style?: React.CSSProperties }) {
+function Textarea(
+  props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { style?: React.CSSProperties }
+) {
   const base: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #334155', borderRadius: 10, background: '#0b1220', color: '#fff', outline: 'none', resize: 'vertical' };
   return <textarea {...props} style={{ ...base, ...(props.style || {}) }} />;
 }
 function Select(
   props: React.SelectHTMLAttributes<HTMLSelectElement> & { options: { value: string; label: string }[] }
 ) {
-  const { options, style, ...rest } = props;
-  const base: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #334155', borderRadius: 10, background: '#0b1220', color: '#fff', outline: 'none', appearance: 'none' };
+  const { options, ...rest } = props;
   return (
-    <select {...rest} style={{ ...base, ...(style || {}) }}>
+    <select
+      {...rest}
+      style={{
+        width: '100%',
+        padding: '10px 12px',
+        border: '1px solid #334155',
+        borderRadius: 10,
+        background: '#0b1220',
+        color: '#fff',
+        outline: 'none',
+        appearance: 'none',
+      }}
+    >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value} style={{ color: '#111' }}>
           {opt.label}
@@ -494,26 +534,25 @@ function Select(
 }
 
 /* ---------- helpers ---------- */
-function nOrEmpty(n: number | null): string {
-  return typeof n === 'number' && Number.isFinite(n) ? String(n) : '';
-}
 function safeNumOrNull(v: string): number | null {
   const t = v?.trim?.() ?? '';
   if (!t) return null;
   const n = Number(t);
   return Number.isFinite(n) ? n : null;
 }
+function nOrEmpty(n: number | null): string {
+  return typeof n === 'number' && Number.isFinite(n) ? String(n) : '';
+}
 function extOf(name: string) {
   const dot = name.lastIndexOf('.');
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
-/* ---------- styles ---------- */
-const card: React.CSSProperties = { background: '#111827', border: '1px solid #27272a', borderRadius: 12, padding: 12 };
-const errBox: React.CSSProperties = { background: '#7f1d1d', color: '#fecaca', border: '1px solid #991b1b', padding: '10px 12px', borderRadius: 10, marginTop: 12 };
+/* ---------- buttons ---------- */
 const btnPrimary: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#0ea5e9', color: '#fff', border: '0', fontWeight: 700 };
 const btnSecondary: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#0b1220', color: '#fff', border: '1px solid #334155', fontWeight: 700 };
 const btnDanger: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#7f1d1d', color: '#fff', border: '1px solid #991b1b', fontWeight: 700 };
-const thumbImg: React.CSSProperties = { width: 120, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #27272a', background: '#0b0f1a' };
 const miniBtn: React.CSSProperties = { padding: '2px 6px', borderRadius: 6, border: '1px solid #334155', background: '#0b1220', color: '#fff', fontSize: 12, cursor: 'pointer' };
 const miniDanger: React.CSSProperties = { padding: '2px 6px', borderRadius: 6, border: '1px solid #991b1b', background: '#7f1d1d', color: '#fff', fontSize: 12, cursor: 'pointer' };
+const errBox: React.CSSProperties = { background: '#7f1d1d', color: '#fecaca', border: '1px solid #991b1b', padding: '10px 12px', borderRadius: 10, marginTop: 12 };
+const card: React.CSSProperties = { background: '#111827', border: '1px solid #27272a', borderRadius: 12, padding: 12 };

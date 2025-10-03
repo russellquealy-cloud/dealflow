@@ -21,6 +21,10 @@ type FormState = {
   garage: string;
   description: string;
   imageFile: File | null;
+  // NEW
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
 };
 
 export default function PostDealPage() {
@@ -46,6 +50,9 @@ export default function PostDealPage() {
     garage: '',
     description: '',
     imageFile: null,
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
   });
 
   useEffect(() => {
@@ -89,6 +96,10 @@ export default function PostDealPage() {
         description: form.description.trim() || null,
         status: 'live' as const,
         image_url: null as string | null,
+        // NEW contact fields
+        contact_name: form.contact_name.trim() || null,
+        contact_phone: form.contact_phone.trim() || null,
+        contact_email: form.contact_email.trim() || null,
       };
 
       const { data: inserted, error: insErr } = await supabase
@@ -100,17 +111,13 @@ export default function PostDealPage() {
       if (insErr) throw insErr;
       const listingId = inserted!.id as string;
 
-      // If a primary image file is chosen, upload to Storage and set as image_url
+      // Primary image upload (optional)
       if (form.imageFile) {
         const file = form.imageFile;
 
-        if (!file.type.startsWith('image/')) {
-          throw new Error('Only image files are allowed.');
-        }
+        if (!file.type.startsWith('image/')) throw new Error('Only image files are allowed.');
         const maxMB = 15;
-        if (file.size > maxMB * 1024 * 1024) {
-          throw new Error(`Image too large. Max ${maxMB} MB.`);
-        }
+        if (file.size > maxMB * 1024 * 1024) throw new Error(`Image too large. Max ${maxMB} MB.`);
 
         const ext = extOf(file.name) || 'jpg';
         const fileName = `listing-${listingId}/${Date.now()}-${Math.random()
@@ -131,21 +138,8 @@ export default function PostDealPage() {
         const url = urlData?.publicUrl;
         if (!url) throw new Error('Could not resolve public URL for image.');
 
-        // Set image_url on the listing
-        const { error: updErr } = await supabase
-          .from('listings')
-          .update({ image_url: url })
-          .eq('id', listingId);
-
-        if (updErr) throw updErr;
-
-        // Also add a row in listing_images
-        const { error: imgInsErr } = await supabase
-          .from('listing_images')
-          .insert({ listing_id: listingId, url });
-        if (imgInsErr) {
-          console.warn('listing_images insert failed:', imgInsErr.message);
-        }
+        await supabase.from('listings').update({ image_url: url }).eq('id', listingId);
+        await supabase.from('listing_images').insert({ listing_id: listingId, url });
       }
 
       router.replace(`/listing/${listingId}`);
@@ -184,11 +178,7 @@ export default function PostDealPage() {
               </div>
               <div>
                 <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={form.city}
-                  onChange={(e) => onChange('city', e.target.value)}
-                />
+                <Input id="city" value={form.city} onChange={(e) => onChange('city', e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="state">State</Label>
@@ -201,11 +191,7 @@ export default function PostDealPage() {
               </div>
               <div>
                 <Label htmlFor="zip">ZIP</Label>
-                <Input
-                  id="zip"
-                  value={form.zip}
-                  onChange={(e) => onChange('zip', e.target.value)}
-                />
+                <Input id="zip" value={form.zip} onChange={(e) => onChange('zip', e.target.value)} />
               </div>
             </Grid>
           </section>
@@ -216,31 +202,15 @@ export default function PostDealPage() {
             <Grid cols={3}>
               <div>
                 <Label htmlFor="price">Price *</Label>
-                <Input
-                  id="price"
-                  inputMode="numeric"
-                  value={form.price}
-                  onChange={(e) => onChange('price', e.target.value)}
-                  required
-                />
+                <Input id="price" inputMode="numeric" value={form.price} onChange={(e) => onChange('price', e.target.value)} required />
               </div>
               <div>
                 <Label htmlFor="arv">ARV</Label>
-                <Input
-                  id="arv"
-                  inputMode="numeric"
-                  value={form.arv}
-                  onChange={(e) => onChange('arv', e.target.value)}
-                />
+                <Input id="arv" inputMode="numeric" value={form.arv} onChange={(e) => onChange('arv', e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="repairs">Repairs</Label>
-                <Input
-                  id="repairs"
-                  inputMode="numeric"
-                  value={form.repairs}
-                  onChange={(e) => onChange('repairs', e.target.value)}
-                />
+                <Input id="repairs" inputMode="numeric" value={form.repairs} onChange={(e) => onChange('repairs', e.target.value)} />
               </div>
             </Grid>
           </section>
@@ -251,39 +221,19 @@ export default function PostDealPage() {
             <Grid cols={3}>
               <div>
                 <Label htmlFor="bedrooms">Bedrooms</Label>
-                <Input
-                  id="bedrooms"
-                  inputMode="numeric"
-                  value={form.bedrooms}
-                  onChange={(e) => onChange('bedrooms', e.target.value)}
-                />
+                <Input id="bedrooms" inputMode="numeric" value={form.bedrooms} onChange={(e) => onChange('bedrooms', e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="bathrooms">Bathrooms</Label>
-                <Input
-                  id="bathrooms"
-                  inputMode="numeric"
-                  value={form.bathrooms}
-                  onChange={(e) => onChange('bathrooms', e.target.value)}
-                />
+                <Input id="bathrooms" inputMode="numeric" value={form.bathrooms} onChange={(e) => onChange('bathrooms', e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="home_sqft">Home Sq Ft</Label>
-                <Input
-                  id="home_sqft"
-                  inputMode="numeric"
-                  value={form.home_sqft}
-                  onChange={(e) => onChange('home_sqft', e.target.value)}
-                />
+                <Input id="home_sqft" inputMode="numeric" value={form.home_sqft} onChange={(e) => onChange('home_sqft', e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="lot_size">Lot Size</Label>
-                <Input
-                  id="lot_size"
-                  inputMode="numeric"
-                  value={form.lot_size}
-                  onChange={(e) => onChange('lot_size', e.target.value)}
-                />
+                <Input id="lot_size" inputMode="numeric" value={form.lot_size} onChange={(e) => onChange('lot_size', e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="lot_unit">Lot Unit</Label>
@@ -291,20 +241,31 @@ export default function PostDealPage() {
                   id="lot_unit"
                   value={form.lot_unit}
                   onChange={(e) => onChange('lot_unit', e.target.value as 'sqft' | 'acre')}
-                  options={[
-                    { value: 'sqft', label: 'Sq Ft' },
-                    { value: 'acre', label: 'Acre' },
-                  ]}
+                  options={[{ value: 'sqft', label: 'Sq Ft' }, { value: 'acre', label: 'Acre' }]}
                 />
               </div>
               <div>
                 <Label htmlFor="garage">Garage (spaces)</Label>
-                <Input
-                  id="garage"
-                  inputMode="numeric"
-                  value={form.garage}
-                  onChange={(e) => onChange('garage', e.target.value)}
-                />
+                <Input id="garage" inputMode="numeric" value={form.garage} onChange={(e) => onChange('garage', e.target.value)} />
+              </div>
+            </Grid>
+          </section>
+
+          {/* Contact */}
+          <section style={card}>
+            <h2 style={sectionH2}>Contact</h2>
+            <Grid cols={3}>
+              <div>
+                <Label htmlFor="contact_name">Contact Name</Label>
+                <Input id="contact_name" value={form.contact_name} onChange={(e) => onChange('contact_name', e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="contact_phone">Phone</Label>
+                <Input id="contact_phone" value={form.contact_phone} onChange={(e) => onChange('contact_phone', e.target.value)} placeholder="+1 555 555 5555" />
+              </div>
+              <div>
+                <Label htmlFor="contact_email">Email</Label>
+                <Input id="contact_email" type="email" value={form.contact_email} onChange={(e) => onChange('contact_email', e.target.value)} />
               </div>
             </Grid>
           </section>
@@ -312,12 +273,7 @@ export default function PostDealPage() {
           {/* Description */}
           <section style={card}>
             <h2 style={sectionH2}>Description</h2>
-            <Textarea
-              rows={5}
-              value={form.description}
-              onChange={(e) => onChange('description', e.target.value)}
-              placeholder="Notes about the property, condition, access, timeline…"
-            />
+            <Textarea rows={5} value={form.description} onChange={(e) => onChange('description', e.target.value)} placeholder="Notes about the property, condition, access, timeline…" />
           </section>
 
           {/* Primary image */}
@@ -373,23 +329,15 @@ function extOf(name: string) {
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
-/** Simple grid helper for inline styles */
 function Grid(props: { cols?: number; children: React.ReactNode }) {
   const { cols = 2, children } = props;
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        gap: 10,
-      }}
-    >
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 10 }}>
       {children}
     </div>
   );
 }
 
-/** Use LabelHTMLAttributes so htmlFor is allowed */
 function Label(props: React.LabelHTMLAttributes<HTMLLabelElement>) {
   const { style, ...rest } = props;
   return (
@@ -427,7 +375,7 @@ function Textarea(
   const base: React.CSSProperties = {
     width: '100%',
     padding: '10px 12px',
-    border: '1px solid #334155', // <-- fixed
+    border: '1px solid #334155',
     borderRadius: 10,
     background: '#0b1220',
     color: '#fff',
@@ -465,32 +413,8 @@ function Select(
 }
 
 /* ---------------- styles ---------------- */
-const pageWrap: React.CSSProperties = {
-  minHeight: '100vh',
-  background: '#0f172a',
-  color: '#fff',
-  padding: 16,
-};
-const card: React.CSSProperties = {
-  background: '#111827',
-  border: '1px solid #27272a',
-  borderRadius: 12,
-  padding: 12,
-};
+const pageWrap: React.CSSProperties = { minHeight: '100vh', background: '#0f172a', color: '#fff', padding: 16 };
+const card: React.CSSProperties = { background: '#111827', border: '1px solid #27272a', borderRadius: 12, padding: 12 };
 const sectionH2: React.CSSProperties = { margin: '0 0 8px', fontSize: 18, fontWeight: 800 };
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 14px',
-  borderRadius: 10,
-  background: '#0ea5e9',
-  color: '#fff',
-  border: '0',
-  fontWeight: 700,
-};
-const errBox: React.CSSProperties = {
-  background: '#7f1d1d',
-  color: '#fecaca',
-  border: '1px solid #991b1b',
-  padding: '10px 12px',
-  borderRadius: 10,
-  marginTop: 12,
-};
+const btnPrimary: React.CSSProperties = { padding: '10px 14px', borderRadius: 10, background: '#0ea5e9', color: '#fff', border: '0', fontWeight: 700 };
+const errBox: React.CSSProperties = { background: '#7f1d1d', color: '#fecaca', border: '1px solid #991b1b', padding: '10px 12px', borderRadius: 10, marginTop: 12 };

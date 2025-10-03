@@ -1,4 +1,6 @@
 // app/layout.tsx
+// app/layout.tsx (top of file)
+import 'maplibre-gl/dist/maplibre-gl.css'
 import './globals.css';
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
