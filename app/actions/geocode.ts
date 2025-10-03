@@ -1,14 +1,23 @@
-'use server'
-export async function geocodeAddress(address: string) {
-  const key = process.env.MAPTILER_KEY
-  if (key) {
-    const u = `https://api.maptiler.com/geocoding/${encodeURIComponent(address)}.json?key=${key}&limit=1`
-    const r = await fetch(u, { cache: 'no-store' })
-    if (r.ok) {
-      const j = await r.json()
-      const f = j?.features?.[0]
-      if (f?.center?.length === 2) return { lat: f.center[1], lon: f.center[0], source: 'maptiler' }
+// app/actions/geocode.ts
+export type GeocodeResult = { lat: number; lon: number } | null
+
+export async function geocodeAddress(address: string): Promise<GeocodeResult> {
+  try {
+    const res = await fetch(
+      `/api/geocode?address=${encodeURIComponent(address)}`,
+      { cache: 'no-store' }
+    )
+    if (!res.ok) {
+      console.error('geocode API error', res.status, await res.text())
+      return null
     }
+    const data = await res.json()
+    if (data && typeof data.lat === 'number' && typeof data.lon === 'number') {
+      return { lat: data.lat, lon: data.lon }
+    }
+    return null
+  } catch (err) {
+    console.error('geocode fetch failed', err)
+    return null
   }
-  return { lat: null, lon: null, source: 'maptiler', error: 'No result' }
 }

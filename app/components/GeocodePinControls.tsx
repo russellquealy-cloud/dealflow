@@ -1,53 +1,69 @@
-// components/GeocodePinControls.tsx
+// app/components/GeocodePinControls.tsx
 'use client'
+
 import { useState } from 'react'
-import { geocodeAddress } from '@/app/actions/geocode'
+import { geocodeAddress } from '@/actions/geocode'
 
 export default function GeocodePinControls({
-  address, latitude, longitude, onChangeLatLon
+  address,
+  latitude,
+  longitude,
+  onChangeLatLon,
 }: {
-  address: string
+  address?: string
   latitude?: number | null
   longitude?: number | null
-  onChangeLatLon: (lat: number | null, lon: number | null) => void
+  onChangeLatLon: (lat: number, lon: number) => void
 }) {
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
 
   async function handleGeocode() {
-    setBusy(true); setMsg(null)
+    if (!address || !address.trim()) {
+      setErr('Enter an address first')
+      return
+    }
+    setBusy(true)
+    setErr(null)
     const res = await geocodeAddress(address)
     setBusy(false)
-    if (res.lat != null && res.lon != null) {
-      onChangeLatLon(res.lat, res.lon)
-      setMsg(`Pinned via ${res.source}.`)
-    } else {
-      setMsg(res.error || 'Could not geocode.')
+    if (!res) {
+      setErr('Could not geocode address')
+      return
     }
+    onChangeLatLon(res.lat, res.lon)
   }
 
   return (
-    <div style={{ border:'1px solid #e5e7eb', borderRadius:12, padding:12, marginTop:12 }}>
-      <div style={{ fontWeight:700, marginBottom:8 }}>Location</div>
-      <div style={{ fontSize:12, color:'#555', marginBottom:8 }}>
-        Use your address field to set coordinates. You can fine-tune on the map later.
-      </div>
-      <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-        <button
-          type="button"
-          onClick={handleGeocode}
-          disabled={busy || !address?.trim()}
-          style={{ border:'none', borderRadius:8, padding:'10px 12px', background:'#111827', color:'#fff', fontWeight:700, cursor:'pointer', opacity: busy? .7:1 }}
-        >
-          {busy ? 'Geocoding…' : 'Set pin from address'}
-        </button>
-        <div style={{ fontSize:12 }}>
-          Lat:&nbsp;<input value={latitude ?? ''} onChange={e=>onChangeLatLon(e.target.value?parseFloat(e.target.value):null, longitude ?? null)} style={inpt}/>
-          &nbsp;Lon:&nbsp;<input value={longitude ?? ''} onChange={e=>onChangeLatLon(latitude ?? null, e.target.value?parseFloat(e.target.value):null)} style={inpt}/>
-        </div>
-      </div>
-      {msg && <div style={{ fontSize:12, marginTop:8 }}>{msg}</div>}
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <button
+        type="button"
+        onClick={handleGeocode}
+        disabled={busy}
+        style={btn()}
+        aria-busy={busy ? 'true' : 'false'}
+      >
+        {busy ? 'Geocoding…' : 'Set pin from address'}
+      </button>
+
+      {latitude != null && longitude != null && (
+        <span style={{ fontSize: 12, color: '#6b7280' }}>
+          lat {latitude.toFixed(5)} · lon {longitude.toFixed(5)}
+        </span>
+      )}
+
+      {err && <span style={{ color: '#ef4444', fontSize: 12 }}>{err}</span>}
     </div>
   )
 }
-const inpt = 'width:110px;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;font-size:12px;'
+
+function btn() {
+  return {
+    padding: '8px 12px',
+    borderRadius: 8,
+    background: '#111827',
+    color: '#fff',
+    border: '1px solid #1f2937',
+    cursor: 'pointer',
+  } as React.CSSProperties
+}
