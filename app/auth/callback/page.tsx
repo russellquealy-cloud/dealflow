@@ -1,25 +1,23 @@
 // app/auth/callback/page.tsx
 'use client'
 
+// This page is strictly client-only; do not prerender
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
 export default function AuthCallback() {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Read `code` robustly (works even if searchParams is null in TS)
-    const codeFromHook = (searchParams && typeof searchParams.get === 'function')
-      ? searchParams.get('code')
-      : null
-
+    // Read ?code= from the URL on the client
     const code =
-      codeFromHook ??
-      (typeof window !== 'undefined'
-        ? new URLSearchParams(window.location.search).get('code')
-        : null)
+      typeof window !== 'undefined'
+        ? new URL(window.location.href).searchParams.get('code')
+        : null
 
     if (!code) {
       router.replace('/')
@@ -34,16 +32,12 @@ export default function AuthCallback() {
     ;(async () => {
       try {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) {
-          // Not fatal for UX, but log for debugging
-          console.error('exchangeCodeForSession error:', error)
-        }
+        if (error) console.error('exchangeCodeForSession error:', error)
       } finally {
-        // land user on the homepage (or wherever you want)
         router.replace('/')
       }
     })()
-  }, [searchParams, router])
+  }, [router])
 
   return <main style={{ padding: 24 }}>Signing you in…</main>
 }
