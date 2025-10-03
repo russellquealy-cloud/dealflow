@@ -1,9 +1,8 @@
 // app/auth/callback/page.tsx
 'use client'
 
-// This page is strictly client-only; do not prerender
+// Force runtime rendering (no prerender)
 export const dynamic = 'force-dynamic'
-export const revalidate = 0
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -34,7 +33,7 @@ export default function AuthCallback() {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (error) console.error('exchangeCodeForSession error:', error)
       } finally {
-        router.replace('/')
+        router.replace('/') // land back on home (or wherever you prefer)
       }
     })()
   }, [router])
