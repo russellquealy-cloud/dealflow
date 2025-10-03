@@ -1,279 +1,137 @@
 // app/listing/[id]/page.tsx
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { supabase } from '../../lib/supabase';
+import { useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
 
 type Listing = {
-  id: string;
-  address: string;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-  price: number;
-  arv: number | null;
-  repairs: number | null;
-  image_url: string | null;
-  status: string;
-  created_at?: string;
+  id: string
+  title: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  price?: number | null
+  beds?: number | null
+  baths?: number | null
+  sqft?: number | null
+  lot_size?: number | null
+  arv?: number | null
+  repairs?: number | null
+  contact_phone?: string | null
+  contact_email?: string | null
+  image_url?: string | null
+  latitude?: number | null
+  longitude?: number | null
+}
 
-  bedrooms: number | null;
-  bathrooms: number | null;
-  home_sqft: number | null;
-  lot_size: number | null;
-  lot_unit: 'sqft' | 'acre' | null;
-  garage: number | null;
-  description: string | null;
-
-  // NEW contact fields
-  contact_name: string | null;
-  contact_phone: string | null;
-  contact_email: string | null;
-};
-
-type ExtraImage = { id: string; url: string };
-
-export default function ListingDetailPage() {
-  const params = useParams<{ id: string }>();
-  const listingId = params?.id;
-
-  const [loading, setLoading] = useState(true);
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [images, setImages] = useState<ExtraImage[]>([]);
-  const [error, setError] = useState<string | null>(null);
+export default function ListingPage({ params }: { params: { id: string } }) {
+  const [listing, setListing] = useState<Listing | null>(null)
+  const [images, setImages] = useState<{ url: string }[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!listingId) return;
-    (async () => {
-      setLoading(true);
-      setError(null);
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+    async function load() {
+      setLoading(true)
+      setError(null)
+
+      // 1) fetch the listing row safely
       const { data, error } = await supabase
         .from('listings')
         .select(
           [
-            'id','address','city','state','zip','price','arv','repairs','image_url',
-            'status','created_at','bedrooms','bathrooms','home_sqft','lot_size',
-            'lot_unit','garage','description',
-            // contact
-            'contact_name','contact_phone','contact_email',
+            'id', 'title', 'address', 'city', 'state',
+            'price', 'beds', 'baths', 'sqft', 'lot_size',
+            'arv', 'repairs', 'contact_phone', 'contact_email',
+            'image_url', 'latitude', 'longitude'
           ].join(',')
         )
-        .eq('id', listingId)
-        .single();
+        .eq('id', params.id)
+        .single()
 
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
+      if (error || !data) {
+        setError('Listing not found')
+        setLoading(false)
+        return
+      }
+      setListing(data as Listing)
+
+      // 2) optional images table
+      const { data: imgs, error: imgErr } = await supabase
+        .from('listing_images')
+        .select('url, sort_index')
+        .eq('listing_id', params.id)
+        .order('sort_index', { ascending: true })
+
+      if (!imgErr && imgs) {
+        setImages(imgs.map((r: any) => ({ url: r.url })))
       }
 
-      setListing(data as Listing);
+      setLoading(false)
+    }
 
-      const { data: imgs } = await supabase
-        .from('listing_images')
-        .select('id, url')
-        .eq('listing_id', listingId);
+    load()
+  }, [params.id])
 
-      setImages(imgs || []);
-      setLoading(false);
-    })();
-  }, [listingId]);
+  if (loading) return <div style={{ padding: 24 }}>Loading…</div>
+  if (error)   return <div style={{ padding: 24, color: '#ef4444' }}>{error}</div>
+  if (!listing) return null
 
-  if (loading) {
-    return (
-      <main style={wrapper}>
-        <div style={{ color: '#fff' }}>Loading…</div>
-      </main>
-    );
-  }
-
-  if (error || !listing) {
-    return (
-      <main style={wrapper}>
-        <div style={{ color: '#fecaca' }}>{error || 'Listing not found.'}</div>
-        <div style={{ marginTop: 8 }}>
-          <Link href="/" style={linkBtn}>Back to Deals</Link>
-        </div>
-      </main>
-    );
-  }
-
-  const phone = normPhone(listing.contact_phone);
-  const email = (listing.contact_email || '').trim();
-  const name = (listing.contact_name || '').trim();
+  const addr = [listing.address, listing.city, listing.state].filter(Boolean).join(', ')
 
   return (
-    <main style={wrapper}>
-      <div style={container}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
-          {/* Title + price */}
-          <h1 style={{ margin: 0, color: '#fff', fontSize: 24, fontWeight: 800 }}>
-            ${Number(listing.price).toLocaleString()}
-          </h1>
-          <div style={{ color: '#cbd5e1' }}>
-            {listing.address}
-            {listing.city ? `, ${listing.city}` : ''}
-            {listing.state ? `, ${listing.state}` : ''} {listing.zip || ''}
-          </div>
+    <main style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>
+        {listing.title || 'Listing'}
+      </h1>
+      <div style={{ color: '#4b5563', marginBottom: 16 }}>{addr}</div>
 
-          {/* Hero image */}
-          {listing.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={listing.image_url}
-              alt=""
-              style={{ width: '100%', height: 300, objectFit: 'cover', borderRadius: 12, border: '1px solid #27272a' }}
-            />
-          ) : null}
-
-          {/* Contact buttons */}
-          {(phone || email) ? (
-            <section style={card}>
-              <h2 style={sectionH2}>Contact</h2>
-              <div style={{ color: '#cbd5e1', marginBottom: 8 }}>
-                {name ? name : 'Wholesaler'}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {phone ? (
-                  <>
-                    <a href={`tel:${phone}`} style={btnPrimary} title="Call">
-                      📞 Call
-                    </a>
-                    <a href={`sms:${phone}`} style={btnSecondary} title="Text">
-                      💬 Text
-                    </a>
-                  </>
-                ) : null}
-                {email ? (
-                  <a
-                    href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Regarding your listing')}`}
-                    style={btnSecondary}
-                    title="Email"
-                  >
-                    ✉️ Email
-                  </a>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
-          {/* Extra images */}
-          {images.length ? (
-            <div>
-              <h2 style={sectionH2}>Photos</h2>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {images.map((im) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={im.id}
-                    src={im.url}
-                    alt=""
-                    style={{ width: 180, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid #27272a', background: '#0b0f1a' }}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Specs */}
-          <section style={card}>
-            <h2 style={sectionH2}>Property Details</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
-              <Spec label="Bedrooms" value={numOrDash(listing.bedrooms)} />
-              <Spec label="Bathrooms" value={numOrDash(listing.bathrooms)} />
-              <Spec label="Home Sq Ft" value={numOrDash(listing.home_sqft)} />
-              <Spec
-                label="Lot Size"
-                value={
-                  listing.lot_size
-                    ? `${Number(listing.lot_size).toLocaleString()} ${listing.lot_unit || ''}`.trim()
-                    : '—'
-                }
-              />
-              <Spec label="Garage" value={numOrDash(listing.garage)} />
-              <Spec label="ARV" value={moneyOrDash(listing.arv)} />
-              <Spec label="Repairs" value={moneyOrDash(listing.repairs)} />
-              <Spec label="Status" value={listing.status || '—'} />
-            </div>
-          </section>
-
-          {/* Description */}
-          {listing.description ? (
-            <section style={card}>
-              <h2 style={sectionH2}>Description</h2>
-              <p style={{ margin: 0, color: '#e5e7eb', whiteSpace: 'pre-wrap' }}>{listing.description}</p>
-            </section>
-          ) : null}
-
-          <div>
-            <Link href="/" style={linkBtn}>← Back to Deals</Link>
-          </div>
+      {/* Images */}
+      {images.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 10, marginBottom: 16 }}>
+          {images.map((im, i) => (
+            <img key={i} src={im.url} alt="" style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 12 }} />
+          ))}
         </div>
+      ) : listing.image_url ? (
+        <img src={listing.image_url} alt="" style={{ width: '100%', height: 360, objectFit: 'cover', borderRadius: 12, marginBottom: 16 }} />
+      ) : null}
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+        {stat('Price', money(listing.price))}
+        {stat('Beds', num(listing.beds))}
+        {stat('Baths', num(listing.baths))}
+        {stat('Sqft', sqft(listing.sqft))}
+        {stat('Lot', sqft(listing.lot_size))}
+        {stat('ARV', money(listing.arv))}
+        {stat('Repairs', money(listing.repairs))}
+        {stat('ROI', roi(listing.arv, listing.price, listing.repairs))}
       </div>
     </main>
-  );
+  )
 }
 
-/* ---- small pieces ---- */
-function Spec({ label, value }: { label: string; value: string }) {
+function stat(label: string, value?: string) {
   return (
-    <div style={{ background: '#0b1220', border: '1px solid #334155', borderRadius: 10, padding: '10px 12px' }}>
-      <div style={{ color: '#9ca3af', fontSize: 12 }}>{label}</div>
-      <div style={{ color: '#fff', fontWeight: 700 }}>{value}</div>
+    <div style={{ padding: 12, borderRadius: 10, background: '#0b1220', color: '#e5e7eb', border: '1px solid #111827' }}>
+      <div style={{ fontSize: 12, color: '#94a3b8' }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>{value || '—'}</div>
     </div>
-  );
-}
-function numOrDash(n: number | null) {
-  return typeof n === 'number' && Number.isFinite(n) ? String(n) : '—';
-}
-function moneyOrDash(n: number | null) {
-  return typeof n === 'number' && Number.isFinite(n) ? `$${n.toLocaleString()}` : '—';
-}
-function normPhone(raw: string | null) {
-  if (!raw) return '';
-  return raw.replace(/[^\d+]/g, ''); // keep digits and +
+  )
 }
 
-/* ---- styles ---- */
-const wrapper: React.CSSProperties = { minHeight: '100vh', background: '#0f172a', color: '#fff', padding: 16 };
-const container: React.CSSProperties = { maxWidth: 900, margin: '0 auto' };
-const sectionH2: React.CSSProperties = { margin: '0 0 8px', fontSize: 18, fontWeight: 800 };
-const card: React.CSSProperties = { background: '#111827', border: '1px solid #27272a', borderRadius: 12, padding: 12 };
-const linkBtn: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '8px 12px',
-  borderRadius: 10,
-  textDecoration: 'none',
-  background: '#0b0f1a',
-  color: '#fff',
-  border: '1px solid rgba(255,255,255,0.12)',
-};
-const btnPrimary: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '8px 12px',
-  borderRadius: 10,
-  background: '#0ea5e9',
-  color: '#fff',
-  border: '0',
-  fontWeight: 700,
-  textDecoration: 'none',
-};
-const btnSecondary: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '8px 12px',
-  borderRadius: 10,
-  background: '#0b1220',
-  color: '#fff',
-  border: '1px solid #334155',
-  fontWeight: 700,
-  textDecoration: 'none',
-};
+function money(v?: number | null) {
+  return v == null ? '' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
+}
+function num(v?: number | null) { return v == null ? '' : String(v) }
+function sqft(v?: number | null) { return v == null ? '' : `${v.toLocaleString()} ft²` }
+function roi(arv?: number | null, price?: number | null, repairs?: number | null) {
+  if (arv == null || price == null) return ''
+  const net = arv - (price || 0) - (repairs || 0)
+  return `${Math.round((net / price) * 100)}%`
+}
