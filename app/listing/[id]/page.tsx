@@ -31,9 +31,15 @@ export default function ListingPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    const n = (v: any): number | null =>
+      v === null || v === undefined || v === '' || Number.isNaN(Number(v))
+        ? null
+        : Number(v)
 
     async function load() {
       setLoading(true)
@@ -58,17 +64,39 @@ export default function ListingPage({ params }: { params: { id: string } }) {
         setLoading(false)
         return
       }
-      setListing(data as Listing)
 
-      // 2) optional images table
-      const { data: imgs, error: imgErr } = await supabase
+      // 2) map the raw row to our Listing type (no casts)
+      const row: Listing = {
+        id: String((data as any).id),
+        title: (data as any).title ?? null,
+        address: (data as any).address ?? null,
+        city: (data as any).city ?? null,
+        state: (data as any).state ?? null,
+        price: n((data as any).price),
+        beds: n((data as any).beds),
+        baths: n((data as any).baths),
+        sqft: n((data as any).sqft),
+        lot_size: n((data as any).lot_size),
+        arv: n((data as any).arv),
+        repairs: n((data as any).repairs),
+        contact_phone: (data as any).contact_phone ?? null,
+        contact_email: (data as any).contact_email ?? null,
+        image_url: (data as any).image_url ?? null,
+        latitude: n((data as any).latitude),
+        longitude: n((data as any).longitude),
+      }
+
+      setListing(row)
+
+      // 3) optional images table
+      const { data: imgs } = await supabase
         .from('listing_images')
         .select('url, sort_index')
         .eq('listing_id', params.id)
         .order('sort_index', { ascending: true })
 
-      if (!imgErr && imgs) {
-        setImages(imgs.map((r: any) => ({ url: r.url })))
+      if (imgs && Array.isArray(imgs)) {
+        setImages(imgs.map((r: any) => ({ url: r.url as string })))
       }
 
       setLoading(false)
