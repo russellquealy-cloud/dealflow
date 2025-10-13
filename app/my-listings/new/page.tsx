@@ -1,6 +1,6 @@
 // /app/my-listings/new/page.tsx
 import { redirect } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createSupabaseServer } from "@/lib/supabase/server";
 import CreateListingForm from "@/components/CreateListingForm";
 
 const siteBg = "#fafafa";
@@ -8,7 +8,7 @@ const outer: React.CSSProperties = { background: siteBg, minHeight: "100vh" };
 const wrap: React.CSSProperties = { maxWidth: 720, margin: "0 auto", padding: 16 };
 
 export default async function NewListingPage() {
-  const supabase = createServerSupabase();
+  const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=${encodeURIComponent("/my-listings/new")}`);
   return (
