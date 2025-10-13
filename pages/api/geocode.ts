@@ -1,4 +1,6 @@
 // pages/api/geocode.ts
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

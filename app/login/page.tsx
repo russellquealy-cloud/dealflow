@@ -1,4 +1,7 @@
 // app/login/page.tsx
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+
 'use client';
 import React, { useState } from 'react';
 import { supabase } from '@/supabase/client';

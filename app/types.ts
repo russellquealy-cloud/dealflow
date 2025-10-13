@@ -1,4 +1,12 @@
 // /app/types.ts
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
 export type Listing = {
   id: string;
   title: string | null;

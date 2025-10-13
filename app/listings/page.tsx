@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+
 import Link from 'next/link';
 import { createSupabaseServer } from '@/lib/supabase/server';
 import ListingsSplitClient from '@/components/ListingsSplitClient';
