@@ -1,98 +1,61 @@
 // app/login/page.tsx
-'use client'
-
-import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+'use client';
+import React, { useState } from 'react';
+import { supabase } from '@/supabase/client';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const search = useSearchParams();
+  const next = search.get('next') || '/';
+  const router = useRouter();
 
-  const [email, setEmail] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const styles: Record<string, React.CSSProperties> = {
+    wrap: { maxWidth: 420, margin: '64px auto', padding: 24, border: '1px solid #e5e7eb', borderRadius: 12 },
+    h: { margin: 0, marginBottom: 16, fontSize: 22 },
+    label: { display: 'block', fontSize: 14, marginBottom: 6 },
+    input: { width: '100%', padding: 10, border: '1px solid #d1d5db', borderRadius: 8, marginBottom: 12 },
+    btn: { width: '100%', padding: 12, border: '1px solid #111827', background: '#111827', color: '#fff', borderRadius: 8, cursor: 'pointer' },
+    btnAlt: { width: '100%', padding: 12, border: '1px solid #d1d5db', background: '#fff', color: '#111827', borderRadius: 8, cursor: 'pointer', marginTop: 8 }
+  };
 
-  // Always compute redirectTo from the current origin (Preview, Prod, or Local)
-  const origin =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : (process.env.NEXT_PUBLIC_SITE_URL ?? '')
-  const redirectTo = `${origin}/auth/callback`
-
-  async function loginWithGoogle() {
-    setBusy(true); setMsg(null); setErr(null)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo }
-    })
-    if (error) { setErr(error.message); setBusy(false) }
-    // on success we’ll be redirected away; nothing else to do here
-  }
-
-  async function loginWithEmail(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true); setMsg(null); setErr(null)
+  async function signInWithEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setMessage(null);
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo }
-    })
-    setBusy(false)
-    if (error) setErr(error.message)
-    else setMsg('Check your inbox for a login link.')
+      options: { emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` }
+    });
+    setSending(false);
+    if (error) setMessage(error.message);
+    else setMessage('Check your email for the login link.');
+  }
+
+  async function signInWithGoogle() {
+    setSending(true);
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` }
+    });
+    if (error) { setSending(false); setMessage(error.message); }
+    // For OAuth, the browser will navigate away.
   }
 
   return (
-    <main style={{ minHeight: '60dvh', display: 'grid', placeItems: 'center', padding: 24 }}>
-      <div style={{ width: 380, maxWidth: '100%', padding: 24, border: '1px solid #e5e7eb', borderRadius: 12 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 12 }}>Sign in</h1>
-
-        <button
-          onClick={loginWithGoogle}
-          disabled={busy}
-          style={{
-            width: '100%', padding: '10px 14px', borderRadius: 10,
-            background: '#111827', color: '#fff', border: '1px solid #1f2937',
-            cursor: 'pointer', marginBottom: 14
-          }}
-        >
-          Continue with Google
-        </button>
-
-        <form onSubmit={loginWithEmail}>
-          <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={{
-              width: '100%', padding: '10px 12px', borderRadius: 10,
-              border: '1px solid #d1d5db', marginBottom: 10
-            }}
-          />
-          <button
-            type="submit"
-            disabled={busy || !email}
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: 10,
-              background: '#e5e7eb', color: '#111', fontWeight: 700, cursor: 'pointer'
-            }}
-          >
-            Send magic link
-          </button>
-        </form>
-
-        {msg && <p style={{ color: '#065f46', marginTop: 10 }}>{msg}</p>}
-        {err && <p style={{ color: '#b91c1c', marginTop: 10 }}>{err}</p>}
-
-        <p style={{ marginTop: 12, fontSize: 12, color: '#6b7280' }}>
-          Redirect will go to: <code>{redirectTo}</code>
-        </p>
-      </div>
-    </main>
-  )
+    <div style={styles.wrap}>
+      <h1 style={styles.h}>Login</h1>
+      <form onSubmit={signInWithEmail}>
+        <label style={styles.label}>Email</label>
+        <input style={styles.input} type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+        <button style={styles.btn} disabled={sending} type="submit">{sending ? 'Sending…' : 'Send Magic Link'}</button>
+      </form>
+      <button style={styles.btnAlt} onClick={signInWithGoogle} disabled={sending}>Continue with Google</button>
+      {message && <p style={{ marginTop: 12 }}>{message}</p>}
+    </div>
+  );
 }
