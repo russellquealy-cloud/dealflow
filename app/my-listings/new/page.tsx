@@ -1,6 +1,6 @@
 // /app/my-listings/new/page.tsx
 import { redirect } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase/server";
 import CreateListingForm from "@/components/CreateListingForm";
 
 const siteBg = "#fafafa";

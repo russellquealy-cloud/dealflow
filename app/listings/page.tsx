@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createSupabaseServer } from '@/lib/supabase';
+import { createSupabaseServer } from '@/lib/supabase/server';
 import ListingsSplitClient from '@/components/ListingsSplitClient';
 import SearchBarClient from '@/components/SearchBarClient';
 
