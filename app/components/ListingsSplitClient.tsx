@@ -4,18 +4,19 @@ import * as React from "react";
 import MapViewClient from "./MapViewClient";
 import ListingCard from "./ListingCard";
 
-// Minimal shapes so we don't use `any`
-type LatLng = { lat: number; lng: number };
-type BoundsLike = { _southWest: LatLng; _northEast: LatLng } | null;
+type Bounds = { _southWest: { lat: number; lng: number }; _northEast: { lat: number; lng: number } };
 
-type FeaturePoint = {
+type GeoPoint = {
   type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] };
+  id?: string | number;
+  geometry: { type: "Point"; coordinates: [number, number] }; // [lng, lat]
   properties: Record<string, unknown>;
 };
 
-type ListingWithCoords = {
-  id: string;
+type MapPoint = { id: string; lat: number; lng: number };
+
+type Listing = {
+  id: string | number;
   lat?: number | string | null;
   lng?: number | string | null;
   latitude?: number | string | null;
@@ -25,36 +26,50 @@ type ListingWithCoords = {
 } & Record<string, unknown>;
 
 type Props = {
-  points: FeaturePoint[];
-  listings: ListingWithCoords[];
+  points: GeoPoint[] | MapPoint[];
+  listings: Listing[];
 };
 
-function toNumber(v: unknown): number | null {
+const toNum = (v: unknown): number | null => {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
   return null;
-}
-
-function coordsFromListing(l: ListingWithCoords): { lat: number; lng: number } | null {
-  const lat =
-    toNumber(l.lat) ?? toNumber(l.latitude);
-  const lng =
-    toNumber(l.lng) ?? toNumber(l.longitude) ?? toNumber(l.lon) ?? toNumber(l.long);
-
-  return lat !== null && lng !== null ? { lat, lng } : null;
-}
+};
 
 export default function ListingsSplitClient({ points, listings }: Props) {
-  const [bounds, setBounds] = React.useState<BoundsLike>(null);
+  const [bounds, setBounds] = React.useState<Bounds | null>(null);
+
+  // Normalize incoming points to { id, lat, lng } for MapViewClient
+  const mapPoints: MapPoint[] = React.useMemo(() => {
+    if (!Array.isArray(points)) return [];
+    // Already MapPoint[]
+    if (points.length && "lat" in (points[0] as any) && "lng" in (points[0] as any)) {
+      return (points as MapPoint[]).map((p) => ({
+        id: String(p.id ?? `${p.lat},${p.lng}`),
+        lat: p.lat,
+        lng: p.lng,
+      }));
+    }
+    // GeoJSON Feature[]
+    return (points as GeoPoint[])
+      .filter((f) => f?.geometry?.type === "Point" && Array.isArray(f.geometry.coordinates))
+      .map((f, i) => {
+        const [lng, lat] = f.geometry.coordinates;
+        return {
+          id: String(f.id ?? i),
+          lat: Number(lat),
+          lng: Number(lng),
+        };
+      });
+  }, [points]);
 
   const visible = React.useMemo(() => {
     if (!bounds) return listings;
 
     const { _southWest, _northEast } = bounds;
-
     const within = (lat: number, lng: number) =>
       lat >= _southWest.lat &&
       lat <= _northEast.lat &&
@@ -62,23 +77,25 @@ export default function ListingsSplitClient({ points, listings }: Props) {
       lng <= _northEast.lng;
 
     return listings.filter((l) => {
-      const c = coordsFromListing(l);
-      return c ? within(c.lat, c.lng) : false;
+      const lat =
+        toNum(l.lat) ?? toNum(l.latitude);
+      const lng =
+        toNum(l.lng) ?? toNum(l.longitude) ?? toNum(l.lon) ?? toNum(l.long);
+      return lat !== null && lng !== null && within(lat, lng);
     });
   }, [bounds, listings]);
 
-  // Prevent page scroll jitter while the list scrolls
   return (
     <div
       className="grid grid-cols-12 gap-6 overflow-hidden"
       style={{ ["--df-offset" as unknown as string]: "240px" }}
     >
-      {/* Map column */}
+      {/* Map */}
       <div className="col-span-12 lg:col-span-6 min-h-0">
-        <MapViewClient points={points} onBoundsChange={setBounds} />
+        <MapViewClient points={mapPoints} onBoundsChange={setBounds} />
       </div>
 
-      {/* List column (independent scroll) */}
+      {/* List */}
       <div className="col-span-12 lg:col-span-6 min-h-0">
         <div className="h-[calc(100vh-var(--df-offset))] overflow-y-auto pr-2 space-y-4">
           {visible.map((l) => (
