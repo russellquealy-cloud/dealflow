@@ -1,60 +1,61 @@
-// /app/components/LocationSearch.tsx
-"use client";
+'use client';
 
-import * as React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-const bar: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" };
-const input: React.CSSProperties = { flex: "1 1 320px", padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" };
-const btn: React.CSSProperties = { border: "1px solid #ddd", borderRadius: 10, padding: "10px 14px", fontWeight: 800, background: "#111", color: "#fff", cursor: "pointer" };
+import React from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export default function LocationSearch() {
-  const [q, setQ] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const [q, setQ] = React.useState('');
 
-  const submit = async (e: React.FormEvent) => {
+  // Helper: make a mutable copy of current query params (handles null safely)
+  const cloneParams = () =>
+    new URLSearchParams(params ? Array.from(params.entries()) : []);
+
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!q.trim()) return;
-    setLoading(true);
-    try {
-      // Nominatim: basic geocode
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q.trim())}`;
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
-      const arr = await res.json();
-      if (arr?.length) {
-        const bb = arr[0].boundingbox; // [south, north, west, east] strings
-        const south = parseFloat(bb[0]);
-        const north = parseFloat(bb[1]);
-        const west = parseFloat(bb[2]);
-        const east = parseFloat(bb[3]);
-        const s = new URLSearchParams(params ? Array.from(params.entries()) : []);
-        s.set("bbox", [south, west, north, east].join(","));
+
+    // If user pasted a bbox like "south,west,north,east"
+    const raw = q.trim();
+    const bb = raw.includes(',') ? raw.split(',') : null;
+
+    if (bb && bb.length === 4) {
+      const south = parseFloat(bb[0]);
+      const west  = parseFloat(bb[1]);
+      const north = parseFloat(bb[2]);
+      const east  = parseFloat(bb[3]);
+
+      if ([south, west, north, east].every(Number.isFinite)) {
+        const s = cloneParams();
+        s.set('bbox', [south, west, north, east].join(','));
         router.push(`${pathname}?${s.toString()}`);
+        return;
       }
-    } finally {
-      setLoading(false);
     }
+
+    // Otherwise, dispatch to MapViewClient geocoder (it listens for 'df:geocode')
+    window.dispatchEvent(new CustomEvent('df:geocode', { detail: { q: raw } }));
   };
 
   const clear = () => {
-    const s = new URLSearchParams(params.toString());
-    s.delete("bbox");
+    const s = cloneParams();
+    s.delete('bbox');
     router.push(`${pathname}?${s.toString()}`);
   };
 
   return (
-    <form onSubmit={submit} style={bar}>
+    <form onSubmit={submit} className="flex gap-2">
       <input
-        style={input}
-        placeholder="Search city or address (e.g., Tucson, AZ)"
+        className="flex-1 rounded border px-3 py-2"
+        placeholder='Search city/zip or "south,west,north,east" bbox'
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
-      <button type="submit" style={btn} disabled={loading}>{loading ? "Searching…" : "Search"}</button>
-      <button type="button" style={{ ...btn, background: "#fff", color: "#111" }} onClick={clear}>Clear Area</button>
+      <button type="submit" className="rounded border px-3 py-2">Go</button>
+      <button type="button" onClick={clear} className="rounded border px-3 py-2">
+        Clear
+      </button>
     </form>
   );
 }
