@@ -56,9 +56,9 @@ function Controls({
   React.useEffect(() => { viewportRef.current = onBboxViewport; }, [onBboxViewport]);
   React.useEffect(() => { clearRef.current = onClear; }, [onClear]);
 
-  const rectRef = React.useRef<L.Rectangle | null>(null);
-  const barRef = React.useRef<L.Control | null>(null);
-  const drawToolRef = React.useRef<any | null>(null);
+const rectRef = React.useRef<any>(null);
+const barRef = React.useRef<any>(null);
+const drawToolRef = React.useRef<any>(null);
   const mountedRef = React.useRef(false);
   const drawLoadedRef = React.useRef(false);
   const debounceRef = React.useRef<number | null>(null);
