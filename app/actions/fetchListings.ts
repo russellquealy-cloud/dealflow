@@ -16,9 +16,23 @@ export async function fetchListings(params: FetchParams = {}) {
     params.bounds._northEast.lat,
   ].join(','));
   for (const [k, v] of Object.entries(params)) {
-    if (k === 'bounds') continue;
-    if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+    if (k === "bounds") continue; // handled separately
+
+    if (v === undefined || v === null) continue;
+
+    if (typeof v === "string") {
+      if (v.trim() !== "") q.set(k, v);
+      continue;
+    }
+
+    if (typeof v === "number" || typeof v === "boolean") {
+      q.set(k, String(v));
+      continue;
+    }
+
+    // Ignore arrays/objects (e.g., Bounds) — not serializable here
   }
+
   const res = await fetch(`/api/listings.geojson?${q.toString()}`, { cache: 'no-store' });
   const data = await res.json();
   return data;
