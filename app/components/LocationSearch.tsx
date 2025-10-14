@@ -30,7 +30,7 @@ export default function LocationSearch() {
         const north = parseFloat(bb[1]);
         const west = parseFloat(bb[2]);
         const east = parseFloat(bb[3]);
-        const s = new URLSearchParams(params.toString());
+        const s = new URLSearchParams(params ? Array.from(params.entries()) : []);
         s.set("bbox", [south, west, north, east].join(","));
         router.push(`${pathname}?${s.toString()}`);
       }
