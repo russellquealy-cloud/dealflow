@@ -39,30 +39,30 @@ const toNum = (v: unknown): number | null => {
   return null;
 };
 
+function isMapPointArray(arr: unknown[]): arr is MapPoint[] {
+  if (!Array.isArray(arr) || arr.length === 0) return false;
+  const first = arr[0] as Record<string, unknown>;
+  return typeof first["lat"] === "number" && typeof first["lng"] === "number";
+}
+
 export default function ListingsSplitClient({ points, listings }: Props) {
   const [bounds, setBounds] = React.useState<Bounds | null>(null);
 
-  // Normalize incoming points to { id, lat, lng } for MapViewClient
   const mapPoints: MapPoint[] = React.useMemo(() => {
-    if (!Array.isArray(points)) return [];
-    // Already MapPoint[]
-    if (points.length && "lat" in (points[0] as any) && "lng" in (points[0] as any)) {
-      return (points as MapPoint[]).map((p) => ({
+    if (!Array.isArray(points) || points.length === 0) return [];
+    if (isMapPointArray(points)) {
+      return points.map((p) => ({
         id: String(p.id ?? `${p.lat},${p.lng}`),
         lat: p.lat,
         lng: p.lng,
       }));
     }
-    // GeoJSON Feature[]
+    // GeoJSON → MapPoint
     return (points as GeoPoint[])
       .filter((f) => f?.geometry?.type === "Point" && Array.isArray(f.geometry.coordinates))
       .map((f, i) => {
         const [lng, lat] = f.geometry.coordinates;
-        return {
-          id: String(f.id ?? i),
-          lat: Number(lat),
-          lng: Number(lng),
-        };
+        return { id: String(f.id ?? i), lat: Number(lat), lng: Number(lng) };
       });
   }, [points]);
 
@@ -77,10 +77,8 @@ export default function ListingsSplitClient({ points, listings }: Props) {
       lng <= _northEast.lng;
 
     return listings.filter((l) => {
-      const lat =
-        toNum(l.lat) ?? toNum(l.latitude);
-      const lng =
-        toNum(l.lng) ?? toNum(l.longitude) ?? toNum(l.lon) ?? toNum(l.long);
+      const lat = toNum(l.lat) ?? toNum(l.latitude);
+      const lng = toNum(l.lng) ?? toNum(l.longitude) ?? toNum(l.lon) ?? toNum(l.long);
       return lat !== null && lng !== null && within(lat, lng);
     });
   }, [bounds, listings]);
