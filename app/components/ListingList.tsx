@@ -129,28 +129,31 @@ export default function ListingList({
   )
 }
 
-function Badge({children, tone='indigo'}:{children:React.ReactNode, tone?:'indigo'|'orange'|'green'|'rose'}) {
-  const tones:#f3f4f6 = {
+// put this near the top of ListingList.tsx (or where your Badge lives)
+type BadgeTone = 'indigo' | 'orange' | 'green' | 'rose';
+
+function Badge(
+  { children, tone = 'indigo' }: { children: React.ReactNode; tone?: BadgeTone }
+) {
+  const tones: Record<BadgeTone, [string, string, string]> = {
     indigo: ['#eef2ff', '#3730a3', '#e0e7ff'],
     orange: ['#fff7ed', '#9a3412', '#ffedd5'],
     green:  ['#ecfdf5', '#065f46', '#d1fae5'],
-    rose:   ['#fff1f2', '#9f1239', '#ffe4e6'],
-  }
-  const [bg, fg, br] = tones[tone]
-  return <span style={{
-    background:bg, color:fg, border:`1px solid ${br}`,
-    padding:'4px 8px', borderRadius:999, fontSize:12, fontWeight:700
-  }}>{children}</span>
+    rose:   ['#fff1f2', '#be123c', '#ffe4e6'],
+  };
+
+  const [bg, fg, ring] = tones[tone];
+
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+      style={{ backgroundColor: bg, color: fg, boxShadow: `inset 0 0 0 1px ${ring}` }}
+    >
+      {children}
+    </span>
+  );
 }
 
-function btnStyle(variant:'primary'|'secondary'='primary'): React.CSSProperties {
-  const base: React.CSSProperties = {
-    display:'inline-block', padding:'8px 12px', borderRadius:10, fontSize:12, fontWeight:700, textDecoration:'none'
-  }
-  return variant==='secondary'
-    ? { ...base, background:'#f3f4f6', color:'#111', border:'1px solid #e5e7eb' }
-    : { ...base, background:'#111827', color:'#fff' }
-}
 
 function money(v?:number|null){
   if (v==null) return '—'
