@@ -1,10 +1,7 @@
 // /app/types.ts
 export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
+  | string | number | boolean | null
+  | { [k: string]: Json | undefined }
   | Json[];
 
 export type Listing = {
@@ -37,5 +34,5 @@ export type Listing = {
   bedrooms?: number | null;
   bathrooms?: number | null;
   square_feet?: number | null;
-  [key: string]: any;
+  [key: string]: Json | null | undefined;
 };

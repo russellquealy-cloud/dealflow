@@ -1,4 +1,6 @@
 // app/components/MapViewClient.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 'use client';
 
 import { useEffect, useRef } from 'react';

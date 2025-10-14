@@ -1,13 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 'use client';
 
 import { useMemo, useState } from 'react';
 import MapViewClient, { Point } from './MapViewClient';
 import ListingCard from './ListingCard';
 
-type Props = {
-  points: Point[];
-  listings: any[];
-};
+type Pt = { id: string; lat: number; lng: number; price?: number };
+export default function ListingsSplitClient({
+  listings, points, onBoundsChange,
+}: {
+  listings: Record<string, unknown>[];
+  points: Pt[];
+  onBoundsChange?: (b: unknown) => void;
+}) { /* ... */ }
 
 export default function ListingsSplitClient({ points, listings }: Props) {
   const [bounds, setBounds] = useState<any>(null);

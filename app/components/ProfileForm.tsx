@@ -23,7 +23,16 @@ export default function ProfileForm({ defaultRole }: { defaultRole:'wholesaler'|
     <label style={label}>Company</label><input style={input} value={company} onChange={e=>setCompany(e.target.value)} />
     <label style={label}>Phone</label><input style={input} value={phone} onChange={e=>setPhone(e.target.value)} />
     <label style={label}>Role</label>
-    <select style={input as any} value={role} onChange={e=>setRole(e.target.value as any)}>
+    const onInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const { name, value } = e.target;
+  setForm((f) => ({ ...f, [name]: value }));
+};
+const onSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const { name, value } = e.target;
+  setForm((f) => ({ ...f, [name]: value }));
+};
+// use onInput/onSelect in your inputs/selects
+
       <option value="wholesaler">Wholesaler</option><option value="investor">Investor</option>
     </select>
     <button style={btn} disabled={saving} type="submit">{saving?'Saving…':'Save profile'}</button>

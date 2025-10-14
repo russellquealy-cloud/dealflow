@@ -42,10 +42,16 @@ const stickyFooter: React.CSSProperties = {
   zIndex: 10,
 };
 
-function nb(v: any): number | undefined {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : undefined;
-}
+import type { Json } from '@/app/types';
+type Listing = {
+  id: string;
+  address?: string | null; city?: string | null; state?: string | null; zip?: string | null;
+  price?: number | null; beds?: number | null; baths?: number | null; sqft?: number | null;
+  lat?: number | null; lng?: number | null;
+  [k: string]: Json | null | undefined;
+};
+// replace any variables with `Listing | null` or `unknown` and narrow as needed
+
 
 function Address({ l }: { l: Listing }) {
   const parts = [l.address, l.city, l.state, l.zip].filter(Boolean).join(", ");

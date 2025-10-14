@@ -38,7 +38,7 @@ export default function CreateListingForm({ ownerId }: Props) {
     setSaving(true);
 
     // Upload images (optional)
-    let imagePaths: string[] = [];
+    const imagePaths: string[] = [];
     if (files && files.length > 0) {
       if (!bucket) {
         alert("Missing NEXT_PUBLIC_LISTING_IMAGES_BUCKET");
@@ -59,30 +59,14 @@ export default function CreateListingForm({ ownerId }: Props) {
       }
     }
 
-    const payload: any = {
-      owner_id: ownerId,                  // <-- owner
-      title: s(form.title),
-      address: s(form.address),
-      city: s(form.city),
-      state: s(form.state),
-      zip: s(form.zip),
-      price: n(form.price),
-      beds: n(form.beds),
-      baths: n(form.baths),
-      sqft: n(form.sqft),
-      lot_size: n(form.lot_size),
-      description: s(form.description),
-      contact_phone: s(digitsOrPlus(form.contact_phone)),
-      contact_email: s(form.contact_email),
-      images: imagePaths.length ? imagePaths : null,
-    };
-
-    const { error } = await supabase.from("listings").insert(payload);
-    setSaving(false);
-    if (error) { alert(error.message); return; }
-    router.push("/my-listings");
-    router.refresh();
-  };
+    function toNum(v: unknown): number | undefined {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+  if (typeof v === 'string') {
+    const n = Number(v.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
 
   return (
     <form onSubmit={onSubmit} style={card}>

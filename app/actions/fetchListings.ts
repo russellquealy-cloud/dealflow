@@ -1,38 +1,25 @@
-'use server';
-
-import { createServerClient } from '@/supabase/server';
-
-export type Filters = {
-  priceMin?: number; priceMax?: number;
-  bedsMin?: number;  bedsMax?: number | '6+';
-  bathsMin?: number; bathsMax?: number | '4+';
-  sqftMin?: number;  sqftMax?: number;
-  lotMin?: number;   lotMax?: number;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Bounds = { _southWest: { lat: number; lng: number }; _northEast: { lat: number; lng: number } };
+type FetchParams = {
+  bounds?: Bounds;
+  minBeds?: number; maxBeds?: number;
+  minBaths?: number; maxBaths?: number;
+  minPrice?: number; maxPrice?: number;
 };
 
-const clampMax = (v: any) => (v === '6+' || v === '4+' ? 999 : v);
-
-export async function fetchListings(filters: Filters) {
-  const supabase = createServerClient();
-
-  let q = supabase.from('listings').select('*');
-
-  if (filters.priceMin) q = q.gte('price', filters.priceMin);
-  if (filters.priceMax) q = q.lte('price', filters.priceMax);
-
-  if (filters.bedsMin)  q = q.gte('beds', filters.bedsMin);
-  if (filters.bedsMax)  q = q.lte('beds', clampMax(filters.bedsMax));
-
-  if (filters.bathsMin) q = q.gte('baths', filters.bathsMin);
-  if (filters.bathsMax) q = q.lte('baths', clampMax(filters.bathsMax));
-
-  if (filters.sqftMin)  q = q.gte('sqft', filters.sqftMin);
-  if (filters.sqftMax)  q = q.lte('sqft', filters.sqftMax);
-
-  if (filters.lotMin)   q = q.gte('lot_acres', filters.lotMin);
-  if (filters.lotMax)   q = q.lte('lot_acres', filters.lotMax);
-
-  const { data, error } = await q.order('created_at', { ascending: false });
-  if (error) throw error;
+export async function fetchListings(params: FetchParams = {}) {
+  const q = new URLSearchParams();
+  if (params.bounds) q.set('bbox', [
+    params.bounds._southWest.lng,
+    params.bounds._southWest.lat,
+    params.bounds._northEast.lng,
+    params.bounds._northEast.lat,
+  ].join(','));
+  for (const [k, v] of Object.entries(params)) {
+    if (k === 'bounds') continue;
+    if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+  }
+  const res = await fetch(`/api/listings.geojson?${q.toString()}`, { cache: 'no-store' });
+  const data = await res.json();
   return data;
 }

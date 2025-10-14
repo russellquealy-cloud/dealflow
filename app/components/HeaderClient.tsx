@@ -10,7 +10,7 @@ export default function HeaderClient() {
   const router = useRouter();
 
   useEffect(() => {
-    let mounted = true;
+    const mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setEmail(data.session?.user.email ?? null);
