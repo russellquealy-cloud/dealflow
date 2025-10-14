@@ -1,26 +1,35 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 'use client';
 
 import { useMemo, useState } from 'react';
-import MapViewClient, { Point } from './MapViewClient';
+import MapViewClient from './MapViewClient';
 import ListingCard from './ListingCard';
 
-type Pt = { id: string; lat: number; lng: number; price?: number };
-export default function ListingsSplitClient({
-  listings, points, onBoundsChange,
-}: {
-  listings: Record<string, unknown>[];
-  points: Pt[];
-  onBoundsChange?: (b: unknown) => void;
-}) { /* ... */ }
+type Bounds = {
+  _southWest: { lat: number; lng: number };
+  _northEast: { lat: number; lng: number };
+};
+
+type Point = { lat: number; lng: number; id?: string | number };
+
+type ListingLike = {
+  id: string | number;
+  lat?: number | string;
+  lng?: number | string;
+  latitude?: number | string;
+  longitude?: number | string;
+  lon?: number | string;
+  long?: number | string;
+  [k: string]: unknown;
+};
+
+type Props = { points: Point[]; listings: ListingLike[] };
 
 export default function ListingsSplitClient({ points, listings }: Props) {
-  const [bounds, setBounds] = useState<any>(null);
+  const [bounds, setBounds] = useState<Bounds | null>(null);
 
-  // filter listings to “what’s visible”
-  const visible = useMemo(() => {
+  const visible: ListingLike[] = useMemo(() => {
     if (!bounds) return listings;
+
     const { _southWest, _northEast } = bounds;
     const within = (lat: number, lng: number) =>
       lat >= _southWest.lat &&
@@ -36,21 +45,17 @@ export default function ListingsSplitClient({ points, listings }: Props) {
   }, [bounds, listings]);
 
   return (
-    // IMPORTANT: overflow-hidden on the wrapper stops page scrolling
-    <div
-      className="grid grid-cols-12 gap-6 overflow-hidden"
-      style={{ ['--df-offset' as any]: '240px' }}
-    >
+    <div className="grid grid-cols-12 gap-6 overflow-hidden" style={{ ['--df-offset' as any]: '240px' }}>
       {/* Map column */}
       <div className="col-span-12 lg:col-span-6 min-h-0">
         <MapViewClient points={points} onBoundsChange={setBounds} />
       </div>
 
-      {/* List column (scrolls independently) */}
+      {/* List column (independent scroll) */}
       <div className="col-span-12 lg:col-span-6 min-h-0">
         <div className="h-[calc(100vh-var(--df-offset))] overflow-y-auto pr-2 space-y-4">
-          {visible.map((l: any) => (
-            <ListingCard key={l.id} listing={l} />
+          {visible.map((l) => (
+            <ListingCard key={String(l.id)} listing={l} />
           ))}
         </div>
       </div>

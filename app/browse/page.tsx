@@ -3,11 +3,11 @@
 
 'use client'
 
-import dynamic from 'next/dynamic'
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ListingList, { ListItem } from '../components/ListingList'
 
-const DealMap = dynamic(() => import('../components/DealMapClient'), { ssr: false })
+const DealMap = dynamic(() => import('../components/MapViewClient'), { ssr: false });
 
 type Feature = { geometry:{ type:'Point', coordinates:[number,number] }, properties:any }
 
