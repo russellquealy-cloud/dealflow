@@ -46,10 +46,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       if (mapRef.current) { rafInvalidate(); return; }
 
       const leaflet = await import('leaflet');
-      await import('leaflet/dist/leaflet.css');
-      await import('leaflet-draw');
-      await import('leaflet-draw/dist/leaflet.draw.css');
-      Lmod = leaflet.default;
+	await import('leaflet-draw'); // CSS now comes from globals.css
+	Lmod = leaflet.default;
 
       const [marker2x, marker, shadow] = await Promise.all([
         import('leaflet/dist/images/marker-icon-2x.png'),
