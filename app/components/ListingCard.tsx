@@ -1,124 +1,120 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { formatCurrency } from "@/lib/format";
-import type { Listing } from "@/types";
 
-/**
- * Safe getters so we don't need `any`.
- */
-function asNumber(v: unknown): number | null {
+/** Minimal shape the card needs. Adjust/extend freely. */
+type ListingCardData = {
+  id: string | number;
+  price?: number | string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  beds?: number | string;
+  baths?: number | string;
+  sqft?: number | string;
+  arv?: number | string;
+  repairs?: number | string;
+  spread?: number | string;
+  roi?: number | string;
+  images?: string[];
+  imageUrl?: string; // alternate single URL field
+};
+
+type Props = { listing: ListingCardData };
+
+function toNumber(v: unknown): number {
   if (typeof v === "number") return v;
   if (typeof v === "string") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
+    const n = Number(v.replace(/[^0-9.\-]/g, ""));
+    return Number.isFinite(n) ? n : 0;
   }
-  return null;
-}
-function asString(v: unknown): string {
-  return typeof v === "string" ? v : "";
+  return 0;
 }
 
-/**
- * Card for a single listing
- */
-export default function ListingCard({ listing }: { listing: Listing }) {
-  // Basic fields (the Listing type should already include these)
-  const price = (listing as Listing).price ?? null;
-  const beds = (listing as Listing).beds ?? null;
-  const baths = (listing as Listing).baths ?? null;
-  const sqft = (listing as Listing).sqft ?? null;
+function currency(n: unknown): string {
+  return toNumber(n).toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
 
-  // Optional metrics often present on your cards
-  const arv = (listing as Partial<Listing> & Record<string, unknown>).arv as number | undefined;
-  const repairs = (listing as Partial<Listing> & Record<string, unknown>).repairs as number | undefined;
-  const spread = (listing as Partial<Listing> & Record<string, unknown>).spread as number | undefined;
-  const roi = (listing as Partial<Listing> & Record<string, unknown>).roi as number | undefined;
-
-  // Address parts (fall back to blank strings to avoid "undefined, , ,")
-  const addr1 = (listing as Partial<Listing> & Record<string, unknown>).address as string | undefined;
-  const city  = (listing as Partial<Listing> & Record<string, unknown>).city as string | undefined;
-  const state = (listing as Partial/List­ing> & Record<string, unknown>).state as string | undefined;
-  const zip   = (listing as Partial<Listing> & Record<string, unknown>).zip as string | undefined;
-
+export default function ListingCard({ listing }: Props) {
+  const addr1 = listing.address ?? "";
+  const city  = listing.city ?? "";
+  const state = listing.state ?? "";
+  const zip   = listing.zip ?? "";
   const address = [addr1, city, state, zip].filter(Boolean).join(", ");
 
-  // Best-effort cover image without introducing `any`
-  const bag = listing as unknown as Record<string, unknown>;
-  const cover =
-    (bag["coverUrl"] as string | undefined) ||
-    (bag["cover_url"] as string | undefined) ||
-    (Array.isArray(bag["images"]) && typeof (bag["images"] as unknown[])[0] === "string"
-      ? (bag["images"] as string[])[0]
-      : undefined);
+  const beds  = toNumber(listing.beds);
+  const baths = toNumber(listing.baths);
+  const sqft  = toNumber(listing.sqft);
+
+  const imageSrc =
+    listing.imageUrl ||
+    (listing.images && listing.images.length > 0 ? listing.images[0] : undefined);
 
   return (
-    <article className="rounded-xl border bg-white shadow-sm overflow-hidden">
-      {/* media */}
-      <div className="relative h-44 w-full bg-neutral-100">
-        {cover ? (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      {/* Image */}
+      <div className="relative h-44 w-full bg-gray-100">
+        {imageSrc ? (
           <Image
-            src={cover}
+            src={imageSrc}
             alt={address || "Listing photo"}
             fill
-            sizes="(max-width: 640px) 100vw, 50vw"
             className="object-cover"
-            priority={false}
+            sizes="(max-width: 768px) 100vw, 50vw"
           />
         ) : (
-          <div className="grid h-full w-full place-items-center text-neutral-400">
+          <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
             No image
           </div>
         )}
       </div>
 
-      {/* content */}
+      {/* Body */}
       <div className="p-4 space-y-2">
-        <div className="text-xl font-semibold">
-          {price != null ? formatCurrency(price) : "—"}
-        </div>
-
-        <div className="text-sm text-neutral-600">
-          {beds ?? "—"} bd • {baths ?? "—"} ba • {sqft ?? "—"} sq ft
-        </div>
-
-        {/* badges row */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          {typeof arv === "number" && (
-            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-              ARV {formatCurrency(arv)}
-            </span>
-          )}
-          {typeof repairs === "number" && (
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-              Repairs {formatCurrency(repairs)}
-            </span>
-          )}
-          {typeof spread === "number" && (
-            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-              Spread {formatCurrency(spread)}
-            </span>
-          )}
-          {typeof roi === "number" && (
-            <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">
-              ROI {roi}%
-            </span>
-          )}
-        </div>
-
-        <div className="mt-1 text-sm text-neutral-700">
-          {address || asString(bag["display_address"])}
-        </div>
-
-        {/* detail link (keep simple; your routing may vary) */}
-        <div className="pt-2">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-semibold">{currency(listing.price)}</div>
           <Link
-            href={`/listing/${(listing as Listing).id}`}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm hover:bg-neutral-50"
+            href={`/listing/${listing.id}`}
+            className="text-sm text-blue-600 hover:underline"
           >
-            View details
+            View
           </Link>
         </div>
+
+        <div className="text-sm text-gray-600">{address || "—"}</div>
+
+        <div className="text-xs text-gray-500">
+          {beds ? `${beds} bd` : ""}{beds && baths ? " • " : ""}
+          {baths ? `${baths} ba` : ""}{(beds || baths) && sqft ? " • " : ""}
+          {sqft ? `${sqft.toLocaleString()} sq ft` : ""}
+        </div>
+
+        {/* Chips */}
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          {toNumber(listing.arv) > 0 && (
+            <span className="rounded-full bg-indigo-50 px-2 py-1 text-indigo-700">
+              ARV {currency(listing.arv)}
+            </span>
+          )}
+          {toNumber(listing.repairs) > 0 && (
+            <span className="rounded-full bg-orange-50 px-2 py-1 text-orange-700">
+              Repairs {currency(listing.repairs)}
+            </span>
+          )}
+          {toNumber(listing.spread) > 0 && (
+            <span className="rounded-full bg-green-50 px-2 py-1 text-green-700">
+              Spread {currency(listing.spread)}
+            </span>
+          )}
+          {toNumber(listing.roi) > 0 && (
+            <span className="rounded-full bg-rose-50 px-2 py-1 text-rose-700">
+              ROI {toNumber(listing.roi)}%
+            </span>
+          )}
+        </div>
       </div>
-    </article>
+    </div>
   );
 }
