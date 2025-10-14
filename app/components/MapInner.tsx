@@ -85,7 +85,7 @@ const drawToolRef = React.useRef<any>(null);
       // 1) Drawing rectangles (user action)
       const onCreated = (e: any) => {
         removeRect();
-        rectRef.current = e.layer as L.Rectangle;
+        rectRef.current = (e as any).layer;
         rectRef.current.addTo(map);
         const b = rectRef.current.getBounds();
         drawnRef.current?.([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
