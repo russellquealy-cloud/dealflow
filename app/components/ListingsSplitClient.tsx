@@ -3,31 +3,20 @@
 import { useMemo, useState } from 'react';
 import MapViewClient from './MapViewClient';
 import ListingCard from './ListingCard';
+import type { Listing } from '@/types';
 
 type Bounds = {
   _southWest: { lat: number; lng: number };
   _northEast: { lat: number; lng: number };
 };
 
-type Point = { lat: number; lng: number; id?: string | number };
-
-type ListingLike = {
-  id: string | number;
-  lat?: number | string;
-  lng?: number | string;
-  latitude?: number | string;
-  longitude?: number | string;
-  lon?: number | string;
-  long?: number | string;
-  [k: string]: unknown;
-};
-
-type Props = { points: Point[]; listings: ListingLike[] };
+type Point = { id: string; lat: number; lng: number };
+type Props = { points: Point[]; listings: Listing[] };
 
 export default function ListingsSplitClient({ points, listings }: Props) {
   const [bounds, setBounds] = useState<Bounds | null>(null);
 
-  const visible: ListingLike[] = useMemo(() => {
+  const visible = useMemo(() => {
     if (!bounds) return listings;
 
     const { _southWest, _northEast } = bounds;
@@ -38,14 +27,22 @@ export default function ListingsSplitClient({ points, listings }: Props) {
       lng <= _northEast.lng;
 
     return listings.filter((l) => {
-      const lat = Number(l.lat ?? l.latitude);
-      const lng = Number(l.lng ?? l.longitude ?? l.lon ?? l.long);
+      const lat = Number((l as any).lat ?? (l as any).latitude);
+      const lng = Number(
+        (l as any).lng ??
+          (l as any).longitude ??
+          (l as any).lon ??
+          (l as any).long
+      );
       return Number.isFinite(lat) && Number.isFinite(lng) && within(lat, lng);
     });
   }, [bounds, listings]);
 
   return (
-    <div className="grid grid-cols-12 gap-6 overflow-hidden" style={{ ['--df-offset' as any]: '240px' }}>
+    <div
+      className="grid grid-cols-12 gap-6 overflow-hidden"
+      style={{ ['--df-offset' as any]: '240px' }}
+    >
       {/* Map column */}
       <div className="col-span-12 lg:col-span-6 min-h-0">
         <MapViewClient points={points} onBoundsChange={setBounds} />
@@ -54,8 +51,8 @@ export default function ListingsSplitClient({ points, listings }: Props) {
       {/* List column (independent scroll) */}
       <div className="col-span-12 lg:col-span-6 min-h-0">
         <div className="h-[calc(100vh-var(--df-offset))] overflow-y-auto pr-2 space-y-4">
-          {visible.map((l) => (
-            <ListingCard key={String(l.id)} listing={l} />
+          {visible.map((l: Listing) => (
+            <ListingCard key={(l as any).id} listing={l} />
           ))}
         </div>
       </div>

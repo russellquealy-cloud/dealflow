@@ -1,5 +1,6 @@
 'use client'
 
+import type { Listing } from '@/types';
 import { useRouter } from 'next/navigation'
 import React from 'react'
 
@@ -129,7 +130,7 @@ export default function ListingList({
 }
 
 function Badge({children, tone='indigo'}:{children:React.ReactNode, tone?:'indigo'|'orange'|'green'|'rose'}) {
-  const tones:any = {
+  const tones:#f3f4f6 = {
     indigo: ['#eef2ff', '#3730a3', '#e0e7ff'],
     orange: ['#fff7ed', '#9a3412', '#ffedd5'],
     green:  ['#ecfdf5', '#065f46', '#d1fae5'],
