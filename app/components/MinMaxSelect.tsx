@@ -1,40 +1,59 @@
 'use client';
-import MinMaxSelect from './MinMaxSelect';
-import { price, beds, baths, sqft } from '@/lib/filterOptions';
+import React from 'react';
 
-type Opt = string | number;
-type Filters = {
-  minBeds?: Opt; maxBeds?: Opt;
-  minBaths?: Opt; maxBaths?: Opt;
-  minPrice?: Opt; maxPrice?: Opt;
-  minSqft?: Opt; maxSqft?: Opt;
-};
-export default function FiltersBar({
-  value, onChange
+export type Opt = string | number;
+
+export default function MinMaxSelect({
+  label,
+  options,
+  minValue,
+  maxValue,
+  onChange,
 }: {
-  value: Filters;
-  onChange: (v: Filters) => void;
+  label: string;
+  options: Opt[];
+  minValue?: Opt;
+  maxValue?: Opt;
+  onChange: (v: { min?: Opt; max?: Opt }) => void;
 }) {
-  const set = (patch: Partial<Filters>) => onChange({ ...value, ...patch });
+  const styles: Record<string, React.CSSProperties> = {
+    wrap: { display: 'flex', gap: 8, alignItems: 'center' },
+    sel: { padding: 8, border: '1px solid #d1d5db', borderRadius: 8 },
+  };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <MinMaxSelect label="Min Beds (1+)" options={beds}
-        minValue={value.minBeds} onChange={(v)=>set({minBeds:v.min})} />
-      <MinMaxSelect label="Max Beds" options={beds}
-        maxValue={value.maxBeds} onChange={(v)=>set({maxBeds:v.max})} />
-      <MinMaxSelect label="Min Baths (1+)" options={baths}
-        minValue={value.minBaths} onChange={(v)=>set({minBaths:v.min})} />
-      <MinMaxSelect label="Max Baths" options={baths}
-        maxValue={value.maxBaths} onChange={(v)=>set({maxBaths:v.max})} />
-      <MinMaxSelect label="Min Price" options={price}
-        minValue={value.minPrice} onChange={(v)=>set({minPrice:v.min})} />
-      <MinMaxSelect label="Max Price" options={price}
-        maxValue={value.maxPrice} onChange={(v)=>set({maxPrice:v.max})} />
-      <MinMaxSelect label="Min SqFt" options={sqft}
-        minValue={value.minSqft} onChange={(v)=>set({minSqft:v.min})} />
-      <MinMaxSelect label="Max SqFt" options={sqft}
-        maxValue={value.maxSqft} onChange={(v)=>set({maxSqft:v.max})} />
+    <div style={styles.wrap}>
+      <span style={{ width: 110 }}>{label}</span>
+
+      <select
+        style={styles.sel}
+        value={minValue === undefined ? '' : String(minValue)}
+        onChange={(e) =>
+          onChange({ min: e.target.value === '' ? undefined : (isNaN(+e.target.value) ? e.target.value : +e.target.value) })
+        }
+      >
+        <option value="">Min</option>
+        {options.map((o, i) => (
+          <option key={i} value={String(o)}>
+            {String(o)}
+          </option>
+        ))}
+      </select>
+
+      <select
+        style={styles.sel}
+        value={maxValue === undefined ? '' : String(maxValue)}
+        onChange={(e) =>
+          onChange({ max: e.target.value === '' ? undefined : (isNaN(+e.target.value) ? e.target.value : +e.target.value) })
+        }
+      >
+        <option value="">Max</option>
+        {options.map((o, i) => (
+          <option key={i} value={String(o)}>
+            {String(o)}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
