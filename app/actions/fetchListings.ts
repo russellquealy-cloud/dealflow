@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 type Bounds = { _southWest: { lat: number; lng: number }; _northEast: { lat: number; lng: number } };
 type FetchParams = {
   bounds?: Bounds;

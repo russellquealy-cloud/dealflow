@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 type Feature = {
   type: 'Feature';
   id: string;
