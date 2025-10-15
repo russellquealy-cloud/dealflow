@@ -1,10 +1,12 @@
 'use client';
 
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-export default function LoginPage() {
+export const dynamic = 'force-dynamic';
+
+function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const next = (params ? params.get('next') : null) ?? '/';
@@ -56,5 +58,13 @@ export default function LoginPage() {
         {message && <p className="text-sm text-neutral-600">{message}</p>}
       </form>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="p-6 max-w-md mx-auto">Loading…</main>}>
+      <LoginInner />
+    </Suspense>
   );
 }
