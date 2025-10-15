@@ -1,64 +1,60 @@
-// app/login/page.tsx
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
-
 'use client';
-import React, { useState } from 'react';
-import { supabase } from '@/supabase/client';
-import { useSearchParams, useRouter } from 'next/navigation';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const search = useSearchParams();
-  const next = search.get('next') || '/';
   const router = useRouter();
+  const params = useSearchParams();
+  const next = (params ? params.get('next') : null) ?? '/';
 
-  const styles: Record<string, React.CSSProperties> = {
-    wrap: { maxWidth: 420, margin: '64px auto', padding: 24, border: '1px solid #e5e7eb', borderRadius: 12 },
-    h: { margin: 0, marginBottom: 16, fontSize: 22 },
-    label: { display: 'block', fontSize: 14, marginBottom: 6 },
-    input: { width: '100%', padding: 10, border: '1px solid #d1d5db', borderRadius: 8, marginBottom: 12 },
-    btn: { width: '100%', padding: 12, border: '1px solid #111827', background: '#111827', color: '#fff', borderRadius: 8, cursor: 'pointer' },
-    btnAlt: { width: '100%', padding: 12, border: '1px solid #d1d5db', background: '#fff', color: '#111827', borderRadius: 8, cursor: 'pointer', marginTop: 8 }
-  };
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  async function signInWithEmail(e: React.FormEvent) {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSending(true);
+    setLoading(true);
     setMessage(null);
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` }
+      options: {
+        emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
     });
-    setSending(false);
-    if (error) setMessage(error.message);
-    else setMessage('Check your email for the login link.');
-  }
 
-  async function signInWithGoogle() {
-    setSending(true);
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` }
-    });
-    if (error) { setSending(false); setMessage(error.message); }
-    // For OAuth, the browser will navigate away.
-  }
+    setLoading(false);
+    if (error) setMessage(error.message);
+    else setMessage('Check your email for the sign-in link.');
+  };
 
   return (
-    <div style={styles.wrap}>
-      <h1 style={styles.h}>Login</h1>
-      <form onSubmit={signInWithEmail}>
-        <label style={styles.label}>Email</label>
-        <input style={styles.input} type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <button style={styles.btn} disabled={sending} type="submit">{sending ? 'Sending…' : 'Send Magic Link'}</button>
+    <main className="p-6 max-w-md mx-auto">
+      <h1 className="text-2xl font-semibold mb-4">Sign in</h1>
+
+      <form onSubmit={onSubmit} className="space-y-3">
+        <label className="block text-sm text-neutral-700">Email</label>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded border px-3 py-2"
+          placeholder="you@example.com"
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded border px-3 py-2 hover:bg-neutral-50 disabled:opacity-60"
+        >
+          {loading ? 'Sending…' : 'Send magic link'}
+        </button>
+
+        {message && <p className="text-sm text-neutral-600">{message}</p>}
       </form>
-      <button style={styles.btnAlt} onClick={signInWithGoogle} disabled={sending}>Continue with Google</button>
-      {message && <p style={{ marginTop: 12 }}>{message}</p>}
-    </div>
+    </main>
   );
 }
