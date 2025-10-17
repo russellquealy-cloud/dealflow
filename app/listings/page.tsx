@@ -3,7 +3,7 @@
 
 
 import Link from 'next/link';
-import { createSupabaseServer } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import ListingsSplitClient from '@/components/ListingsSplitClient';
 import SearchBarClient from '@/components/SearchBarClient';
 
@@ -29,7 +29,7 @@ const pick = (obj: any, keys: string[]) => {
 };
 
 export default async function ListingsPage({ searchParams }: { searchParams: any }) {
-  const supabase = createSupabaseServer();
+  const supabase = createClient();
   const { data, error } = await supabase.from('listings').select('*').limit(500);
 
   if (error) {
