@@ -69,6 +69,12 @@ requestAnimationFrame(() => map.invalidateSize());
 
       const map = Lmod.map(el, { zoomControl: false });
       mapRef.current = map;
+requestAnimationFrame(() => map.invalidateSize());
+map.whenReady(() => {
+  map.invalidateSize();
+  setTimeout(() => map.invalidateSize(), 0);
+});
+
       Lmod.control.zoom({ position: 'topleft' }).addTo(map);
 
       const FORCE_OSM = (process.env.NEXT_PUBLIC_FORCE_OSM ?? '1') === '1';
