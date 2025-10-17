@@ -67,13 +67,17 @@ requestAnimationFrame(() => map.invalidateSize());
 
       if ((el as any)._leaflet_id) { try { mapRef.current?.remove(); } catch {} (el as any)._leaflet_id = undefined; el.innerHTML = ''; }
 
-      const map = Lmod.map(el, { zoomControl: false });
-      mapRef.current = map;
+      cconst map = L.map('df-map', { zoomControl: false });
+mapRef.current = map;
+L.control.zoom({ position: 'topleft' }).addTo(map);
+
+// ✅ fix gray map on first paint & back-nav
 requestAnimationFrame(() => map.invalidateSize());
 map.whenReady(() => {
   map.invalidateSize();
   setTimeout(() => map.invalidateSize(), 0);
 });
+
 
       Lmod.control.zoom({ position: 'topleft' }).addTo(map);
 
