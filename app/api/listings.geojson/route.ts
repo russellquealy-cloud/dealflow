@@ -7,7 +7,7 @@ type Feature = {
 };
 type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
 
-export async function GET(req: Request) {
+export async function GET() {
   
   const fc: FeatureCollection = { type: 'FeatureCollection', features: [] };
   // ...keep your existing logic, but ensure inserts to fc.features conform to Feature
