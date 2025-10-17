@@ -9,6 +9,15 @@ import type { Listing } from '@/types';
 
 type Props = { listing: Listing };
 
+const toNum = (v: unknown): number => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (typeof v === 'string') {
+    const n = Number(v.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+};
+
 function badge(text: string) {
   return (
     <span
@@ -28,13 +37,19 @@ function badge(text: string) {
 
 export default function ListingCard({ listing }: Props) {
   const url = `/listing/${listing.id}`;
-  const price = listing.price ?? 0;
-  const arv = listing.arv ?? 0;
-  const repairs = listing.repairs ?? 0;
+
+  const price = toNum((listing as any).price);
+  const arv = toNum((listing as any).arv);
+  const repairs = toNum((listing as any).repairs);
   const spread = Math.max(0, arv - repairs - price);
   const roiPct = price > 0 ? (spread / price) * 100 : 0;
 
-  const addr = [listing.address1, listing.city, listing.state, listing.zip]
+  const addr = [
+    (listing as any).address1,
+    (listing as any).city,
+    (listing as any).state,
+    (listing as any).zip,
+  ]
     .filter(Boolean)
     .join(', ');
 
@@ -88,7 +103,7 @@ export default function ListingCard({ listing }: Props) {
             {badge(`ARV ${formatCurrency(arv)}`)}
             {badge(`Repairs ${formatCurrency(repairs)}`)}
             {badge(`Spread ${formatCurrency(spread)}`)}
-            {badge(`ROI ${roiPct.toFixed(0)}%`)}
+            {badge(`ROI ${Math.round(roiPct)}%`)}
           </div>
         </div>
       </div>
