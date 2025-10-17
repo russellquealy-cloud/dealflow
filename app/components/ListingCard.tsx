@@ -1,120 +1,97 @@
-"use client";
+'use client';
 
-import Image from "next/image";
-import Link from "next/link";
+import Link from 'next/link';
+import Image from 'next/image';
+import * as React from 'react';
+import { formatCurrency } from '@/lib/format';
+import { coverUrlFromListing } from '@/lib/images';
+import type { Listing } from '@/types';
 
-/** Minimal shape the card needs. Adjust/extend freely. */
-type ListingCardData = {
-  id: string | number;
-  price?: number | string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  beds?: number | string;
-  baths?: number | string;
-  sqft?: number | string;
-  arv?: number | string;
-  repairs?: number | string;
-  spread?: number | string;
-  roi?: number | string;
-  images?: string[];
-  imageUrl?: string; // alternate single URL field
-};
+type Props = { listing: Listing };
 
-type Props = { listing: ListingCardData };
-
-function toNumber(v: unknown): number {
-  if (typeof v === "number") return v;
-  if (typeof v === "string") {
-    const n = Number(v.replace(/[^0-9.\-]/g, ""));
-    return Number.isFinite(n) ? n : 0;
-  }
-  return 0;
-}
-
-function currency(n: unknown): string {
-  return toNumber(n).toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+function badge(text: string) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '2px 8px',
+        borderRadius: 999,
+        fontSize: 12,
+        background: '#ecfeff',
+        border: '1px solid #a5f3fc',
+      }}
+    >
+      {text}
+    </span>
+  );
 }
 
 export default function ListingCard({ listing }: Props) {
-  const addr1 = listing.address ?? "";
-  const city  = listing.city ?? "";
-  const state = listing.state ?? "";
-  const zip   = listing.zip ?? "";
-  const address = [addr1, city, state, zip].filter(Boolean).join(", ");
+  const url = `/listing/${listing.id}`;
+  const price = listing.price ?? 0;
+  const arv = listing.arv ?? 0;
+  const repairs = listing.repairs ?? 0;
+  const spread = Math.max(0, arv - repairs - price);
+  const roiPct = price > 0 ? (spread / price) * 100 : 0;
 
-  const beds  = toNumber(listing.beds);
-  const baths = toNumber(listing.baths);
-  const sqft  = toNumber(listing.sqft);
+  const addr = [listing.address1, listing.city, listing.state, listing.zip]
+    .filter(Boolean)
+    .join(', ');
 
-  const imageSrc =
-    listing.imageUrl ||
-    (listing.images && listing.images.length > 0 ? listing.images[0] : undefined);
+  const img = coverUrlFromListing(listing);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      {/* Image */}
-      <div className="relative h-44 w-full bg-gray-100">
-        {imageSrc ? (
-          <Image
-            src={imageSrc}
-            alt={address || "Listing photo"}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
-            No image
+    <Link
+      href={url}
+      style={{
+        display: 'block',
+        border: '1px solid #e5e7eb',
+        borderRadius: 12,
+        overflow: 'hidden',
+        background: 'white',
+        textDecoration: 'none',
+        color: 'inherit',
+      }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 12 }}>
+        <div style={{ position: 'relative', height: 140, background: '#f3f4f6' }}>
+          {img ? (
+            <Image
+              src={img}
+              alt={addr || 'Listing photo'}
+              fill
+              sizes="220px"
+              style={{ objectFit: 'cover' }}
+              priority={false}
+            />
+          ) : (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'grid',
+                placeItems: 'center',
+                color: '#9ca3af',
+                fontSize: 12,
+              }}
+            >
+              No image
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: 12 }}>
+          <div style={{ fontWeight: 900, fontSize: 18 }}>{formatCurrency(price)}</div>
+          <div style={{ marginTop: 4, color: '#6b7280', fontSize: 13 }}>{addr || '—'}</div>
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            {badge(`ARV ${formatCurrency(arv)}`)}
+            {badge(`Repairs ${formatCurrency(repairs)}`)}
+            {badge(`Spread ${formatCurrency(spread)}`)}
+            {badge(`ROI ${roiPct.toFixed(0)}%`)}
           </div>
-        )}
-      </div>
-
-      {/* Body */}
-      <div className="p-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="text-lg font-semibold">{currency(listing.price)}</div>
-          <Link
-            href={`/listing/${listing.id}`}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            View
-          </Link>
-        </div>
-
-        <div className="text-sm text-gray-600">{address || "—"}</div>
-
-        <div className="text-xs text-gray-500">
-          {beds ? `${beds} bd` : ""}{beds && baths ? " • " : ""}
-          {baths ? `${baths} ba` : ""}{(beds || baths) && sqft ? " • " : ""}
-          {sqft ? `${sqft.toLocaleString()} sq ft` : ""}
-        </div>
-
-        {/* Chips */}
-        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          {toNumber(listing.arv) > 0 && (
-            <span className="rounded-full bg-indigo-50 px-2 py-1 text-indigo-700">
-              ARV {currency(listing.arv)}
-            </span>
-          )}
-          {toNumber(listing.repairs) > 0 && (
-            <span className="rounded-full bg-orange-50 px-2 py-1 text-orange-700">
-              Repairs {currency(listing.repairs)}
-            </span>
-          )}
-          {toNumber(listing.spread) > 0 && (
-            <span className="rounded-full bg-green-50 px-2 py-1 text-green-700">
-              Spread {currency(listing.spread)}
-            </span>
-          )}
-          {toNumber(listing.roi) > 0 && (
-            <span className="rounded-full bg-rose-50 px-2 py-1 text-rose-700">
-              ROI {toNumber(listing.roi)}%
-            </span>
-          )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

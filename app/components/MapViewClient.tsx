@@ -27,6 +27,11 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     let Lmod: any;
     let ro: ResizeObserver | null = null;
     let io: IntersectionObserver | null = null;
+	// after: const map = Lmod!.map(containerRef.current!, { ... });
+map.whenReady(() => setTimeout(() => map.invalidateSize(), 0));
+// also helps on route transitions
+requestAnimationFrame(() => map.invalidateSize());
+
 
     const el = document.getElementById('df-map') as any;
     if (!el) return;

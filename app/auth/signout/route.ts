@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
-async function signout(req: Request) {
+async function handler(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
   await supabase.auth.signOut();
 
-  const url = new URL(req.url);
-  const next = url.searchParams.get("next") ?? "/login";
-  return NextResponse.redirect(`${url.origin}${next}`);
+  // send them home (uses current request origin so it works on localhost & Vercel)
+  const url = new URL("/", req.url);
+  return NextResponse.redirect(url, { status: 302 });
 }
 
-export async function GET(req: Request) {
-  return signout(req);
-}
-
-export async function POST(req: Request) {
-  return signout(req);
-}
+export { handler as POST, handler as GET };

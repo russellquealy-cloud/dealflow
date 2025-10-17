@@ -1,22 +1,18 @@
-// /app/my-listings/new/page.tsx
-import { redirect } from "next/navigation";
-import { createSupabaseServer } from "@/lib/supabase/server";
-import CreateListingForm from "@/components/CreateListingForm";
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import CreateListingForm from '@/components/CreateListingForm';
 
-const siteBg = "#fafafa";
-const outer: React.CSSProperties = { background: siteBg, minHeight: "100vh" };
-const wrap: React.CSSProperties = { maxWidth: 720, margin: "0 auto", padding: 16 };
+export const dynamic = 'force-dynamic';
 
 export default async function NewListingPage() {
-  const supabase = createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=${encodeURIComponent("/my-listings/new")}`);
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) redirect('/login?next=/my-listings/new');
+
   return (
-    <main style={outer}>
-      <div style={wrap}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 12 }}>Create Listing</h1>
-        <CreateListingForm ownerId={user.id} />
-      </div>
+    <main style={{ padding: 24 }}>
+      <h1 style={{ margin: 0, marginBottom: 12 }}>Create Listing</h1>
+      <CreateListingForm ownerId={session.user.id} />
     </main>
   );
 }

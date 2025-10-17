@@ -1,35 +1,27 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import ListingCard from '@/components/ListingCard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MyListingsPage() {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect('/login?next=/my-listings');
 
-  const { data: listings, error } = await supabase
-    .from('listings').select('*').eq('owner_id', session.user.id).order('created_at', { ascending: false });
-
-  if (error) return <div style={{ padding: 24 }}>Error: {error.message}</div>;
+  const { data: listings = [] } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('owner_id', session.user.id)
+    .order('created_at', { ascending: false });
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>My Listings</h1>
-      {(!listings || listings.length === 0) ? 'No listings yet.' :
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {listings.map((l:any) => (
-            <li key={l.id} style={{ border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginBottom:12 }}>
-              <a href={`/listing/${l.id}`} style={{ textDecoration:'none', color:'inherit', fontWeight:600 }}>
-                {l.address ?? 'Untitled'} {l.price ? `— $${Number(l.price).toLocaleString()}` : ''}
-              </a>
-            </li>
-          ))}
-        </ul>}
-    </div>
+    <main style={{ padding: 24 }}>
+      <h1 style={{ margin: 0, marginBottom: 12 }}>My Listings</h1>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {listings.map((l: any) => <ListingCard key={l.id} listing={l} />)}
+        {!listings.length && <div>No listings yet.</div>}
+      </div>
+    </main>
   );
 }

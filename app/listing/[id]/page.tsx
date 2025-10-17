@@ -1,102 +1,83 @@
-import Image from "next/image";
-import React from "react";
-import { createSupabaseServer } from "@/lib/supabase/server";
-import { formatCurrency } from "@/lib/format";
-import { coverUrlFromListing, galleryFromListing } from "@/lib/images";
-import type { Json } from "@/types";
+import { supabase } from '@/lib/supabaseClient';
+import { formatCurrency } from '@/lib/format';
+import ContactButtons from '@/components/ContactButtons';
+import { coverUrlFromListing, galleryFromListing } from '@/lib/images';
+import Image from 'next/image';
 
-type ListingRecord = {
-  id: string | number;
-  price?: number | null;
-  address?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zip?: string | null;
-  beds?: number | null;
-  baths?: number | null;
-  sqft?: number | null;
-  lat?: number | null;
-  lng?: number | null;
-  [k: string]: Json | null | undefined;
-};
-
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export default async function ListingPage({ params }: { params: { id: string } }) {
-  const supabase = createSupabaseServer();
-  const { data, error } = await supabase
-    .from("listings")
-    .select("*")
-    .eq("id", params.id)
-    .single();
+  const { data, error } = await supabase.from('listings').select('*').eq('id', params.id).maybeSingle();
+  if (error) throw error;
+  if (!data) return <div style={{ padding: 24 }}>Listing not found.</div>;
 
-  const listing = (data ?? null) as unknown as ListingRecord | null;
+  const img = coverUrlFromListing(data);
+  const gallery = galleryFromListing(data);
 
-  if (error || !listing) {
-    return (
-      <main className="p-6">
-        <h1 className="text-xl font-semibold">Listing not found</h1>
-        {error && <p className="mt-2 text-sm text-red-600">{String(error.message ?? error)}</p>}
-      </main>
-    );
-  }
+  const price = data.price ?? 0;
+  const arv = data.arv ?? 0;
+  const repairs = data.repairs ?? 0;
+  const spread = Math.max(0, arv - repairs - price);
+  const roi = price > 0 ? Math.round((spread / price) * 100) : 0;
 
-  const gallery = galleryFromListing(listing);
-  const hero = gallery[0] || coverUrlFromListing(listing);
-  const address = [listing.address, listing.city, listing.state, listing.zip]
-    .filter(Boolean)
-    .join(", ");
+  const lotSqft: number | null =
+    data.lot_sqft ?? (typeof data.lot_acres === 'number' ? Math.round(data.lot_acres * 43560) : null);
 
   return (
-    <main className="p-6 space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Media */}
-        <div className="lg:col-span-2">
-          <div className="relative w-full h-72 rounded-xl overflow-hidden border">
-            {hero ? (
-              <Image
-                src={hero}
-                alt={address || "Listing photo"}
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 66vw"
-                priority={false}
-              />
-            ) : (
-              <div className="grid h-full w-full place-items-center text-neutral-400">No image</div>
-            )}
-          </div>
-
-          {gallery.length > 1 && (
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {gallery.slice(1, 7).map((src, i) => (
-                <div key={i} className="relative h-24 w-full rounded-lg overflow-hidden border">
-                  <Image src={src} alt={`Photo ${i + 2}`} fill className="object-cover" sizes="33vw" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Facts */}
-        <aside className="space-y-3">
-          <h1 className="text-2xl font-semibold">
-            {typeof listing.price === "number" ? formatCurrency(listing.price) : "—"}
-          </h1>
-          <div className="text-neutral-700">{address || "—"}</div>
-          <div className="text-sm text-neutral-600">
-            {listing.beds ?? "—"} bd • {listing.baths ?? "—"} ba •{" "}
-            {listing.sqft ? listing.sqft.toLocaleString() : "—"} sq ft
-          </div>
-          {/* Add contact/actions here if needed */}
-        </aside>
+    <main style={{ padding: 24 }}>
+      <h1 style={{ margin: 0, marginBottom: 8 }}>{formatCurrency(price)}</h1>
+      <div style={{ color: '#6b7280', marginBottom: 16 }}>
+        {[data.address1, data.city, data.state, data.zip].filter(Boolean).join(', ')}
       </div>
 
-      {/* Description / details section placeholder */}
-      <section className="prose max-w-none">
-        <h2>Details</h2>
-        <p>More property details coming soon.</p>
-      </section>
+      {img && (
+        <div style={{ position: 'relative', width: '100%', height: 360, borderRadius: 12, overflow: 'hidden' }}>
+          <Image src={img} alt="Cover" fill style={{ objectFit: 'cover' }} priority />
+        </div>
+      )}
+
+      {gallery.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, overflowX: 'auto' }}>
+          {gallery.map((g) => (
+            <Image key={g} src={g} alt="Photo" width={160} height={110} style={{ borderRadius: 8, objectFit: 'cover' }} />
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12 }}>
+        <Info label="Beds" value={data.bedrooms ?? '—'} />
+        <Info label="Baths" value={data.bathrooms ?? '—'} />
+        <Info label="Sq Ft" value={data.sqft ?? '—'} />
+        <Info
+          label="Lot"
+          value={
+            lotSqft
+              ? `${lotSqft.toLocaleString()} sqft (${(lotSqft / 43560).toFixed(2)} ac)`
+              : data.lot_acres
+              ? `${(data.lot_acres as number).toFixed(2)} ac`
+              : '—'
+          }
+        />
+        <Info label="ARV" value={formatCurrency(arv)} />
+        <Info label="Repairs" value={formatCurrency(repairs)} />
+        <Info label="Spread" value={formatCurrency(spread)} />
+        <Info label="ROI" value={`${roi}%`} />
+      </div>
+
+      <div style={{ marginTop: 18, whiteSpace: 'pre-wrap' }}>{data.description || ''}</div>
+
+      <div style={{ marginTop: 18 }}>
+        <ContactButtons listingId={data.id} />
+      </div>
     </main>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+      <div style={{ fontSize: 12, color: '#6b7280' }}>{label}</div>
+      <div style={{ fontWeight: 700 }}>{value}</div>
+    </div>
   );
 }

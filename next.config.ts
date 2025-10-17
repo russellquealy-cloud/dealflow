@@ -1,9 +1,11 @@
-// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // Don’t fail the production build if ESLint errors are present.
-    ignoreDuringBuilds: true,
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      // add other hostnames you use
+    ],
   },
 };
 
