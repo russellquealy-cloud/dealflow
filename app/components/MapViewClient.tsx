@@ -27,14 +27,10 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     let ro: ResizeObserver | null = null;
     let io: IntersectionObserver | null = null;
 
-    const el = document.getElementById('df-map') as HTMLElement | null;
-    if (!el) return;
-
-    const ensureHeight = () => {
-      const h = el.getBoundingClientRect().height;
-      if (!h || h < 120) el.style.minHeight = '480px';
+    const ensureHeight = (root: HTMLElement) => {
+      const h = root.getBoundingClientRect().height;
+      if (!h || h < 120) root.style.minHeight = '480px';
     };
-    ensureHeight();
 
     const onResize = () => rafInvalidate();
     const onPageShow = () => rafInvalidate();
@@ -44,16 +40,22 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     const onPopState = () => setTimeout(rafInvalidate, 0);
 
     async function boot() {
+      // ✅ Always re-query the element and null-check it
+      const root = document.getElementById('df-map') as HTMLElement | null;
+      if (!root) return;
+
+      ensureHeight(root);
+
       if (mapRef.current) {
         rafInvalidate();
         return;
       }
 
       const leaflet = await import('leaflet');
-      await import('leaflet-draw'); // CSS is imported via globals.css
+      await import('leaflet-draw'); // CSS comes from globals.css
       Lmod = leaflet.default;
 
-      // Default marker icons
+      // fix default icon URLs
       const [marker2x, marker, shadow] = await Promise.all([
         import('leaflet/dist/images/marker-icon-2x.png'),
         import('leaflet/dist/images/marker-icon.png'),
@@ -65,16 +67,16 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         shadowUrl: (shadow as any).default ?? (shadow as any).src,
       });
 
-      // If a previous map instance existed on the element, nuke it
-      if ((el as any)._leaflet_id) {
+      // clear stale Leaflet instance if any
+      if ((root as any)._leaflet_id) {
         try {
           mapRef.current?.remove();
         } catch {}
-        (el as any)._leaflet_id = undefined;
-        el.innerHTML = '';
+        (root as any)._leaflet_id = undefined;
+        root.innerHTML = '';
       }
 
-      // Create map
+      // ✅ Create map
       const map = Lmod.map('df-map', { zoomControl: false });
       mapRef.current = map;
       Lmod.control.zoom({ position: 'topleft' }).addTo(map);
@@ -86,7 +88,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         setTimeout(() => map.invalidateSize(), 0);
       });
 
-      // Tiles (MapTiler with fallback to OSM)
+      // tiles (MapTiler optional; OSM fallback/forced)
       const FORCE_OSM = (process.env.NEXT_PUBLIC_FORCE_OSM ?? '1') === '1';
       const mtKey = process.env.NEXT_PUBLIC_MAPTILER_KEY?.trim();
       const canUseMapTiler = !!mtKey && !FORCE_OSM;
@@ -103,28 +105,30 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
       if (canUseMapTiler) {
         const mtUrl = `https://api.maptiler.com/maps/streets-v2/512/{z}/{x}/{y}.png?key=${mtKey}`;
-        const mt = Lmod.tileLayer(mtUrl, {
-          attribution: '© MapTiler © OpenStreetMap contributors',
-          tileSize: 512,
-          zoomOffset: -1,
-          minZoom: 3,
-          maxZoom: 19,
-          crossOrigin: true,
-        }).addTo(map);
+        const mt = Lmod
+          .tileLayer(mtUrl, {
+            attribution: '© MapTiler © OpenStreetMap contributors',
+            tileSize: 512,
+            zoomOffset: -1,
+            minZoom: 3,
+            maxZoom: 19,
+            crossOrigin: true,
+          })
+          .addTo(map);
 
         let loaded = 0;
-        const detach = () => {
-          mt.off('tileload', onLoad);
-          mt.off('tileerror', onError);
-        };
         const onLoad = () => {
           loaded += 1;
-          if (loaded === 1) detach();
+          if (loaded === 1) {
+            mt.off('tileload', onLoad);
+            mt.off('tileerror', onError);
+          }
           rafInvalidate();
         };
         const onError = () => {
           if (loaded === 0) {
-            detach();
+            mt.off('tileload', onLoad);
+            mt.off('tileerror', onError);
             if (map.hasLayer(mt)) map.removeLayer(mt);
             addOSM();
           }
@@ -133,7 +137,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         mt.on('tileerror', onError);
         setTimeout(() => {
           if (loaded === 0 && map.hasLayer(mt)) {
-            detach();
+            mt.off('tileload', onLoad);
+            mt.off('tileerror', onError);
             map.removeLayer(mt);
             addOSM();
           }
@@ -143,28 +148,29 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       }
 
       map.whenReady(() => {
-        ensureHeight();
+        ensureHeight(root);
         rafInvalidate();
         setTimeout(rafInvalidate, 50);
         setTimeout(rafInvalidate, 200);
         setTimeout(rafInvalidate, 600);
       });
 
+      // observers & listeners
       if ('ResizeObserver' in window) {
         ro = new ResizeObserver(() => {
-          ensureHeight();
+          ensureHeight(root);
           rafInvalidate();
         });
-        ro.observe(el);
+        ro.observe(root);
       }
       if ('IntersectionObserver' in window) {
         io = new IntersectionObserver((entries) => {
           if (entries.some((e) => e.isIntersecting)) {
-            ensureHeight();
+            ensureHeight(root);
             rafInvalidate();
           }
         });
-        io.observe(el);
+        io.observe(root);
       }
       window.addEventListener('resize', onResize);
       window.addEventListener('orientationchange', onResize);
@@ -172,12 +178,21 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       document.addEventListener('visibilitychange', onVisibility);
       window.addEventListener('popstate', onPopState);
 
+      // layers
       markersRef.current = Lmod.layerGroup().addTo(map);
       drawnRef.current = Lmod.featureGroup().addTo(map);
 
+      // draw controls
       const drawControl = new (Lmod as any).Control.Draw({
         position: 'topright',
-        draw: { polygon: true, rectangle: true, circle: true, marker: false, polyline: false, circlemarker: false },
+        draw: {
+          polygon: true,
+          rectangle: true,
+          circle: true,
+          marker: false,
+          polyline: false,
+          circlemarker: false,
+        },
         edit: { featureGroup: drawnRef.current },
       });
       map.addControl(drawControl);
@@ -212,6 +227,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       map.on('moveend', () => emitBounds(map.getBounds()));
     }
 
+    // run
     boot();
 
     return () => {
@@ -228,7 +244,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         } catch {}
         mapRef.current = null;
       }
-      if ((el as any)?._leaflet_id) (el as any)._leaflet_id = undefined;
+      const root = document.getElementById('df-map') as HTMLElement | null;
+      if (root && (root as any)._leaflet_id) (root as any)._leaflet_id = undefined;
     };
   }, [onBoundsChange]);
 
@@ -238,7 +255,6 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       const map = mapRef.current;
       const layer = markersRef.current;
       if (!map || !layer) return;
-
       const L = (await import('leaflet')).default;
 
       const ids = points.map((p) => p.id).join(',');
@@ -266,7 +282,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     })();
   }, [points, router, onBoundsChange]);
 
-  // Final tiny nudge (helps when tab becomes visible again)
+  // Final tiny nudge on page show / tab focus
   useEffect(() => {
     const nudge = () => setTimeout(() => mapRef.current?.invalidateSize(false), 0);
     window.addEventListener('pageshow', nudge);
@@ -278,6 +294,9 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
   }, []);
 
   return (
-    <div id="df-map" className="h-[calc(100vh-var(--df-offset))] rounded-xl border overflow-hidden" />
+    <div
+      id="df-map"
+      className="h-[calc(100vh-var(--df-offset))] rounded-xl border overflow-hidden"
+    />
   );
 }
