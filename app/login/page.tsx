@@ -1,13 +1,12 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
 
 function LoginInner() {
-  const router = useRouter();
   const params = useSearchParams();
   const next = (params ? params.get('next') : null) ?? '/';
 

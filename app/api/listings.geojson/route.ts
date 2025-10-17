@@ -8,7 +8,7 @@ type Feature = {
 type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
 
 export async function GET(req: Request) {
-  const { searchParams: _searchParams } = new URL(req.url);
+  
   const fc: FeatureCollection = { type: 'FeatureCollection', features: [] };
   // ...keep your existing logic, but ensure inserts to fc.features conform to Feature
   return Response.json(fc, { status: 200 });

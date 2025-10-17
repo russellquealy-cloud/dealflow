@@ -19,7 +19,7 @@ export async function POST(req: Request) {
         lot_sqft ? `Lot: ${Number(lot_sqft).toLocaleString()} sqft` : null,
       ].filter(Boolean),
     });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   }
 }

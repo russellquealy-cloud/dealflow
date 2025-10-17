@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
+import { useUser } from '@supabase/auth-helpers-react';
 
 export default function HeaderClient() {
   const pathname = usePathname();
   const user = useUser();
-  const supabase = useSupabaseClient();
+  
 
   return (
     <header
