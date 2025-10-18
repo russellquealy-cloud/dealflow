@@ -5,6 +5,22 @@ import type { Listing } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
+function toUndef<T>(v: T | null | undefined): T | undefined {
+  return v === null || v === undefined ? undefined : v;
+}
+
+function toStr(v: unknown): string | undefined {
+  return typeof v === 'string' ? v : undefined;
+}
+
+function toNum(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+function toStrArray(v: unknown): string[] | undefined {
+  return Array.isArray(v) && v.every((x) => typeof x === 'string') ? (v as string[]) : undefined;
+}
+
 export default async function MyListingsPage() {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -39,25 +55,22 @@ export default async function MyListingsPage() {
       <h1 style={{ margin: 0, marginBottom: 12 }}>My Listings</h1>
 
       <div style={{ display: 'grid', gap: 12 }}>
-        {listings.map((l) => (
-  <ListingCard
-    key={String(l.id)}
-    listing={{
-      id: String(l.id),
-      address: l.address ?? undefined,
-      price: l.price ?? undefined,
-      bedrooms: (l as any).bedrooms ?? (l as any).beds ?? undefined,
-      bathrooms: (l as any).bathrooms ?? (l as any).baths ?? undefined,
-      home_sqft: (l as any).home_sqft ?? (l as any).square_feet ?? undefined,
-      images: Array.isArray((l as any).images) ? (l as any).images : undefined,
-      city: l.city ?? undefined,
-      state: l.state ?? undefined,
-      zip: l.zip ?? undefined,
-      title: l.title ?? undefined,
-    }}
-  />
-))}
-
+        {listings.map((l) => {
+          const listingObj = {
+            id: String(l.id),
+            address: toStr(toUndef(l.address)),
+            price: toNum(toUndef(l.price)),
+            bedrooms: toNum((l as unknown as { bedrooms?: number; beds?: number }).bedrooms ?? (l as unknown as { beds?: number }).beds),
+            bathrooms: toNum((l as unknown as { bathrooms?: number; baths?: number }).bathrooms ?? (l as unknown as { baths?: number }).baths),
+            home_sqft: toNum((l as unknown as { home_sqft?: number; square_feet?: number }).home_sqft ?? (l as unknown as { square_feet?: number }).square_feet),
+            images: toStrArray((l as unknown as { images?: unknown }).images),
+            city: toStr(toUndef(l.city)),
+            state: toStr(toUndef(l.state)),
+            zip: toStr(toUndef(l.zip)),
+            title: toStr(toUndef(l.title)),
+          };
+          return <ListingCard key={String(l.id)} listing={listingObj} />;
+        })}
         {!listings.length && <div>No listings yet.</div>}
       </div>
     </main>
