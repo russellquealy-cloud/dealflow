@@ -5,7 +5,11 @@ import { supabase } from '@/lib/supabaseClient';
 
 export default function DebugDBPage() {
   const [status, setStatus] = useState('Loading...');
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{
+    count: unknown;
+    listings: unknown[];
+    totalListings: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

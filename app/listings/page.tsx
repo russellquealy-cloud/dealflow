@@ -68,7 +68,6 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -209,9 +208,9 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+  const handleMapBoundsChange = () => {
     // Don't filter by map bounds to prevent listings from disappearing
-    console.log('Map bounds changed (ignored):', bounds);
+    console.log('Map bounds changed (ignored)');
   };
 
   // Only show loading on initial load, not when navigating back
