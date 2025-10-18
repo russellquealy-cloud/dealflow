@@ -72,40 +72,13 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  // Load cached data on mount
-  useEffect(() => {
-    console.log('=== CHECKING CACHED DATA ===');
-    const cachedListings = localStorage.getItem('dealflow-listings');
-    const cachedPoints = localStorage.getItem('dealflow-points');
-    
-    if (cachedListings && cachedPoints) {
-      try {
-        const listings = JSON.parse(cachedListings);
-        const points = JSON.parse(cachedPoints);
-        console.log('✅ Loading cached data:', { listings: listings.length, points: points.length });
-        setAllListings(listings);
-        setAllPoints(points);
-        setLoading(false);
-        setHasLoaded(true);
-      } catch (err) {
-        console.log('❌ Error loading cached data:', err);
-      }
-    } else {
-      console.log('⚠️ No cached data found, will load from database');
-    }
-  }, []);
-
-  // Load all listings based on filters and search
+  // Load all listings from database
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       console.log('=== LOADING LISTINGS FROM DATABASE ===');
-      
-      // Always show loading on initial load
-      if (!hasLoaded) {
-        setLoading(true);
-      }
+      setLoading(true);
       
       try {
         let query = supabase.from('listings').select('*');
@@ -202,15 +175,6 @@ export default function ListingsPage() {
           setAllPoints(pts);
           setLoading(false);
           setHasLoaded(true);
-          
-          // Cache the data for persistence
-          try {
-            localStorage.setItem('dealflow-listings', JSON.stringify(items));
-            localStorage.setItem('dealflow-points', JSON.stringify(pts));
-            console.log('💾 Data cached successfully');
-          } catch (err) {
-            console.log('❌ Error caching data:', err);
-          }
         }
       } catch (err) {
         console.error('Error loading listings:', err);
@@ -220,39 +184,17 @@ export default function ListingsPage() {
 
     load();
     return () => { cancelled = true; };
-  }, [filters, searchQuery, hasLoaded]);
+  }, [filters, searchQuery]);
 
-  // FIXED: Show all listings initially, then filter by map bounds
+  // Show all listings - don't filter by map bounds to prevent disappearing
   const filteredListings = React.useMemo(() => {
     console.log('=== FILTERING LISTINGS ===');
     console.log('📊 All listings:', allListings.length);
-    console.log('🗺️ Map bounds:', !!mapBounds);
     
-    // FIXED: Always show all listings initially, don't filter by map bounds unless explicitly set
-    if (!mapBounds || allListings.length === 0) {
-      console.log('No map bounds or no listings, showing all listings:', allListings.length);
-      return allListings;
-    }
-
-    const { south, north, west, east } = mapBounds;
-    console.log('Map bounds:', { south, north, west, east });
-    
-    const filtered = allListings.filter((listing) => {
-      // Find the corresponding point for this listing
-      const point = allPoints.find(p => p.id === listing.id);
-      if (!point) {
-        console.log('No point found for listing:', listing.id);
-        return true; // FIXED: Show listing even if no point found
-      }
-
-      // Check if point is within map bounds
-      const inBounds = point.lat >= south && point.lat <= north && point.lng >= west && point.lng <= east;
-      return inBounds;
-    });
-    
-    console.log('✅ Filtered listings:', filtered.length);
-    return filtered;
-  }, [allListings, allPoints, mapBounds]);
+    // Always show all listings to prevent disappearing
+    console.log('Showing all listings:', allListings.length);
+    return allListings;
+  }, [allListings]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -268,8 +210,8 @@ export default function ListingsPage() {
   };
 
   const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
-    console.log('Map bounds changed:', bounds);
-    setMapBounds(bounds);
+    // Don't filter by map bounds to prevent listings from disappearing
+    console.log('Map bounds changed (ignored):', bounds);
   };
 
   // Only show loading on initial load, not when navigating back

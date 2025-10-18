@@ -56,8 +56,19 @@ export default function Header() {
         <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
         {email ? (
           <>
-            <span style={{ color: "#666" }}>{email}</span>
-            <button style={btn} onClick={signOut}>Sign out</button>
+            <span style={{ color: "#666", fontSize: 14 }}>{email}</span>
+            <button 
+              style={{ 
+                ...btn, 
+                background: "#dc2626", 
+                color: "#fff", 
+                border: "1px solid #dc2626",
+                fontWeight: 600 
+              }} 
+              onClick={signOut}
+            >
+              Sign out
+            </button>
           </>
         ) : (
           <Link href="/login" style={btn as React.CSSProperties}>Sign in</Link>
