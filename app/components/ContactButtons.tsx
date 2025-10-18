@@ -1,50 +1,43 @@
-"use client";
-import * as React from "react";
-import { useRouter } from "next/navigation";
+'use client';
 
-type Props = { phone?: string | null; email?: string | null };
+import * as React from 'react';
+import Link from 'next/link';
 
-const btnBase: React.CSSProperties = {
-  border: "1px solid #ddd",
-  borderRadius: 10,
-  padding: "10px 12px",
-  fontWeight: 600,
-  cursor: "pointer",
-  background: "#fff",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  whiteSpace: "nowrap",
-  color: "#111",
-  textDecoration: "none",
+type Props = {
+  listingId: string | number;
+  email?: string;     // optional seller email if you have it
+  phone?: string;     // optional seller phone if you have it
 };
 
-const rowWrap: React.CSSProperties = { display: "flex", gap: 10, flexWrap: "wrap" };
-
-function onlyDigits(s?: string | null) {
-  if (!s) return "";
-  return s.replace(/[^\d+]/g, "");
-}
-
-export default function ContactButtons({ phone, email }: Props) {
-  const router = useRouter();
-  const tel = onlyDigits(phone);
-  const sms = tel ? `sms:${tel}` : undefined;
-  const telHref = tel ? `tel:${tel}` : undefined;
-  const mailHref = email ? `mailto:${email}` : undefined;
-
-  const onBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) router.back();
-    else router.push("/listings");
-  };
+export default function ContactButtons({ listingId, email, phone }: Props) {
+  const id = String(listingId);
 
   return (
-    <div style={rowWrap}>
-      <button style={btnBase} onClick={onBack} aria-label="Go Back">⬅ Back</button>
-      <a href={telHref} style={{ ...btnBase, pointerEvents: telHref ? "auto" : "none", opacity: telHref ? 1 : 0.5 }} aria-disabled={!telHref}>📞 Call</a>
-      <a href={sms} style={{ ...btnBase, pointerEvents: sms ? "auto" : "none", opacity: sms ? 1 : 0.5 }} aria-disabled={!sms}>💬 Text</a>
-      <a href={mailHref} style={{ ...btnBase, pointerEvents: mailHref ? "auto" : "none", opacity: mailHref ? 1 : 0.5 }} aria-disabled={!mailHref}>✉️ Email</a>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Link
+        href={`/contact?listingId=${encodeURIComponent(id)}`}
+        className="border rounded px-3 py-2 hover:bg-neutral-50"
+      >
+        Message Seller
+      </Link>
+
+      <a
+        href={email ? `mailto:${email}?subject=Inquiry about listing ${id}` : '#'}
+        className="border rounded px-3 py-2 hover:bg-neutral-50"
+        aria-disabled={!email}
+        onClick={(e) => { if (!email) e.preventDefault(); }}
+      >
+        Email
+      </a>
+
+      <a
+        href={phone ? `tel:${phone}` : '#'}
+        className="border rounded px-3 py-2 hover:bg-neutral-50"
+        aria-disabled={!phone}
+        onClick={(e) => { if (!phone) e.preventDefault(); }}
+      >
+        Call / Text
+      </a>
     </div>
   );
 }
