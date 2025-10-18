@@ -40,11 +40,24 @@ export default async function MyListingsPage() {
 
       <div style={{ display: 'grid', gap: 12 }}>
         {listings.map((l) => (
-          <ListingCard
-            key={String(l.id)}
-            listing={{ ...l, address: l.address ?? undefined }}
-          />
-        ))}
+  <ListingCard
+    key={String(l.id)}
+    listing={{
+      id: String(l.id),
+      address: l.address ?? undefined,
+      price: l.price ?? undefined,
+      bedrooms: (l as any).bedrooms ?? (l as any).beds ?? undefined,
+      bathrooms: (l as any).bathrooms ?? (l as any).baths ?? undefined,
+      home_sqft: (l as any).home_sqft ?? (l as any).square_feet ?? undefined,
+      images: Array.isArray((l as any).images) ? (l as any).images : undefined,
+      city: l.city ?? undefined,
+      state: l.state ?? undefined,
+      zip: l.zip ?? undefined,
+      title: l.title ?? undefined,
+    }}
+  />
+))}
+
         {!listings.length && <div>No listings yet.</div>}
       </div>
     </main>
