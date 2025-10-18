@@ -1,13 +1,15 @@
 // app/browse/page.tsx
-import ListingsSplitClient from "@/components/ListingsSplitClient";
+'use client';
 
-export const dynamic = "force-dynamic";
+import dynamic from 'next/dynamic';
+import ListingsSplitClient from '@/components/ListingsSplitClient';
+
+const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
 export default function BrowsePage() {
-  // For now, render the split view with empty data; we’ll wire data next.
   return (
     <main className="p-4">
-      <ListingsSplitClient points={[]} listings={[]} />
+      <ListingsSplitClient points={[]} listings={[]} MapComponent={MapViewClient} />
     </main>
   );
 }
