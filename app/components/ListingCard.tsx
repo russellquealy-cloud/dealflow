@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+// import Image from 'next/image';
 import Link from 'next/link';
 
 export type ListingLike = {
@@ -56,7 +56,7 @@ export default function ListingCard({ listing }: Props) {
   const description = listing.description;
   const ownerPhone = listing.owner_phone;
   const ownerEmail = listing.owner_email;
-  const ownerName = listing.owner_name;
+  // const ownerName = listing.owner_name;
   
   const address =
     listing.address ??

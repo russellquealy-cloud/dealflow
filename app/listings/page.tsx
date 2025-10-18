@@ -68,12 +68,13 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<any>(null);
+  const [mapBounds, setMapBounds] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Load cached data on mount
   useEffect(() => {
+    console.log('=== CHECKING CACHED DATA ===');
     const cachedListings = localStorage.getItem('dealflow-listings');
     const cachedPoints = localStorage.getItem('dealflow-points');
     
@@ -81,14 +82,16 @@ export default function ListingsPage() {
       try {
         const listings = JSON.parse(cachedListings);
         const points = JSON.parse(cachedPoints);
-        console.log('Loading cached data:', { listings: listings.length, points: points.length });
+        console.log('✅ Loading cached data:', { listings: listings.length, points: points.length });
         setAllListings(listings);
         setAllPoints(points);
         setLoading(false);
         setHasLoaded(true);
       } catch (err) {
-        console.log('Error loading cached data:', err);
+        console.log('❌ Error loading cached data:', err);
       }
+    } else {
+      console.log('⚠️ No cached data found, will load from database');
     }
   }, []);
 
@@ -97,7 +100,7 @@ export default function ListingsPage() {
     let cancelled = false;
 
     const load = async () => {
-      console.log('=== LOADING LISTINGS ===');
+      console.log('=== LOADING LISTINGS FROM DATABASE ===');
       
       // Always show loading on initial load
       if (!hasLoaded) {
@@ -191,9 +194,9 @@ export default function ListingsPage() {
           })
           .filter((x): x is MapPoint => !!x);
 
-        console.log('Processed data:', { items: items.length, points: pts.length });
-        console.log('Sample item:', items[0]);
-        console.log('Sample point:', pts[0]);
+        console.log('✅ Processed data:', { items: items.length, points: pts.length });
+        console.log('📋 Sample item:', items[0]);
+        console.log('📍 Sample point:', pts[0]);
         
         if (!cancelled) {
           setAllListings(items);
@@ -205,9 +208,9 @@ export default function ListingsPage() {
           try {
             localStorage.setItem('dealflow-listings', JSON.stringify(items));
             localStorage.setItem('dealflow-points', JSON.stringify(pts));
-            console.log('Data cached successfully');
+            console.log('💾 Data cached successfully');
           } catch (err) {
-            console.log('Error caching data:', err);
+            console.log('❌ Error caching data:', err);
           }
         }
       } catch (err) {
@@ -223,8 +226,8 @@ export default function ListingsPage() {
   // FIXED: Show all listings initially, then filter by map bounds
   const filteredListings = React.useMemo(() => {
     console.log('=== FILTERING LISTINGS ===');
-    console.log('All listings:', allListings.length);
-    console.log('Map bounds:', !!mapBounds);
+    console.log('📊 All listings:', allListings.length);
+    console.log('🗺️ Map bounds:', !!mapBounds);
     
     // FIXED: Always show all listings initially, don't filter by map bounds unless explicitly set
     if (!mapBounds || allListings.length === 0) {
@@ -248,7 +251,7 @@ export default function ListingsPage() {
       return inBounds;
     });
     
-    console.log('Filtered listings:', filtered.length);
+    console.log('✅ Filtered listings:', filtered.length);
     return filtered;
   }, [allListings, allPoints, mapBounds]);
 
@@ -265,7 +268,7 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = (bounds: any) => {
+  const handleMapBoundsChange = (bounds: unknown) => {
     console.log('Map bounds changed:', bounds);
     setMapBounds(bounds);
   };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import ListingCard from './ListingCard';
 
 export type MapPoint = { id: string; lat: number; lng: number; price?: number };
@@ -9,7 +9,7 @@ export type ListItem = { id: string } & Record<string, unknown>;
 type Props = {
   points: MapPoint[];
   listings: ListItem[];
-  MapComponent: React.ComponentType<{ points: MapPoint[]; onBoundsChange?: (bounds: any) => void }>;
+  MapComponent: React.ComponentType<{ points: MapPoint[]; onBoundsChange?: (bounds: unknown) => void }>;
 };
 
 export default function ListingsSplitClient({ points, listings, MapComponent }: Props) {

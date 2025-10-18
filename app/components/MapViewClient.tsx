@@ -98,13 +98,17 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
   // Render markers - FIXED: Better error handling and marker management
   useEffect(() => {
     (async () => {
+      console.log('=== MAP MARKER RENDERING ===');
+      console.log('Points received:', points);
+      console.log('Points length:', points?.length || 0);
+      
       const map = mapRef.current;
       if (!map || !isInitializedRef.current) {
-        console.log('Map not ready for markers:', { map: !!map, initialized: isInitializedRef.current });
+        console.log('❌ Map not ready for markers:', { map: !!map, initialized: isInitializedRef.current });
         return;
       }
       
-      console.log('Rendering markers for points:', points?.length || 0);
+      console.log('✅ Map is ready, rendering markers for points:', points?.length || 0);
       
       try {
         const L = (await import('leaflet')).default;
@@ -122,12 +126,12 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
 
         // Add new markers only if we have points
         if (points && points.length > 0) {
-          console.log('Creating markers for', points.length, 'points');
+          console.log('🎯 Creating markers for', points.length, 'points');
           const group = L.layerGroup();
           
           for (const p of points) {
             try {
-              console.log('Creating marker for point:', p);
+              console.log('📍 Creating marker for point:', p);
               const markerIcon = L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="
@@ -150,15 +154,15 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
 
               const m = L.marker([p.lat, p.lng], { icon: markerIcon }).addTo(group);
               m.on('click', () => router.push(`/listing/${p.id}`));
-              console.log('Marker created successfully for:', p.id);
+              console.log('✅ Marker created successfully for:', p.id, 'at', p.lat, p.lng);
             } catch (err) {
-              console.error('Error creating marker for point:', p, err);
+              console.error('❌ Error creating marker for point:', p, err);
             }
           }
           
           group.addTo(map);
           markersRef.current = group;
-          console.log('All markers added to map');
+          console.log('🎉 All markers added to map successfully');
           
           // FIXED: Only fit bounds once on initial load, don't snap back
           if (!didFitRef.current && points.length > 0) {
@@ -172,7 +176,7 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
             }
           }
         } else {
-          console.log('No points to render markers for');
+          console.log('⚠️ No points to render markers for');
         }
         
         requestAnimationFrame(() => {
