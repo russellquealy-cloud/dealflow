@@ -105,7 +105,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     <div
       id="df-map"
       className="h-[calc(100vh-var(--df-offset))] rounded-xl border overflow-hidden"
-      style={{ minHeight: 0, minWidth: 0 }}
+      style={{ height: '100%', width: '100%', minHeight: 0, minWidth: 0, borderRadius: 12, border: '1px solid #e5e7eb' }}
     />
   );
 }
