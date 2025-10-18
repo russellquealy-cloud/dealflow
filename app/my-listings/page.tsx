@@ -41,9 +41,12 @@ export default async function MyListingsPage() {
 
       <div style={{ display: 'grid', gap: 12 }}>
         {listings.map((l) => (
-          <ListingCard key={String(l.id)} listing={l} />
-        ))}
-        {!listings.length && <div>No listings yet.</div>}
+  <ListingCard
+    key={String(l.id)}
+    listing={{ ...l, address: l.address ?? undefined }}
+  />
+))}
+istings.length && <div>No listings yet.</div>}
       </div>
     </main>
   );
