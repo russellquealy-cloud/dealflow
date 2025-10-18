@@ -5,14 +5,14 @@ import React, { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import MobileTabs from '@/components/MobileTabs';
-import ListingList from '@/components/ListingList';
+import ListingList, { type ListItem } from '@/components/ListingList';
 
 const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
 export default function ListingsPage() {
   const [tab, setTab] = useState<'list' | 'map'>('list');
 
-  // wire up filter state for FiltersBar
+  // filter state for FiltersBar
   const [filters, setFilters] = useState<Filters>({
     minBeds: null,
     maxBeds: null,
@@ -24,8 +24,9 @@ export default function ListingsPage() {
     maxSqft: null,
   });
 
-  // TODO: use `filters` to query listings and points
-  const points = useMemo(() => [], [filters]);
+  // TODO: replace with real query using `filters`
+  const items: ListItem[] = useMemo(() => [], [filters]);
+  const points = useMemo(() => [], [filters]); // map points
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', minHeight: 0 }}>
@@ -49,7 +50,7 @@ export default function ListingsPage() {
         }}
       >
         <div style={{ overflowY: 'auto', minWidth: 0 }}>
-          <ListingList />
+          <ListingList items={items} />
         </div>
         <div style={{ minWidth: 0, minHeight: 0 }}>
           <MapViewClient points={points} />
@@ -60,7 +61,7 @@ export default function ListingsPage() {
       <div className="md:hidden" style={{ flex: 1, minHeight: 0 }}>
         {tab === 'list' ? (
           <div style={{ height: '100%', overflowY: 'auto' }}>
-            <ListingList />
+            <ListingList items={items} />
           </div>
         ) : (
           <div style={{ height: '100%', minHeight: 0, minWidth: 0 }}>
