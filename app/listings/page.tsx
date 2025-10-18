@@ -1,3 +1,4 @@
+// app/listings/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -33,6 +34,14 @@ type Row = {
   roi?: number | string | null;
 };
 
+type CoordRow = {
+  lat?: number | null;
+  lng?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  lon?: number | null;
+};
+
 const toNum = (v: unknown): number | undefined => {
   if (typeof v === 'number' && Number.isFinite(v)) return v;
   if (typeof v === 'string') {
@@ -41,6 +50,19 @@ const toNum = (v: unknown): number | undefined => {
   }
   return undefined;
 };
+
+function pickLatLng(row: CoordRow): { lat: number; lng: number } | null {
+  const la = typeof row.lat === 'number' ? row.lat : typeof row.latitude === 'number' ? row.latitude : undefined;
+  const ln =
+    typeof row.lng === 'number'
+      ? row.lng
+      : typeof row.longitude === 'number'
+      ? row.longitude
+      : typeof row.lon === 'number'
+      ? row.lon
+      : undefined;
+  return la !== undefined && ln !== undefined ? { lat: la, lng: ln } : null;
+}
 
 export default function ListingsPage() {
   const [filters, setFilters] = useState<Filters>({
@@ -90,14 +112,11 @@ export default function ListingsPage() {
       });
 
       const pts: MapPoint[] = rows
-  .map((r) => {
-    const lat = (r as any).lat ?? (r as any).latitude;
-    const lng = (r as any).lng ?? (r as any).longitude ?? (r as any).lon;
-    return typeof lat === 'number' && typeof lng === 'number'
-      ? { id: String(r.id), lat, lng }
-      : null;
-  })
-  .filter((x): x is MapPoint => !!x);
+        .map((r) => {
+          const c = pickLatLng(r as unknown as CoordRow);
+          return c ? { id: String(r.id), ...c } : null;
+        })
+        .filter((x): x is MapPoint => x !== null);
 
       setListings(items);
       setPoints(pts);
@@ -107,10 +126,8 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, []);
 
- return (
-    // FULL-HEIGHT PAGE. No document scroll.
+  return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      {/* header + search */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px 8px 18px' }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Find Deals</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -123,12 +140,10 @@ export default function ListingsPage() {
         </div>
       </div>
 
-      {/* filters */}
       <div style={{ padding: '6px 18px 12px 18px', borderBottom: '1px solid #e5e7eb' }}>
         <FiltersBar value={filters} onChange={setFilters} />
       </div>
 
-      {/* the split fills the rest of the viewport */}
       <div style={{ flex: '1 1 auto', minHeight: 0 }}>
         <ListingsSplitClient points={points} listings={listings} MapComponent={MapViewClient} />
       </div>
