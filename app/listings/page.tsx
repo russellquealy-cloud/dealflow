@@ -1,4 +1,3 @@
-// app/listings/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -9,10 +8,14 @@ import { supabase } from '@/lib/supabaseClient';
 
 const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
-type ListingRow = {
+type Row = {
   id: string;
   address: string | null;
-  price: number | string | null;
+  title?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  price?: number | string | null;
   bedrooms?: number | null;
   beds?: number | null;
   bathrooms?: number | null;
@@ -23,6 +26,20 @@ type ListingRow = {
   lng?: number | null;
   images?: string[] | null;
   cover_image_url?: string | null;
+  arv?: number | string | null;
+  repairs?: number | string | null;
+  repair_costs?: number | string | null;
+  spread?: number | string | null;
+  roi?: number | string | null;
+};
+
+const toNum = (v: unknown): number | undefined => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
 };
 
 export default function ListingsPage() {
@@ -43,21 +60,35 @@ export default function ListingsPage() {
       const { data, error } = await supabase.from('listings').select('*').limit(200);
       if (error || !data || cancelled) return;
 
-      const rows = data as unknown as ListingRow[];
+      const rows = data as unknown as Row[];
 
-      // cards
-      const items: ListItem[] = rows.map((r) => ({
-        id: String(r.id),
-        address: r.address ?? undefined,
-        price: r.price ?? undefined,
-        bedrooms: (r.bedrooms ?? r.beds) ?? undefined,
-        bathrooms: (r.bathrooms ?? r.baths) ?? undefined,
-        home_sqft: (r.home_sqft ?? r.square_feet) ?? undefined,
-        images: Array.isArray(r.images) ? r.images : undefined,
-        cover_image_url: r.cover_image_url ?? undefined,
-      }));
+      const items: ListItem[] = rows.map((r) => {
+        const price = toNum(r.price);
+        const arv = toNum(r.arv);
+        const repairs = toNum(r.repairs ?? r.repair_costs);
+        const spread = toNum(r.spread) ?? (arv !== undefined && price !== undefined && repairs !== undefined ? arv - price - repairs : undefined);
+        const roi = toNum(r.roi) ?? (spread !== undefined && price !== undefined ? Math.round((spread / price) * 100) : undefined);
 
-      // pins
+        return {
+          id: String(r.id),
+          title: r.title ?? undefined,
+          address: r.address ?? undefined,
+          city: r.city ?? undefined,
+          state: r.state ?? undefined,
+          zip: r.zip ?? undefined,
+          price,
+          bedrooms: (r.bedrooms ?? r.beds) ?? undefined,
+          bathrooms: (r.bathrooms ?? r.baths) ?? undefined,
+          home_sqft: (r.home_sqft ?? r.square_feet) ?? undefined,
+          images: Array.isArray(r.images) ? r.images : undefined,
+          cover_image_url: r.cover_image_url ?? undefined,
+          arv,
+          repairs,
+          spread,
+          roi,
+        };
+      });
+
       const pts: MapPoint[] = rows
         .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
         .map((r) => ({ id: String(r.id), lat: r.lat as number, lng: r.lng as number }));
