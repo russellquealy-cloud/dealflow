@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import ListingsSplitClient from '@/components/ListingsSplitClient';
 import SearchBarClient from '@/components/SearchBarClient';
+import { price, beds, baths, sqft } from '@/lib/filterOptions';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -78,35 +79,70 @@ export default async function ListingsPage({ searchParams }: { searchParams: any
         <SearchBarClient />
       </div>
 
-      {/* filters row (kept, feel free to wire to params later) */}
-      <div className="grid grid-cols-2 md:grid-cols-9 gap-3">
-        {[
-          { label: 'Min Beds (1+)', name: 'minBeds' },
-          { label: 'Max Beds', name: 'maxBeds' },
-          { label: 'Min Baths (1+)', name: 'minBaths' },
-          { label: 'Max Baths', name: 'maxBaths' },
-          { label: 'Min Price', name: 'minPrice' },
-          { label: 'Max Price', name: 'maxPrice' },
-          { label: 'Min SqFt', name: 'minSqft' },
-          { label: 'Max SqFt', name: 'maxSqft' },
-        ].map((f) => (
-          <div key={f.name} className="space-y-1">
-            <div className="text-xs text-gray-600">{f.label}</div>
-            <select className="w-full rounded-md border px-2 py-2">
-              <option>Any</option>
-              {/* hook these to params when ready */}
-            </select>
-          </div>
-        ))}
-        <div className="flex items-end">
-          <Link
-            href="/listings"
-            className="rounded-md border px-3 py-2 hover:bg-gray-50"
-          >
-            Reset view
-          </Link>
-        </div>
-      </div>
+{/* filters row */}
+<div className="grid grid-cols-2 md:grid-cols-9 gap-3">
+  {/* Beds */}
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Min Beds</label>
+    <select className="rounded-md border px-2 py-2">
+      {beds.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Max Beds</label>
+    <select className="rounded-md border px-2 py-2">
+      {beds.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+
+  {/* Baths */}
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Min Baths</label>
+    <select className="rounded-md border px-2 py-2">
+      {baths.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Max Baths</label>
+    <select className="rounded-md border px-2 py-2">
+      {baths.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+
+  {/* Price */}
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Min Price</label>
+    <select className="rounded-md border px-2 py-2">
+      {price.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Max Price</label>
+    <select className="rounded-md border px-2 py-2">
+      {price.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+
+  {/* Sq Ft */}
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Min Sq Ft</label>
+    <select className="rounded-md border px-2 py-2">
+      {sqft.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+  <div className="space-y-1">
+    <label className="text-xs text-gray-600">Max Sq Ft</label>
+    <select className="rounded-md border px-2 py-2">
+      {sqft.map((o, i) => <option key={i} value={String(o)}>{String(o)}</option>)}
+    </select>
+  </div>
+
+  <div className="flex items-end">
+    <Link href="/listings" className="rounded-md border px-3 py-2 hover:bg-gray-50">Reset view</Link>
+  </div>
+</div>
+
+
 
       {/* main split view – page won’t scroll; list column will */}
       <ListingsSplitClient points={points} listings={listings} />

@@ -292,6 +292,28 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       document.removeEventListener('visibilitychange', nudge);
     };
   }, []);
+useEffect(() => {
+  const handler = async (e: Event) => {
+    const map = mapRef.current; if (!map) return;
+    const { q } = (e as CustomEvent).detail as { q: string };
+    if (!q) return;
+    const key = process.env.NEXT_PUBLIC_MAPTILER_KEY?.trim();
+    try {
+      if (key) {
+        const r = await fetch(`https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json?key=${key}`);
+        const j = await r.json(); const f = j?.features?.[0];
+        if (f?.center) { const [lng, lat] = f.center as [number, number]; map.flyTo([lat, lng], 12); }
+      } else {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`);
+        const j = await r.json(); const f = j?.[0];
+        if (f?.lat && f?.lon) map.flyTo([Number(f.lat), Number(f.lon)], 12);
+      }
+      requestAnimationFrame(() => map.invalidateSize());
+    } catch {}
+  };
+  window.addEventListener('df:geocode', handler as EventListener);
+  return () => window.removeEventListener('df:geocode', handler as EventListener);
+}, []);
 
   return (
     <div

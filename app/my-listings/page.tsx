@@ -19,6 +19,11 @@ export default async function MyListingsPage() {
   const listings = rows as unknown as Listing[];
 
   return (
+<div className="mb-3">
+  <a href="/my-listings/new" className="rounded-md border px-3 py-2 hover:bg-gray-50">
+    Post a Deal
+  </a>
+</div>
     <main style={{ padding: 24 }}>
       <h1 style={{ margin: 0, marginBottom: 12 }}>My Listings</h1>
       <div style={{ display: 'grid', gap: 12 }}>
