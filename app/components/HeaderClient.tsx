@@ -1,33 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/app/lib/supabaseClient";
 
 export default function HeaderClient() {
   const pathname = usePathname();
-  const [isAuthed, setAuthed] = useState(false);
+  const router = useRouter();
+  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    const refresh = async () => {
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      setAuthed(!!data.session);
-    });
+      setEmail(data.session?.user?.email ?? null);
+    };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setAuthed(!!session);
+    // initial + keep in sync
+    refresh();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      refresh();
+      router.refresh();
     });
 
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
-  const nextParam = encodeURIComponent(pathname || "/listings");
+  const nextParam = encodeURIComponent(pathname || "/");
 
   return (
     <header
@@ -35,37 +40,32 @@ export default function HeaderClient() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "12px 16px",
+        padding: "10px 14px",
         borderBottom: "1px solid #e5e7eb",
-        background: "white",
+        background: "#fff",
       }}
     >
-      <Link href="/listings" style={{ fontWeight: 900 }}>
+      <Link href="/listings" style={{ fontWeight: 900, textDecoration: "none", color: "#111" }}>
         Deal Flow
       </Link>
 
-      <nav style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <Link href="/listings">Browse</Link>
+      <nav style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <Link href="/listings">Listings</Link>
         <Link href="/my-listings">My Listings</Link>
+        <Link href="/post">Post Deal</Link>
 
-        {/* Post a Deal—route unauth users through login */}
-        <Link
-          href={isAuthed ? "/my-listings/new" : `/login?next=/my-listings/new`}
-          className="border px-3 py-1 rounded"
-        >
-          Post a Deal
-        </Link>
+        <span style={{ color: "#6b7280", fontSize: 13 }}>
+          {email ?? "Not Logged In"}
+        </span>
 
-        {!isAuthed ? (
+        {email ? (
+          <form action="/auth/signout" method="post" style={{ margin: 0 }}>
+            <button type="submit" className="border px-3 py-1 rounded">Sign out</button>
+          </form>
+        ) : (
           <Link href={`/login?next=${nextParam}`} className="border px-3 py-1 rounded">
             Sign in
           </Link>
-        ) : (
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="border px-3 py-1 rounded">
-              Sign out
-            </button>
-          </form>
         )}
       </nav>
     </header>

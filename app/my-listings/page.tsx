@@ -7,10 +7,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function MyListingsPage() {
   const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // If no session, redirect to login with return
   if (!session) redirect('/login?next=/my-listings');
+}
+
 
   const { data: rows = [] } = await supabase
     .from('listings')

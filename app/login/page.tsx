@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/app/lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,43 +18,41 @@ function LoginInner() {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
+    try {
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectTo },
+      });
 
-    setLoading(false);
-    if (error) setMessage(error.message);
-    else setMessage('Check your email for the sign-in link.');
+      if (error) setMessage(error.message);
+      else setMessage('Check your email for the sign-in link.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <main className="p-6 max-w-md mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Sign in</h1>
-
-      <form onSubmit={onSubmit} className="space-y-3">
-        <label className="block text-sm text-neutral-700">Email</label>
+    <main style={{ padding: 16, maxWidth: 420, margin: '0 auto' }}>
+      <h1 style={{ margin: '0 0 12px' }}>Sign in</h1>
+      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 8 }}>
+        <label style={{ fontSize: 13, color: '#374151' }}>Email</label>
         <input
           type="email"
-          required
           value={email}
+          required
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-          placeholder="you@example.com"
+          style={{ height: 40, border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px' }}
         />
-
         <button
-          type="submit"
           disabled={loading}
-          className="rounded border px-3 py-2 hover:bg-neutral-50 disabled:opacity-60"
+          style={{ height: 40, borderRadius: 8, border: '1px solid #0ea5e9', background: '#0ea5e9', color: '#fff' }}
         >
           {loading ? 'Sending…' : 'Send magic link'}
         </button>
-
-        {message && <p className="text-sm text-neutral-600">{message}</p>}
+        {message && <p style={{ fontSize: 13, color: '#374151' }}>{message}</p>}
       </form>
     </main>
   );
@@ -62,7 +60,7 @@ function LoginInner() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="p-6 max-w-md mx-auto">Loading…</main>}>
+    <Suspense fallback={<main style={{ padding: 16 }}>Loading…</main>}>
       <LoginInner />
     </Suspense>
   );
