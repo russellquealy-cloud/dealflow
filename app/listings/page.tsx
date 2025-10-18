@@ -4,63 +4,59 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
-import MobileTabs from '@/components/MobileTabs';
-import ListingList, { type ListItem } from '@/components/ListingList';
-import type { Point } from '@/components/MapViewClient';
+import ListingsSplitClient from '@/components/ListingsSplitClient';
 
 const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
-export default function ListingsPage() {
-  const [tab, setTab] = useState<'list' | 'map'>('list');
+export type MapPoint = { id: string; lat: number; lng: number };
+export type ListItem = { id: string } & Record<string, unknown>;
 
+export default function ListingsPage() {
+  // UI state only; wire to data later
   const [filters, setFilters] = useState<Filters>({
-    minBeds: null,
-    maxBeds: null,
-    minBaths: null,
-    maxBaths: null,
-    minPrice: null,
-    maxPrice: null,
-    minSqft: null,
-    maxSqft: null,
+    minBeds: null, maxBeds: null,
+    minBaths: null, maxBaths: null,
+    minPrice: null, maxPrice: null,
+    minSqft: null, maxSqft: null,
   });
 
-  // TODO: replace with real query using `filters`
-  const items: ListItem[] = [];
-  const points: Point[] = []; // { id, lat, lng }
+  // placeholders; replace with real data
+  const points: MapPoint[] = [];
+  const listings: ListItem[] = [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', minHeight: 0 }}>
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+      {/* Title + search row (visual match to old) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px 8px 18px' }}>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Find Deals</h2>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            aria-label="Search city or address"
+            placeholder="Search city or address"
+            style={{ height: 36, width: 360, maxWidth: '62vw', border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px' }}
+          />
+          <button style={{ height: 36, padding: '0 14px', border: '1px solid #111', borderRadius: 8, background: '#111', color: '#fff' }}>
+            Search
+          </button>
+          <a href="/listings" style={{ textDecoration: 'none' }}>
+            <button style={{ height: 36, padding: '0 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
+              Reset view
+            </button>
+          </a>
+        </div>
+      </div>
+
+      {/* Filters row */}
+      <div style={{ padding: '6px 18px 12px 18px', borderBottom: '1px solid #e5e7eb' }}>
         <FiltersBar value={filters} onChange={setFilters} />
       </div>
 
-      <div className="md:hidden" style={{ padding: 8 }}>
-        <MobileTabs active={tab} onChange={setTab} />
-      </div>
-
-      <div
-        className="hidden md:grid"
-        style={{ gridTemplateColumns: '440px 1fr', flex: 1, minHeight: 0, minWidth: 0 }}
-      >
-        <div style={{ overflowY: 'auto', minWidth: 0 }}>
-          <ListingList items={items} />
-        </div>
-        <div style={{ minWidth: 0, minHeight: 0 }}>
-          <MapViewClient points={points} />
-        </div>
-      </div>
-
-      <div className="md:hidden" style={{ flex: 1, minHeight: 0 }}>
-        {tab === 'list' ? (
-          <div style={{ height: '100%', overflowY: 'auto' }}>
-            <ListingList items={items} />
-          </div>
-        ) : (
-          <div style={{ height: '100%', minHeight: 0, minWidth: 0 }}>
-            <MapViewClient points={points} />
-          </div>
-        )}
-      </div>
+      {/* Split: LEFT map, RIGHT list (exact old layout) */}
+      <ListingsSplitClient
+        points={points}
+        listings={listings}
+        MapComponent={MapViewClient}
+      />
     </div>
   );
 }
