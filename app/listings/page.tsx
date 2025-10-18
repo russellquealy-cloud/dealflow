@@ -1,18 +1,31 @@
 // app/listings/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
-import ListingsSplitClient from '@/components/ListingsSplitClient';
+import ListingsSplitClient, { type MapPoint, type ListItem } from '@/components/ListingsSplitClient';
+import { supabase } from '@/lib/supabaseClient';
 
 const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
-export type MapPoint = { id: string; lat: number; lng: number };
-export type ListItem = { id: string } & Record<string, unknown>;
+type ListingRow = {
+  id: string;
+  address: string | null;
+  price: number | string | null;
+  bedrooms?: number | null;
+  beds?: number | null;
+  bathrooms?: number | null;
+  baths?: number | null;
+  home_sqft?: number | null;
+  square_feet?: number | null;
+  lat?: number | null;
+  lng?: number | null;
+  images?: string[] | null;
+  cover_image_url?: string | null;
+};
 
 export default function ListingsPage() {
-  // UI state only; wire to data later
   const [filters, setFilters] = useState<Filters>({
     minBeds: null, maxBeds: null,
     minBaths: null, maxBaths: null,
@@ -20,13 +33,45 @@ export default function ListingsPage() {
     minSqft: null, maxSqft: null,
   });
 
-  // placeholders; replace with real data
-  const points: MapPoint[] = [];
-  const listings: ListItem[] = [];
+  const [listings, setListings] = useState<ListItem[]>([]);
+  const [points, setPoints] = useState<MapPoint[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      const { data, error } = await supabase.from('listings').select('*').limit(200);
+      if (error || !data || cancelled) return;
+
+      const rows = data as unknown as ListingRow[];
+
+      // cards
+      const items: ListItem[] = rows.map((r) => ({
+        id: String(r.id),
+        address: r.address ?? undefined,
+        price: r.price ?? undefined,
+        bedrooms: (r.bedrooms ?? r.beds) ?? undefined,
+        bathrooms: (r.bathrooms ?? r.baths) ?? undefined,
+        home_sqft: (r.home_sqft ?? r.square_feet) ?? undefined,
+        images: Array.isArray(r.images) ? r.images : undefined,
+        cover_image_url: r.cover_image_url ?? undefined,
+      }));
+
+      // pins
+      const pts: MapPoint[] = rows
+        .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
+        .map((r) => ({ id: String(r.id), lat: r.lat as number, lng: r.lng as number }));
+
+      setListings(items);
+      setPoints(pts);
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
-      {/* Title + search row (visual match to old) */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px 8px 18px' }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Find Deals</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -46,17 +91,11 @@ export default function ListingsPage() {
         </div>
       </div>
 
-      {/* Filters row */}
       <div style={{ padding: '6px 18px 12px 18px', borderBottom: '1px solid #e5e7eb' }}>
         <FiltersBar value={filters} onChange={setFilters} />
       </div>
 
-      {/* Split: LEFT map, RIGHT list (exact old layout) */}
-      <ListingsSplitClient
-        points={points}
-        listings={listings}
-        MapComponent={MapViewClient}
-      />
+      <ListingsSplitClient points={points} listings={listings} MapComponent={MapViewClient} />
     </div>
   );
 }
