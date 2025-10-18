@@ -1,15 +1,16 @@
-// app/browse/page.tsx
 'use client';
 
-import dynamic from 'next/dynamic';
-import ListingsSplitClient from '@/components/ListingsSplitClient';
-
-const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
+import React from 'react';
+import Link from 'next/link';
 
 export default function BrowsePage() {
   return (
-    <main className="p-4">
-      <ListingsSplitClient points={[]} listings={[]} MapComponent={MapViewClient} />
-    </main>
+    <div style={{ padding: 20 }}>
+      <h1>Browse Properties</h1>
+      <p>This is a placeholder browse page. You can customize this later.</p>
+      <Link href="/listings" style={{ color: '#0ea5e9', textDecoration: 'underline' }}>
+        ← Back to Listings
+      </Link>
+    </div>
   );
 }

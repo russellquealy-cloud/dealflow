@@ -6,13 +6,19 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type Point = { id: string; lat: number; lng: number; price?: number };
-type Props = { points: Point[]; onBoundsChange?: (b: any) => void };
+type Props = { 
+  points: Point[]; 
+  onBoundsChange?: (b: any) => void;
+  center?: { lat: number; lng: number };
+};
 
-export default function MapViewClient({ points, onBoundsChange }: Props) {
+export default function MapViewClient({ points, onBoundsChange, center }: Props) {
   const router = useRouter();
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any>(null);
   const didFitRef = useRef(false);
+  const lastCenterRef = useRef<{ lat: number; lng: number } | null>(null);
+  const isInitializedRef = useRef(false);
 
   const ensureHeight = (el: HTMLElement) => {
     el.style.minWidth = '0';
@@ -36,22 +42,40 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
       const map = Lmod.map(root, { center: [32.2226, -110.9747], zoom: 10 });
       mapRef.current = map;
+      isInitializedRef.current = true;
 
       Lmod.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
       }).addTo(map);
 
-      setTimeout(() => map.invalidateSize(false), 0);
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize(false);
+        }
+      }, 0);
 
-      ro = new ResizeObserver(() => map.invalidateSize(false));
+      ro = new ResizeObserver(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize(false);
+        }
+      });
       ro.observe(root);
+      
       io = new IntersectionObserver((entries) => {
-        if (entries.some((e) => e.isIntersecting)) requestAnimationFrame(() => map.invalidateSize(false));
+        if (entries.some((e) => e.isIntersecting)) {
+          requestAnimationFrame(() => {
+            if (mapRef.current) {
+              mapRef.current.invalidateSize(false);
+            }
+          });
+        }
       });
       io.observe(root);
 
       const emitBounds = () => {
-        if (onBoundsChange) onBoundsChange(map.getBounds());
+        if (onBoundsChange && mapRef.current) {
+          onBoundsChange(mapRef.current.getBounds());
+        }
       };
       map.on('moveend', emitBounds);
       map.on('zoomend', emitBounds);
@@ -61,41 +85,124 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       try {
         ro?.disconnect();
         io?.disconnect();
-        mapRef.current?.off?.();
-        mapRef.current?.remove?.();
-        mapRef.current = null;
+        if (mapRef.current) {
+          mapRef.current.off?.();
+          mapRef.current.remove?.();
+          mapRef.current = null;
+          isInitializedRef.current = false;
+        }
       } catch {}
     };
   }, [onBoundsChange]);
 
+  // Render markers - FIXED: Better error handling and marker management
   useEffect(() => {
     (async () => {
       const map = mapRef.current;
-      if (!map) return;
-      const L = (await import('leaflet')).default;
-
-      if (markersRef.current) {
-        markersRef.current.clearLayers?.();
-        map.removeLayer(markersRef.current);
-        markersRef.current = null;
+      if (!map || !isInitializedRef.current) {
+        console.log('Map not ready for markers:', { map: !!map, initialized: isInitializedRef.current });
+        return;
       }
+      
+      console.log('Rendering markers for points:', points?.length || 0);
+      
+      try {
+        const L = (await import('leaflet')).default;
 
-      const group = L.layerGroup();
-      for (const p of points ?? []) {
-        const m = L.marker([p.lat, p.lng]).addTo(group);
-        m.on('click', () => router.push(`/listing/${p.id}`));
-      }
-      group.addTo(map);
-      markersRef.current = group;
+        // Clear existing markers safely
+        if (markersRef.current) {
+          try {
+            markersRef.current.clearLayers?.();
+            map.removeLayer(markersRef.current);
+          } catch (err) {
+            console.log('Error clearing markers:', err);
+          }
+          markersRef.current = null;
+        }
 
-      if (points && points.length && !didFitRef.current) {
-        const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
-        map.fitBounds(bounds, { padding: [20, 20] });
-        didFitRef.current = true;
+        // Add new markers only if we have points
+        if (points && points.length > 0) {
+          console.log('Creating markers for', points.length, 'points');
+          const group = L.layerGroup();
+          
+          for (const p of points) {
+            try {
+              console.log('Creating marker for point:', p);
+              const markerIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                  background-color: #0ea5e9;
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  border: 3px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: white;
+                  font-size: 10px;
+                  font-weight: bold;
+                ">${p.price ? '$' + Math.round(p.price / 1000) + 'k' : '🏠'}</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+              });
+
+              const m = L.marker([p.lat, p.lng], { icon: markerIcon }).addTo(group);
+              m.on('click', () => router.push(`/listing/${p.id}`));
+              console.log('Marker created successfully for:', p.id);
+            } catch (err) {
+              console.error('Error creating marker for point:', p, err);
+            }
+          }
+          
+          group.addTo(map);
+          markersRef.current = group;
+          console.log('All markers added to map');
+          
+          // FIXED: Only fit bounds once on initial load, don't snap back
+          if (!didFitRef.current && points.length > 0) {
+            try {
+              const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
+              map.fitBounds(bounds, { padding: [20, 20] });
+              didFitRef.current = true;
+              console.log('Map bounds fitted to markers');
+            } catch (err) {
+              console.log('Error fitting bounds:', err);
+            }
+          }
+        } else {
+          console.log('No points to render markers for');
+        }
+        
+        requestAnimationFrame(() => {
+          if (mapRef.current) {
+            mapRef.current.invalidateSize(false);
+          }
+        });
+      } catch (err) {
+        console.error('Error in marker rendering:', err);
       }
-      requestAnimationFrame(() => map.invalidateSize(false));
     })();
   }, [points, router]);
+
+  // Handle center changes (when user searches) - FIXED: Prevent snapping
+  useEffect(() => {
+    if (mapRef.current && center && isInitializedRef.current) {
+      // Only update if center actually changed to prevent snapping
+      const currentCenter = lastCenterRef.current;
+      if (!currentCenter || 
+          Math.abs(currentCenter.lat - center.lat) > 0.001 || 
+          Math.abs(currentCenter.lng - center.lng) > 0.001) {
+        try {
+          mapRef.current.setView([center.lat, center.lng], 12);
+          lastCenterRef.current = center;
+        } catch (err) {
+          console.log('Error setting map view:', err);
+        }
+      }
+    }
+  }, [center]);
 
   return (
     <div

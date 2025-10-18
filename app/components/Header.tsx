@@ -52,7 +52,7 @@ export default function Header() {
     <header style={wrap}>
       <Link href="/listings" style={link}>Deal Flow</Link>
       <div style={right}>
-        <Link href="/listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Browse</Link>
+        <Link href="/browse" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Browse</Link>
         <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
         {email ? (
           <>
