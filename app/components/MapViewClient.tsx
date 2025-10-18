@@ -3,16 +3,17 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 export type Point = { id: string; lat: number; lng: number; price?: number };
 type Props = { points: Point[]; onBoundsChange?: (b: any) => void };
 
 export default function MapViewClient({ points, onBoundsChange }: Props) {
+  const router = useRouter();
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any>(null);
   const didFitRef = useRef(false);
 
-  // helpers
   const ensureHeight = (el: HTMLElement) => {
     el.style.minWidth = '0';
     el.style.minHeight = '0';
@@ -29,7 +30,6 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
     (async () => {
       const leaflet = await import('leaflet');
-      // CSS is imported globally in app/globals.css
       Lmod = leaflet.default ?? leaflet;
 
       if (mapRef.current) return;
@@ -41,10 +41,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         attribution: '&copy; OpenStreetMap',
       }).addTo(map);
 
-      // call once after mount
       setTimeout(() => map.invalidateSize(false), 0);
 
-      // observe size + visibility to prevent gray tiles
       ro = new ResizeObserver(() => map.invalidateSize(false));
       ro.observe(root);
       io = new IntersectionObserver((entries) => {
@@ -52,7 +50,6 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       });
       io.observe(root);
 
-      // notify bounds on moves if requested
       const emitBounds = () => {
         if (onBoundsChange) onBoundsChange(map.getBounds());
       };
@@ -64,21 +61,19 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       try {
         ro?.disconnect();
         io?.disconnect();
-        mapRef.current?.off?.(); // remove listeners
+        mapRef.current?.off?.();
         mapRef.current?.remove?.();
         mapRef.current = null;
       } catch {}
     };
   }, [onBoundsChange]);
 
-  // render markers when points change
   useEffect(() => {
     (async () => {
       const map = mapRef.current;
       if (!map) return;
       const L = (await import('leaflet')).default;
 
-      // clear old layer
       if (markersRef.current) {
         markersRef.current.clearLayers?.();
         map.removeLayer(markersRef.current);
@@ -87,7 +82,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
       const group = L.layerGroup();
       for (const p of points ?? []) {
-        L.marker([p.lat, p.lng]).addTo(group);
+        const m = L.marker([p.lat, p.lng]).addTo(group);
+        m.on('click', () => router.push(`/listing/${p.id}`));
       }
       group.addTo(map);
       markersRef.current = group;
@@ -99,12 +95,11 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       }
       requestAnimationFrame(() => map.invalidateSize(false));
     })();
-  }, [points]);
+  }, [points, router]);
 
   return (
     <div
       id="df-map"
-      className="h-[calc(100vh-var(--df-offset))] rounded-xl border overflow-hidden"
       style={{ height: '100%', width: '100%', minHeight: 0, minWidth: 0, borderRadius: 12, border: '1px solid #e5e7eb' }}
     />
   );

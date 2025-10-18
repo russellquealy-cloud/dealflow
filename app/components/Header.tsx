@@ -40,11 +40,13 @@ export default function Header() {
   }, []);
 
   const signOut = async () => {
-    // hit the server route to clear httpOnly cookie
-    await fetch("/auth/signout", { method: "POST" });
-    router.refresh();
-    router.push("/"); // send them home
-  };
+  // end client session
+  await supabase.auth.signOut();
+  // also hit server route to clear cookies if set
+  await fetch('/auth/signout', { method: 'POST' }).catch(() => {});
+  router.push('/'); // back home
+  router.refresh();
+};
 
   return (
     <header style={wrap}>

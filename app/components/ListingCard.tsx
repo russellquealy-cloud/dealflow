@@ -69,8 +69,10 @@ export default function ListingCard({ listing }: Props) {
         }}
       >
         <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', overflow: 'hidden', borderRadius: 10, background: '#f3f4f6' }}>
-          {img ? <Image src={img} alt="" fill sizes="160px" style={{ objectFit: 'cover' }} /> : null}
-        </div>
+  {img ? (
+    <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+  ) : null}
+</div>
 
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 18 }}>{money(price)}</div>

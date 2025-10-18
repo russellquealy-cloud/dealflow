@@ -90,8 +90,14 @@ export default function ListingsPage() {
       });
 
       const pts: MapPoint[] = rows
-        .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
-        .map((r) => ({ id: String(r.id), lat: r.lat as number, lng: r.lng as number }));
+  .map((r) => {
+    const lat = (r as any).lat ?? (r as any).latitude;
+    const lng = (r as any).lng ?? (r as any).longitude ?? (r as any).lon;
+    return typeof lat === 'number' && typeof lng === 'number'
+      ? { id: String(r.id), lat, lng }
+      : null;
+  })
+  .filter((x): x is MapPoint => !!x);
 
       setListings(items);
       setPoints(pts);
@@ -101,32 +107,31 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+ return (
+    // FULL-HEIGHT PAGE. No document scroll.
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      {/* header + search */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px 8px 18px' }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Find Deals</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            aria-label="Search city or address"
-            placeholder="Search city or address"
-            style={{ height: 36, width: 360, maxWidth: '62vw', border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px' }}
-          />
-          <button style={{ height: 36, padding: '0 14px', border: '1px solid #111', borderRadius: 8, background: '#111', color: '#fff' }}>
-            Search
-          </button>
+          <input aria-label="Search city or address" placeholder="Search city or address"
+            style={{ height: 36, width: 360, maxWidth: '62vw', border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px' }} />
+          <button style={{ height: 36, padding: '0 14px', border: '1px solid #111', borderRadius: 8, background: '#111', color: '#fff' }}>Search</button>
           <a href="/listings" style={{ textDecoration: 'none' }}>
-            <button style={{ height: 36, padding: '0 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
-              Reset view
-            </button>
+            <button style={{ height: 36, padding: '0 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>Reset view</button>
           </a>
         </div>
       </div>
 
+      {/* filters */}
       <div style={{ padding: '6px 18px 12px 18px', borderBottom: '1px solid #e5e7eb' }}>
         <FiltersBar value={filters} onChange={setFilters} />
       </div>
 
-      <ListingsSplitClient points={points} listings={listings} MapComponent={MapViewClient} />
+      {/* the split fills the rest of the viewport */}
+      <div style={{ flex: '1 1 auto', minHeight: 0 }}>
+        <ListingsSplitClient points={points} listings={listings} MapComponent={MapViewClient} />
+      </div>
     </div>
   );
 }
