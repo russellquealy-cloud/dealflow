@@ -1,23 +1,36 @@
+// app/listings/page.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import FiltersBar from '@/components/FiltersBar';
+import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import MobileTabs from '@/components/MobileTabs';
 import ListingList from '@/components/ListingList';
-const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
+const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
 export default function ListingsPage() {
   const [tab, setTab] = useState<'list' | 'map'>('list');
 
-  // TODO: wire filters to your data query
-  const points = useMemo(() => [], []);
+  // wire up filter state for FiltersBar
+  const [filters, setFilters] = useState<Filters>({
+    minBeds: null,
+    maxBeds: null,
+    minBaths: null,
+    maxBaths: null,
+    minPrice: null,
+    maxPrice: null,
+    minSqft: null,
+    maxSqft: null,
+  });
+
+  // TODO: use `filters` to query listings and points
+  const points = useMemo(() => [], [filters]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', minHeight: 0 }}>
       <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
-        <FiltersBar />
+        <FiltersBar value={filters} onChange={setFilters} />
       </div>
 
       {/* Mobile tab switcher */}
