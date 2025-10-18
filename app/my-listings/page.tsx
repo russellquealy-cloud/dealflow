@@ -1,4 +1,3 @@
-// app/my-listings/page.tsx
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import ListingCard from '@/components/ListingCard';
@@ -41,12 +40,12 @@ export default async function MyListingsPage() {
 
       <div style={{ display: 'grid', gap: 12 }}>
         {listings.map((l) => (
-  <ListingCard
-    key={String(l.id)}
-    listing={{ ...l, address: l.address ?? undefined }}
-  />
-))}
-istings.length && <div>No listings yet.</div>}
+          <ListingCard
+            key={String(l.id)}
+            listing={{ ...l, address: l.address ?? undefined }}
+          />
+        ))}
+        {!listings.length && <div>No listings yet.</div>}
       </div>
     </main>
   );
