@@ -2,7 +2,8 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/app/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
+
 
 export const dynamic = 'force-dynamic';
 

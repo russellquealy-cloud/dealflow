@@ -1,43 +1,59 @@
+// app/my-listings/page.tsx
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import ListingCard from '@/components/ListingCard';
-import type { Listing } from '@/types';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MyListingsPage() {
-  const supabase = createClient();
+  const supabase = createSupabaseServer();
   const { data: { session } } = await supabase.auth.getSession();
 
-  // If no session, redirect to login with return
   if (!session) redirect('/login?next=/my-listings');
-}
 
-
-  const { data: rows = [] } = await supabase
+  const { data: listings, error } = await supabase
     .from('listings')
     .select('*')
     .eq('owner_id', session.user.id)
     .order('created_at', { ascending: false });
 
-  const listings = rows as unknown as Listing[];
+  if (error) {
+    return (
+      <main style={{ padding: 16 }}>
+        <h1>My Listings</h1>
+        <p style={{ color: '#b91c1c' }}>{error.message}</p>
+      </main>
+    );
+  }
 
   return (
-    <main style={{ padding: 24 }}>
-      <div className="mb-3">
-        <a href="/my-listings/new" className="rounded-md border px-3 py-2 hover:bg-gray-50">
-          Post a Deal
-        </a>
-      </div>
-
-      <h1 style={{ margin: 0, marginBottom: 12 }}>My Listings</h1>
-
-      <div style={{ display: 'grid', gap: 12 }}>
-        {listings.map((l) => (
-          <ListingCard key={String(l.id)} listing={l} />
-        ))}
-        {!listings.length && <div>No listings yet.</div>}
-      </div>
+    <main style={{ display: 'grid', gap: 12, padding: 16 }}>
+      <h1 style={{ marginBottom: 6 }}>My Listings</h1>
+      {(!listings || listings.length === 0) ? (
+        <p>No listings yet. <a href="/post">Post one</a>.</p>
+      ) : (
+        listings.map((l: any) => (
+          <a
+            key={l.id}
+            href={`/listing/${l.id}`}
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 12,
+              padding: 12,
+              display: 'grid',
+              gridTemplateColumns: '140px 1fr',
+              gap: 12,
+              textDecoration: 'none',
+              color: 'inherit',
+            }}
+          >
+            <div style={{ background: '#f3f4f6', height: 90, borderRadius: 8 }} />
+            <div>
+              <div style={{ fontWeight: 800 }}>{l.price ? Number(l.price).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }) : '—'}</div>
+              <div style={{ color: '#6b7280', fontSize: 13 }}>{l.address ?? '—'}</div>
+            </div>
+          </a>
+        ))
+      )}
     </main>
   );
 }

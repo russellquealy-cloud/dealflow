@@ -2,11 +2,11 @@
 
 import React, { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import FiltersBar from '@/app/components/FiltersBar';
-import MobileTabs from '@/app/components/MobileTabs';
-import ListingList from '@/app/components/ListingList';
+import FiltersBar from '@/components/FiltersBar';
+import MobileTabs from '@/components/MobileTabs';
+import ListingList from '@/components/ListingList';
+const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 
-const MapViewClient = dynamic(() => import('@/app/components/MapViewClient'), { ssr: false });
 
 export default function ListingsPage() {
   const [tab, setTab] = useState<'list' | 'map'>('list');
