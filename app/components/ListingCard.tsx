@@ -1,6 +1,6 @@
 'use client';
 
-// import Image from 'next/image';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export type ListingLike = {
@@ -84,7 +84,7 @@ export default function ListingCard({ listing }: Props) {
         <Link href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', overflow: 'hidden', borderRadius: 10, background: '#f3f4f6' }}>
             {img ? (
-              <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <Image src={img} alt="" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
                 No Image

@@ -68,7 +68,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<unknown>(null);
+  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -183,16 +183,15 @@ export default function ListingsPage() {
           };
         });
 
-        const pts: MapPoint[] = rows
-          .map((r) => {
-            // Try both latitude/longitude and lat/lng
-            const lat = r.latitude ?? r.lat;
-            const lng = r.longitude ?? r.lng;
-            return typeof lat === 'number' && typeof lng === 'number'
-              ? { id: String(r.id), lat, lng, price: toNum(r.price) }
-              : null;
-          })
-          .filter((x): x is MapPoint => !!x);
+        const pts: MapPoint[] = [];
+        for (const r of rows) {
+          // Try both latitude/longitude and lat/lng
+          const lat = r.latitude ?? r.lat;
+          const lng = r.longitude ?? r.lng;
+          if (typeof lat === 'number' && typeof lng === 'number') {
+            pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
+          }
+        }
 
         console.log('✅ Processed data:', { items: items.length, points: pts.length });
         console.log('📋 Sample item:', items[0]);
@@ -268,7 +267,7 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = (bounds: unknown) => {
+  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
     console.log('Map bounds changed:', bounds);
     setMapBounds(bounds);
   };
