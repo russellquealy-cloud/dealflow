@@ -47,6 +47,57 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
         attribution: '&copy; OpenStreetMap',
       }).addTo(map);
 
+      // Add drawing tools
+      try {
+        const drawPlugin = await import('leaflet-draw');
+        const LDraw = drawPlugin.default || drawPlugin;
+        
+        // Initialize the draw control
+        const drawControl = new LDraw.Control({
+          position: 'topright',
+          draw: {
+            polygon: {
+              allowIntersection: false,
+              showArea: true,
+              drawError: {
+                color: '#e1e100',
+                message: '<strong>Error:</strong> shape edges cannot cross!'
+              },
+              shapeOptions: {
+                color: '#bada55'
+              }
+            },
+            polyline: {
+              shapeOptions: {
+                color: '#f357a1',
+                weight: 4
+              }
+            },
+            circle: {
+              shapeOptions: {
+                color: '#662d91'
+              }
+            },
+            rectangle: {
+              shapeOptions: {
+                color: '#bada55'
+              }
+            },
+            marker: true,
+            circlemarker: false
+          },
+          edit: {
+            featureGroup: Lmod.layerGroup(),
+            remove: true
+          }
+        });
+        
+        map.addControl(drawControl);
+        console.log('✅ Drawing tools added to map');
+      } catch (err) {
+        console.log('⚠️ Could not load drawing tools:', err);
+      }
+
       setTimeout(() => {
         if (mapRef.current) {
           mapRef.current.invalidateSize(false);
@@ -94,13 +145,18 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
     };
   }, [onBoundsChange]);
 
-  // Render markers - FIXED: Better error handling and marker management
+  // Render markers - ENHANCED: Better error handling and marker management
   useEffect(() => {
     console.log('=== MAP MARKER RENDERING EFFECT TRIGGERED ===');
     console.log('Points received:', points);
     console.log('Points length:', points?.length || 0);
     console.log('Map ref:', !!mapRef.current);
     console.log('Initialized:', isInitializedRef.current);
+    
+    if (!points || points.length === 0) {
+      console.log('⚠️ No points to render markers for');
+      return;
+    }
     
     (async () => {
       console.log('=== MAP MARKER RENDERING ===');
@@ -116,7 +172,7 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
       console.log('✅ Map is ready, rendering markers for points:', points?.length || 0);
       
       // Add a small delay to ensure map is fully ready
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       try {
         const L = (await import('leaflet')).default;
@@ -132,65 +188,66 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
           markersRef.current = null;
         }
 
-        // Add new markers only if we have points
-        if (points && points.length > 0) {
-          console.log('🎯 Creating markers for', points.length, 'points');
-          const group = L.layerGroup();
-          
-          for (const p of points) {
+        console.log('🎯 Creating markers for', points.length, 'points');
+        const group = L.layerGroup();
+        
+        for (const p of points) {
+          try {
+            console.log('📍 Creating marker for point:', p);
+            
+            // Create a simple red circle marker
+            const markerIcon = L.divIcon({
+              className: 'custom-marker',
+              html: `<div style="
+                background-color: #dc2626;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 8px;
+                font-weight: bold;
+                cursor: pointer;
+              ">🏠</div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            });
+            
+            const marker = L.marker([p.lat, p.lng], { icon: markerIcon });
+            marker.addTo(group);
+            marker.on('click', () => {
+              console.log('Marker clicked:', p.id);
+              router.push(`/listing/${p.id}`);
+            });
+            
+            console.log('✅ Marker created successfully for:', p.id, 'at', p.lat, p.lng);
+          } catch (err) {
+            console.error('❌ Error creating marker for point:', p, err);
+            // Fallback to default marker
             try {
-              console.log('📍 Creating marker for point:', p);
-              
-              // Use default marker first, then try custom if needed
-              let marker;
-              try {
-                // Try custom marker
-                const markerIcon = L.divIcon({
-                  className: 'custom-marker',
-                  html: `<div style="
-                    background-color: #dc2626;
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
-                    border: 3px solid white;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 10px;
-                    font-weight: bold;
-                    cursor: pointer;
-                  ">🏠</div>`,
-                  iconSize: [24, 24],
-                  iconAnchor: [12, 12]
-                });
-                marker = L.marker([p.lat, p.lng], { icon: markerIcon });
-              } catch (err) {
-                console.log('Custom marker failed, using default:', err);
-                marker = L.marker([p.lat, p.lng]);
-              }
-              marker.addTo(group);
-              marker.on('click', () => {
-                console.log('Marker clicked:', p.id);
+              const fallbackMarker = L.marker([p.lat, p.lng]);
+              fallbackMarker.addTo(group);
+              fallbackMarker.on('click', () => {
+                console.log('Fallback marker clicked:', p.id);
                 router.push(`/listing/${p.id}`);
               });
-              
-              console.log('✅ Marker created successfully for:', p.id, 'at', p.lat, p.lng);
-            } catch (err) {
-              console.error('❌ Error creating marker for point:', p, err);
+              console.log('✅ Fallback marker created for:', p.id);
+            } catch (fallbackErr) {
+              console.error('❌ Fallback marker also failed:', fallbackErr);
             }
           }
-          
-          group.addTo(map);
-          markersRef.current = group;
-          console.log('🎉 All markers added to map successfully');
-          
-          // Don't auto-fit bounds to prevent snapping
-          console.log('Markers added, no auto-fitting to prevent snapping');
-        } else {
-          console.log('⚠️ No points to render markers for');
         }
+        
+        group.addTo(map);
+        markersRef.current = group;
+        console.log('🎉 All markers added to map successfully');
+        
+        // Don't auto-fit bounds to prevent snapping
+        console.log('Markers added, no auto-fitting to prevent snapping');
         
         requestAnimationFrame(() => {
           if (mapRef.current) {

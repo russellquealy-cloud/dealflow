@@ -48,12 +48,34 @@ export default function Header() {
   router.refresh();
 };
 
+  const handlePostDeal = () => {
+    if (email) {
+      // User is signed in, go to new listing page
+      router.push('/my-listings/new');
+    } else {
+      // User is not signed in, go to login page
+      router.push('/login');
+    }
+  };
+
   return (
     <header style={wrap}>
       <Link href="/listings" style={link}>Deal Flow</Link>
       <div style={right}>
         <Link href="/browse" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Browse</Link>
         <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
+        <button 
+          onClick={handlePostDeal}
+          style={{ 
+            ...btn, 
+            background: "#10b981", 
+            color: "#fff", 
+            border: "1px solid #10b981",
+            fontWeight: 600 
+          }}
+        >
+          Post a Deal
+        </button>
         {email ? (
           <>
             <span style={{ color: "#666", fontSize: 14 }}>{email}</span>
