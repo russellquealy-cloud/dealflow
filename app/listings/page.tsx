@@ -68,7 +68,6 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -200,38 +199,15 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]);
 
-  // Filter listings by map bounds when available
+  // Show all listings - don't filter by map bounds to prevent disappearing
   const filteredListings = React.useMemo(() => {
     console.log('=== FILTERING LISTINGS ===');
     console.log('📊 All listings:', allListings.length);
-    console.log('🗺️ Map bounds:', !!mapBounds);
     
-    // If no map bounds set yet, show all listings
-    if (!mapBounds) {
-      console.log('No map bounds, showing all listings:', allListings.length);
-      return allListings;
-    }
-
-    const { south, north, west, east } = mapBounds;
-    console.log('Map bounds:', { south, north, west, east });
-    
-    const filtered = allListings.filter((listing) => {
-      // Find the corresponding point for this listing
-      const point = allPoints.find(p => p.id === listing.id);
-      if (!point) {
-        console.log('No point found for listing:', listing.id);
-        return true; // Show listing even if no point found
-      }
-
-      // Check if point is within map bounds
-      const inBounds = point.lat >= south && point.lat <= north && point.lng >= west && point.lng <= east;
-      console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
-      return inBounds;
-    });
-    
-    console.log('✅ Filtered listings:', filtered.length);
-    return filtered;
-  }, [allListings, allPoints, mapBounds]);
+    // Always show all listings to prevent disappearing
+    console.log('Showing all listings:', allListings.length);
+    return allListings;
+  }, [allListings]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -246,9 +222,9 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
-    console.log('Map bounds changed:', bounds);
-    setMapBounds(bounds);
+  const handleMapBoundsChange = () => {
+    // Don't filter by map bounds to prevent listings from disappearing
+    console.log('Map bounds changed (ignored)');
   };
 
   // Only show loading on initial load, not when navigating back

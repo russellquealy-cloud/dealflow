@@ -141,28 +141,15 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
           for (const p of points) {
             try {
               console.log('📍 Creating marker for point:', p);
-              const markerIcon = L.divIcon({
-                className: 'custom-marker',
-                html: `<div style="
-                  background-color: #0ea5e9;
-                  width: 24px;
-                  height: 24px;
-                  border-radius: 50%;
-                  border: 3px solid white;
-                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  color: white;
-                  font-size: 10px;
-                  font-weight: bold;
-                ">${p.price ? '$' + Math.round(p.price / 1000) + 'k' : '🏠'}</div>`,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
+              
+              // Use a simple default marker first to ensure it works
+              const marker = L.marker([p.lat, p.lng]);
+              marker.addTo(group);
+              marker.on('click', () => {
+                console.log('Marker clicked:', p.id);
+                router.push(`/listing/${p.id}`);
               });
-
-              const m = L.marker([p.lat, p.lng], { icon: markerIcon }).addTo(group);
-              m.on('click', () => router.push(`/listing/${p.id}`));
+              
               console.log('✅ Marker created successfully for:', p.id, 'at', p.lat, p.lng);
             } catch (err) {
               console.error('❌ Error creating marker for point:', p, err);
@@ -173,7 +160,7 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
           markersRef.current = group;
           console.log('🎉 All markers added to map successfully');
           
-          // FIXED: Only fit bounds once on initial load, don't snap back
+          // Only fit bounds once on initial load
           if (!didFitRef.current && points.length > 0) {
             try {
               const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
