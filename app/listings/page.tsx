@@ -207,7 +207,7 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]);
 
-  // Show all listings initially, then filter by map bounds when user moves map
+  // Show all listings initially, only filter when user deliberately moves map
   const filteredListings = React.useMemo(() => {
     console.log('=== FILTERING LISTINGS ===');
     console.log('📊 All listings:', allListings.length);
@@ -219,8 +219,17 @@ export default function ListingsPage() {
       return allListings;
     }
 
+    // Only filter if we have a reasonable map bounds (not the initial load)
     const { south, north, west, east } = mapBounds;
-    console.log('Map bounds:', { south, north, west, east });
+    const boundsSize = Math.abs(north - south) + Math.abs(east - west);
+    
+    // If bounds are too large (like initial world view), show all listings
+    if (boundsSize > 10) {
+      console.log('Map bounds too large, showing all listings');
+      return allListings;
+    }
+    
+    console.log('Map bounds:', { south, north, west, east, size: boundsSize });
     
     const filtered = allListings.filter((listing) => {
       // Find the corresponding point for this listing
@@ -255,10 +264,20 @@ export default function ListingsPage() {
 
   const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
     console.log('Map bounds changed:', bounds);
+    
+    // Only update bounds if they represent a meaningful zoom/pan (not initial load)
+    const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
+    
+    // Don't filter on initial load or very large bounds
+    if (boundsSize > 10) {
+      console.log('Bounds too large, not filtering');
+      return;
+    }
+    
     // Add a small delay to prevent too frequent filtering
     setTimeout(() => {
       setMapBounds(bounds);
-    }, 300);
+    }, 500);
   };
 
   // Only show loading on initial load, not when navigating back
@@ -312,7 +331,7 @@ export default function ListingsPage() {
                  MapComponent={(props) => {
                    console.log('🗺️ Passing points to MapViewClient:', props.points);
                    console.log('🗺️ Points length:', props.points?.length || 0);
-                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} center={undefined} />;
+                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} />;
                  }} 
                />
              </div>

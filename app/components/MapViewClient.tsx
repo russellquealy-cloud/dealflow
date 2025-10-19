@@ -40,7 +40,8 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
 
       if (mapRef.current) return;
 
-      const map = Lmod.map(root, { center: [32.2226, -110.9747], zoom: 10 });
+      // Use a more neutral center (US center) instead of hardcoded Tucson
+      const map = Lmod.map(root, { center: [39.8283, -98.5795], zoom: 4 });
       mapRef.current = map;
       isInitializedRef.current = true;
 
@@ -204,14 +205,14 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
     })();
   }, [points, router]);
 
-  // Handle center changes (when user searches) - FIXED: Prevent snapping
+  // Handle center changes (when user searches) - DISABLED to prevent snapping
   useEffect(() => {
+    // DISABLED: This was causing the map to snap back to Tucson
+    // Only enable if we have a specific search center from user action
     if (mapRef.current && center && isInitializedRef.current) {
-      // Only update if center actually changed to prevent snapping
-      const currentCenter = lastCenterRef.current;
-      if (!currentCenter || 
-          Math.abs(currentCenter.lat - center.lat) > 0.001 || 
-          Math.abs(currentCenter.lng - center.lng) > 0.001) {
+      console.log('Center change requested:', center);
+      // Only update if this is a deliberate search action, not automatic
+      if (center.lat !== 32.2226 || center.lng !== -110.9747) {
         try {
           mapRef.current.setView([center.lat, center.lng], 12);
           lastCenterRef.current = center;
