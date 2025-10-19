@@ -27,6 +27,7 @@ type Row = {
   longitude?: number | null;
   lat?: number | null;
   lng?: number | null;
+  lon?: number | null; // Added for spatial function
   images?: string[] | null;
   image_url?: string | null;
   cover_image_url?: string | null;
@@ -46,6 +47,33 @@ type Row = {
   owner_phone?: string | null;
   owner_email?: string | null;
   owner_name?: string | null;
+};
+
+type SpatialRow = {
+  id: string;
+  title?: string;
+  price?: number;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  lot_size?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  contact_name?: string;
+  lon?: number;
+  lat?: number;
+  arv?: number;
+  repairs?: number;
+  image_url?: string;
+  garage?: number;
+  year_built?: number;
+  assignment_fee?: number;
+  description?: string;
+  images?: string[];
 };
 
 const toNum = (v: unknown): number | undefined => {
@@ -69,7 +97,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
+  const [, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -99,32 +127,20 @@ export default function ListingsPage() {
           return;
         }
         
-        // Now do the full query
-        let query = supabase.from('listings').select('*');
-        
-        // Apply search filter
-        if (searchQuery.trim()) {
-          query = query.or(`address.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%`);
-        }
+        // Use spatial function for better performance and proper filtering
+        const query = supabase.rpc('listings_in_bbox', {
+          q: searchQuery.trim() || '',
+          minx: -180,
+          miny: -90,
+          maxx: 180,
+          maxy: 90,
+          min_price: filters.minPrice || null,
+          max_price: filters.maxPrice || null,
+          min_beds: filters.minBeds || null,
+          min_baths: filters.minBaths || null
+        });
 
-        // Apply property filters
-        if (filters.minBeds) query = query.gte('bedrooms', filters.minBeds);
-        if (filters.maxBeds) query = query.lte('bedrooms', filters.maxBeds);
-        if (filters.minBaths) query = query.gte('bathrooms', filters.minBaths);
-        if (filters.maxBaths) query = query.lte('bathrooms', filters.maxBaths);
-        if (filters.minPrice) query = query.gte('price', filters.minPrice);
-        if (filters.maxPrice) query = query.lte('price', filters.maxPrice);
-        if (filters.minSqft) query = query.gte('home_sqft', filters.minSqft);
-        if (filters.maxSqft) query = query.lte('home_sqft', filters.maxSqft);
-
-        // Apply sorting
-        if (filters.sortBy === 'price_asc') query = query.order('price', { ascending: true });
-        else if (filters.sortBy === 'price_desc') query = query.order('price', { ascending: false });
-        else if (filters.sortBy === 'sqft_asc') query = query.order('home_sqft', { ascending: true });
-        else if (filters.sortBy === 'sqft_desc') query = query.order('home_sqft', { ascending: false });
-        else query = query.order('created_at', { ascending: false }); // newest
-
-        const { data, error } = await query.limit(200);
+        const { data, error } = await query;
         console.log('Database query result:', { data, error, count: data?.length });
         
         if (error) {
@@ -159,9 +175,9 @@ export default function ListingsPage() {
           state: r.state ?? undefined,
           zip: r.zip ?? undefined,
           price,
-          bedrooms: (r.bedrooms ?? r.beds) ?? undefined,
-          bathrooms: (r.bathrooms ?? r.baths) ?? undefined,
-          home_sqft: (r.home_sqft ?? r.sqft) ?? undefined,
+          bedrooms: r.beds ?? undefined,
+          bathrooms: r.baths ?? undefined,
+          home_sqft: r.sqft ?? undefined,
           lot_size: toNum(r.lot_size),
           garage: r.garage ?? undefined,
           year_built: r.year_built ?? undefined,
@@ -181,9 +197,9 @@ export default function ListingsPage() {
 
         const pts: MapPoint[] = [];
         for (const r of rows) {
-          // Use the correct column names from your schema
-          const lat = r.latitude;
-          const lng = r.longitude;
+          // Use the correct column names from the spatial function
+          const lat = r.lat;
+          const lng = r.lon;
           if (typeof lat === 'number' && typeof lng === 'number') {
             pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
           }
@@ -295,48 +311,8 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]); // Re-added dependencies for filtering
 
-  // Map bounds filtering - show only listings in current map view
-  const filteredListings = React.useMemo(() => {
-    console.log('=== FILTERING LISTINGS BY MAP BOUNDS ===');
-    console.log('📊 All listings:', allListings.length);
-    console.log('🗺️ Map bounds:', mapBounds);
-    
-    // If no map bounds yet, show all listings initially
-    if (!mapBounds) {
-      console.log('No map bounds yet, showing all listings:', allListings.length);
-      return allListings;
-    }
-
-    const { south, north, west, east } = mapBounds;
-    const boundsSize = Math.abs(north - south) + Math.abs(east - west);
-    
-    // If bounds are too large (like initial world view), show all listings
-    if (boundsSize > 100) { // Much larger threshold to be less aggressive
-      console.log('Map bounds too large, showing all listings');
-      return allListings;
-    }
-    
-    console.log('Map bounds:', { south, north, west, east, size: boundsSize });
-    
-    const filtered = allListings.filter((listing) => {
-      // Find the corresponding point for this listing
-      const point = allPoints.find(p => p.id === listing.id);
-      if (!point) {
-        console.log('No point found for listing:', listing.id);
-        return false; // Don't show listing if no point found
-      }
-
-      // Check if point is within map bounds with some padding
-      const padding = 0.1; // Larger padding to be more forgiving
-      const inBounds = point.lat >= (south - padding) && point.lat <= (north + padding) && 
-                      point.lng >= (west - padding) && point.lng <= (east + padding);
-      console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
-      return inBounds;
-    });
-    
-    console.log('✅ Filtered listings:', filtered.length);
-    return filtered;
-  }, [allListings, allPoints, mapBounds]);
+  // No need for manual filtering - spatial function handles it
+  const filteredListings = allListings;
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -381,10 +357,71 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+  const handleMapBoundsChange = async (bounds: { south: number; north: number; west: number; east: number }) => {
     console.log('Map bounds changed:', bounds);
-    // Only update bounds for filtering, don't trigger any map changes
     setMapBounds(bounds);
+    
+    // Use spatial function to get listings in current bounds
+    try {
+      const { data: spatialData, error: spatialError } = await supabase.rpc('listings_in_bbox', {
+        q: searchQuery.trim() || '',
+        minx: bounds.west,
+        miny: bounds.south,
+        maxx: bounds.east,
+        maxy: bounds.north,
+        min_price: filters.minPrice || null,
+        max_price: filters.maxPrice || null,
+        min_beds: filters.minBeds || null,
+        min_baths: filters.minBaths || null
+      });
+      
+      if (spatialError) {
+        console.error('Spatial query error:', spatialError);
+        return;
+      }
+      
+      console.log('Spatial query result:', spatialData?.length, 'listings');
+      
+      // Process spatial data
+      const spatialItems: ListItem[] = spatialData?.map((r: SpatialRow) => ({
+        id: String(r.id),
+        title: r.title ?? undefined,
+        address: r.address ?? undefined,
+        city: r.city ?? undefined,
+        state: r.state ?? undefined,
+        zip: r.zip ?? undefined,
+        price: toNum(r.price),
+        bedrooms: r.beds ?? undefined,
+        bathrooms: r.baths ?? undefined,
+        home_sqft: r.sqft ?? undefined,
+        lot_size: toNum(r.lot_size),
+        garage: r.garage ?? undefined,
+        year_built: r.year_built ?? undefined,
+        assignment_fee: toNum(r.assignment_fee),
+        description: r.description ?? undefined,
+        owner_phone: r.contact_phone ?? undefined,
+        owner_email: r.contact_email ?? undefined,
+        owner_name: r.contact_name ?? undefined,
+        images: Array.isArray(r.images) ? r.images : undefined,
+        cover_image_url: r.image_url ?? undefined,
+        arv: toNum(r.arv),
+        repairs: toNum(r.repairs),
+        spread: undefined,
+        roi: undefined,
+      })) || [];
+      
+      const spatialPoints: MapPoint[] = spatialData?.map((r: SpatialRow) => ({
+        id: String(r.id),
+        lat: r.lat,
+        lng: r.lon,
+        price: toNum(r.price)
+      })) || [];
+      
+      setAllListings(spatialItems);
+      setAllPoints(spatialPoints);
+    } catch (error) {
+      console.error('Error fetching spatial data:', error);
+    }
   };
 
   // Only show loading on initial load, not when navigating back
