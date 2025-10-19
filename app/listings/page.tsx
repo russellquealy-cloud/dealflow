@@ -68,7 +68,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
+  // const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -137,6 +137,8 @@ export default function ListingsPage() {
           setLoading(false);
           return;
         }
+
+        console.log('✅ Database query successful, got', data.length, 'listings');
 
       const rows = data as unknown as Row[];
         console.log('Raw rows:', rows.length);
@@ -273,48 +275,15 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]); // Re-added dependencies for filtering
 
-  // Map bounds filtering - show only listings in current map view
+  // Map bounds filtering - TEMPORARILY DISABLED to fix listings not showing
   const filteredListings = React.useMemo(() => {
-    console.log('=== FILTERING LISTINGS BY MAP BOUNDS ===');
+    console.log('=== SHOWING ALL LISTINGS (MAP FILTERING TEMPORARILY DISABLED) ===');
     console.log('📊 All listings:', allListings.length);
-    console.log('🗺️ Map bounds:', mapBounds);
     
-    // If no map bounds yet, show all listings initially
-    if (!mapBounds) {
-      console.log('No map bounds yet, showing all listings:', allListings.length);
-      return allListings;
-    }
-
-    const { south, north, west, east } = mapBounds;
-    const boundsSize = Math.abs(north - south) + Math.abs(east - west);
-    
-    // If bounds are too large (like initial world view), show all listings
-    if (boundsSize > 10) {
-      console.log('Map bounds too large, showing all listings');
-      return allListings;
-    }
-    
-    console.log('Map bounds:', { south, north, west, east, size: boundsSize });
-    
-    const filtered = allListings.filter((listing) => {
-      // Find the corresponding point for this listing
-      const point = allPoints.find(p => p.id === listing.id);
-      if (!point) {
-        console.log('No point found for listing:', listing.id);
-        return true; // Show listing even if no point found
-      }
-
-      // Check if point is within map bounds with some padding
-      const padding = 0.01; // Small padding to prevent edge cases
-      const inBounds = point.lat >= (south - padding) && point.lat <= (north + padding) && 
-                      point.lng >= (west - padding) && point.lng <= (east + padding);
-      console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
-      return inBounds;
-    });
-    
-    console.log('✅ Filtered listings:', filtered.length);
-    return filtered;
-  }, [allListings, allPoints, mapBounds]);
+    // Temporarily show all listings to fix the issue
+    console.log('Showing all listings:', allListings.length);
+    return allListings;
+  }, [allListings]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -329,11 +298,11 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
-    console.log('Map bounds changed:', bounds);
-    // Only update bounds for filtering, don't trigger any map changes
-    setMapBounds(bounds);
-  };
+  // const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+  //   console.log('Map bounds changed:', bounds);
+  //   // Only update bounds for filtering, don't trigger any map changes
+  //   setMapBounds(bounds);
+  // };
 
   // Only show loading on initial load, not when navigating back
   if (loading && !hasLoaded) {
@@ -343,6 +312,14 @@ export default function ListingsPage() {
       </div>
     );
   }
+
+  // Debug: Show what we have
+  console.log('=== RENDER DEBUG ===');
+  console.log('Loading:', loading);
+  console.log('Has loaded:', hasLoaded);
+  console.log('All listings:', allListings.length);
+  console.log('All points:', allPoints.length);
+  console.log('Filtered listings:', filteredListings.length);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden' }}>
@@ -386,7 +363,7 @@ export default function ListingsPage() {
                  MapComponent={(props) => {
                    console.log('🗺️ Passing points to MapViewClient:', props.points);
                    console.log('🗺️ Points length:', props.points?.length || 0);
-                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} />;
+                   return <MapViewClient {...props} />;
                  }} 
                />
       </div>
