@@ -121,34 +121,44 @@ export default function MyListingsPage() {
     if (!editingId) return;
 
     try {
+      console.log('Updating listing:', editingId, editForm);
+      
+      const updateData: Record<string, unknown> = {};
+      
+      // Only update fields that have values
+      if (editForm.title !== undefined) updateData.title = editForm.title;
+      if (editForm.address !== undefined) updateData.address = editForm.address;
+      if (editForm.city !== undefined) updateData.city = editForm.city;
+      if (editForm.state !== undefined) updateData.state = editForm.state;
+      if (editForm.zip !== undefined) updateData.zip = editForm.zip;
+      if (editForm.price !== undefined) updateData.price = editForm.price;
+      if (editForm.bedrooms !== undefined) updateData.bedrooms = editForm.bedrooms;
+      if (editForm.bathrooms !== undefined) updateData.bathrooms = editForm.bathrooms;
+      if (editForm.home_sqft !== undefined) updateData.home_sqft = editForm.home_sqft;
+      if (editForm.lot_size !== undefined) updateData.lot_size = editForm.lot_size;
+      if (editForm.garage !== undefined) updateData.garage = editForm.garage;
+      if (editForm.year_built !== undefined) updateData.year_built = editForm.year_built;
+      if (editForm.assignment_fee !== undefined) updateData.assignment_fee = editForm.assignment_fee;
+      if (editForm.description !== undefined) updateData.description = editForm.description;
+      if (editForm.owner_phone !== undefined) updateData.contact_phone = editForm.owner_phone;
+      if (editForm.owner_email !== undefined) updateData.contact_email = editForm.owner_email;
+      if (editForm.owner_name !== undefined) updateData.contact_name = editForm.owner_name;
+      if (editForm.arv !== undefined) updateData.arv = editForm.arv;
+      if (editForm.repairs !== undefined) updateData.repairs = editForm.repairs;
+      if (editForm.images !== undefined) updateData.images = editForm.images;
+      if (editForm.cover_image_url !== undefined) updateData.cover_image_url = editForm.cover_image_url;
+
+      console.log('Update data:', updateData);
+
       const { error } = await supabase
         .from('listings')
-        .update({
-          title: editForm.title,
-          address: editForm.address,
-          city: editForm.city,
-          state: editForm.state,
-          zip: editForm.zip,
-          price: editForm.price,
-          bedrooms: editForm.bedrooms,
-          bathrooms: editForm.bathrooms,
-          home_sqft: editForm.home_sqft,
-          lot_size: editForm.lot_size,
-          garage: editForm.garage,
-          year_built: editForm.year_built,
-          assignment_fee: editForm.assignment_fee,
-          description: editForm.description,
-          contact_phone: editForm.owner_phone,
-          contact_email: editForm.owner_email,
-          contact_name: editForm.owner_name,
-          arv: editForm.arv,
-          repairs: editForm.repairs,
-        })
+        .update(updateData)
         .eq('id', editingId);
 
       if (error) {
         console.error('Error updating listing:', error);
-        alert('Failed to update listing');
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        alert(`Failed to update listing: ${error.message}`);
         return;
       }
 
@@ -163,7 +173,7 @@ export default function MyListingsPage() {
       alert('Listing updated successfully!');
     } catch (err) {
       console.error('Error saving listing:', err);
-      alert('Failed to update listing');
+      alert(`Failed to update listing: ${err}`);
     }
   };
 
@@ -344,6 +354,98 @@ export default function MyListingsPage() {
                     rows={4}
                     style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
                   />
+                </div>
+
+                {/* Image Management */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Images</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
+                    {editForm.images?.map((image, index) => (
+                      <div key={index} style={{ position: 'relative', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
+                        <img 
+                          src={image} 
+                          alt={`Property image ${index + 1}`}
+                          style={{ width: '100%', height: 80, objectFit: 'cover' }}
+                        />
+                        <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
+                          {index === 0 && (
+                            <span style={{ 
+                              background: '#10b981', 
+                              color: '#fff', 
+                              fontSize: 10, 
+                              padding: '2px 4px', 
+                              borderRadius: 4 
+                            }}>
+                              Main
+                            </span>
+                          )}
+                          <button
+                            onClick={() => {
+                              const newImages = editForm.images?.filter((_, i) => i !== index) || [];
+                              setEditForm({...editForm, images: newImages});
+                            }}
+                            style={{ 
+                              background: '#dc2626', 
+                              color: '#fff', 
+                              border: 'none', 
+                              borderRadius: 4, 
+                              padding: '2px 4px',
+                              fontSize: 10,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length > 0) {
+                          const newImages = [...(editForm.images || []), ...files.map(f => URL.createObjectURL(f))];
+                          setEditForm({...editForm, images: newImages});
+                        }
+                      }}
+                      style={{ fontSize: 14 }}
+                    />
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>
+                      {editForm.images?.length || 0}/20 images
+                    </span>
+                  </div>
+                  
+                  {editForm.images && editForm.images.length > 1 && (
+                    <div style={{ marginTop: 8 }}>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Set Main Image</label>
+                      <select
+                        value={0}
+                        onChange={(e) => {
+                          const newImages = [...(editForm.images || [])];
+                          const selectedIndex = parseInt(e.target.value);
+                          if (selectedIndex > 0) {
+                            // Move selected image to front
+                            const selectedImage = newImages[selectedIndex];
+                            newImages.splice(selectedIndex, 1);
+                            newImages.unshift(selectedImage);
+                            setEditForm({...editForm, images: newImages});
+                          }
+                        }}
+                        style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+                      >
+                        {editForm.images.map((_, index) => (
+                          <option key={index} value={index}>
+                            Image {index + 1} {index === 0 ? '(Current Main)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

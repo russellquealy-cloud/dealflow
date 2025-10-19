@@ -72,7 +72,7 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  // Load all listings from database - SIMPLIFIED VERSION
+  // Load all listings from database with filtering
   useEffect(() => {
     let cancelled = false;
 
@@ -87,8 +87,31 @@ export default function ListingsPage() {
           hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         });
         
-        // SIMPLIFIED: Just get all listings without complex filtering
-        const { data, error } = await supabase.from('listings').select('*').limit(50);
+        let query = supabase.from('listings').select('*');
+        
+        // Apply search filter
+        if (searchQuery.trim()) {
+          query = query.or(`address.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%`);
+        }
+
+        // Apply property filters
+        if (filters.minBeds) query = query.gte('bedrooms', filters.minBeds);
+        if (filters.maxBeds) query = query.lte('bedrooms', filters.maxBeds);
+        if (filters.minBaths) query = query.gte('bathrooms', filters.minBaths);
+        if (filters.maxBaths) query = query.lte('bathrooms', filters.maxBaths);
+        if (filters.minPrice) query = query.gte('price', filters.minPrice);
+        if (filters.maxPrice) query = query.lte('price', filters.maxPrice);
+        if (filters.minSqft) query = query.gte('home_sqft', filters.minSqft);
+        if (filters.maxSqft) query = query.lte('home_sqft', filters.maxSqft);
+
+        // Apply sorting
+        if (filters.sortBy === 'price_asc') query = query.order('price', { ascending: true });
+        else if (filters.sortBy === 'price_desc') query = query.order('price', { ascending: false });
+        else if (filters.sortBy === 'sqft_asc') query = query.order('home_sqft', { ascending: true });
+        else if (filters.sortBy === 'sqft_desc') query = query.order('home_sqft', { ascending: false });
+        else query = query.order('created_at', { ascending: false }); // newest
+
+        const { data, error } = await query.limit(200);
         console.log('Database query result:', { data, error, count: data?.length });
         
         if (error) {
@@ -183,7 +206,7 @@ export default function ListingsPage() {
 
     load();
     return () => { cancelled = true; };
-  }, []); // REMOVED dependencies to prevent re-loading
+  }, [filters, searchQuery]); // Re-added dependencies for filtering
 
   // Map bounds filtering - show only listings in current map view
   const filteredListings = React.useMemo(() => {
@@ -198,14 +221,22 @@ export default function ListingsPage() {
     }
 
     const { south, north, west, east } = mapBounds;
-    console.log('Map bounds:', { south, north, west, east });
+    const boundsSize = Math.abs(north - south) + Math.abs(east - west);
+    
+    // If bounds are too large (like initial world view), show all listings
+    if (boundsSize > 20) {
+      console.log('Map bounds too large, showing all listings');
+      return allListings;
+    }
+    
+    console.log('Map bounds:', { south, north, west, east, size: boundsSize });
     
     const filtered = allListings.filter((listing) => {
       // Find the corresponding point for this listing
       const point = allPoints.find(p => p.id === listing.id);
       if (!point) {
         console.log('No point found for listing:', listing.id);
-        return false; // Hide listing if no point found
+        return true; // Show listing even if no point found
       }
 
       // Check if point is within map bounds
@@ -234,10 +265,19 @@ export default function ListingsPage() {
   const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
     console.log('Map bounds changed:', bounds);
     
+    // Only update bounds if they represent a meaningful zoom/pan (not initial load)
+    const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
+    
+    // Don't filter on initial load or very large bounds
+    if (boundsSize > 20) {
+      console.log('Bounds too large, not filtering');
+      return;
+    }
+    
     // Add a small delay to prevent too frequent filtering
     setTimeout(() => {
       setMapBounds(bounds);
-    }, 300);
+    }, 500);
   };
 
   // Only show loading on initial load, not when navigating back

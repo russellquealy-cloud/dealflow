@@ -48,8 +48,10 @@ export default function Header() {
   router.refresh();
 };
 
-  const handlePostDeal = () => {
-    if (email) {
+  const handlePostDeal = async () => {
+    // Check session more thoroughly
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user) {
       // User is signed in, go to new listing page
       router.push('/my-listings/new');
     } else {
