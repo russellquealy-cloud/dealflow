@@ -81,6 +81,12 @@ export default function ListingsPage() {
       setLoading(true);
       
       try {
+        console.log('🔍 Supabase client:', !!supabase);
+        console.log('🔍 Environment check:', {
+          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+          hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        });
+        
         let query = supabase.from('listings').select('*');
         
         // Apply search filter
@@ -109,7 +115,8 @@ export default function ListingsPage() {
         console.log('Database query result:', { data, error, count: data?.length });
         
         if (error) {
-          console.error('Database error:', error);
+          console.error('❌ Database error:', error);
+          console.error('❌ Error details:', JSON.stringify(error, null, 2));
           setLoading(false);
           return;
         }
