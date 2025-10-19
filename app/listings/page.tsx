@@ -68,11 +68,10 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  // Load all listings from database
+  // Load all listings from database - SIMPLIFIED VERSION
   useEffect(() => {
     let cancelled = false;
 
@@ -87,31 +86,8 @@ export default function ListingsPage() {
           hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         });
         
-        let query = supabase.from('listings').select('*');
-        
-        // Apply search filter
-        if (searchQuery.trim()) {
-          query = query.or(`address.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%`);
-        }
-
-        // Apply property filters
-        if (filters.minBeds) query = query.gte('bedrooms', filters.minBeds);
-        if (filters.maxBeds) query = query.lte('bedrooms', filters.maxBeds);
-        if (filters.minBaths) query = query.gte('bathrooms', filters.minBaths);
-        if (filters.maxBaths) query = query.lte('bathrooms', filters.maxBaths);
-        if (filters.minPrice) query = query.gte('price', filters.minPrice);
-        if (filters.maxPrice) query = query.lte('price', filters.maxPrice);
-        if (filters.minSqft) query = query.gte('home_sqft', filters.minSqft);
-        if (filters.maxSqft) query = query.lte('home_sqft', filters.maxSqft);
-
-        // Apply sorting
-        if (filters.sortBy === 'price_asc') query = query.order('price', { ascending: true });
-        else if (filters.sortBy === 'price_desc') query = query.order('price', { ascending: false });
-        else if (filters.sortBy === 'sqft_asc') query = query.order('home_sqft', { ascending: true });
-        else if (filters.sortBy === 'sqft_desc') query = query.order('home_sqft', { ascending: false });
-        else query = query.order('created_at', { ascending: false }); // newest
-
-        const { data, error } = await query.limit(200);
+        // SIMPLIFIED: Just get all listings without complex filtering
+        const { data, error } = await supabase.from('listings').select('*').limit(50);
         console.log('Database query result:', { data, error, count: data?.length });
         
         if (error) {
@@ -121,6 +97,7 @@ export default function ListingsPage() {
           return;
         }
         if (!data || cancelled) {
+          console.log('No data or cancelled');
           setLoading(false);
           return;
         }
@@ -205,49 +182,17 @@ export default function ListingsPage() {
 
     load();
     return () => { cancelled = true; };
-  }, [filters, searchQuery]);
+  }, []); // REMOVED dependencies to prevent re-loading
 
-  // Show all listings initially, only filter when user deliberately moves map
+  // DISABLED MAP FILTERING - Always show all listings
   const filteredListings = React.useMemo(() => {
-    console.log('=== FILTERING LISTINGS ===');
+    console.log('=== SHOWING ALL LISTINGS (NO FILTERING) ===');
     console.log('📊 All listings:', allListings.length);
-    console.log('🗺️ Map bounds:', !!mapBounds);
     
-    // Always show all listings initially to prevent disappearing
-    if (!mapBounds || allListings.length === 0) {
-      console.log('No map bounds or no listings, showing all listings:', allListings.length);
-      return allListings;
-    }
-
-    // Only filter if we have a reasonable map bounds (not the initial load)
-    const { south, north, west, east } = mapBounds;
-    const boundsSize = Math.abs(north - south) + Math.abs(east - west);
-    
-    // If bounds are too large (like initial world view), show all listings
-    if (boundsSize > 10) {
-      console.log('Map bounds too large, showing all listings');
-      return allListings;
-    }
-    
-    console.log('Map bounds:', { south, north, west, east, size: boundsSize });
-    
-    const filtered = allListings.filter((listing) => {
-      // Find the corresponding point for this listing
-      const point = allPoints.find(p => p.id === listing.id);
-      if (!point) {
-        console.log('No point found for listing:', listing.id);
-        return true; // Show listing even if no point found
-      }
-
-      // Check if point is within map bounds
-      const inBounds = point.lat >= south && point.lat <= north && point.lng >= west && point.lng <= east;
-      console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
-      return inBounds;
-    });
-    
-    console.log('✅ Filtered listings:', filtered.length);
-    return filtered;
-  }, [allListings, allPoints, mapBounds]);
+    // ALWAYS show all listings - no map bounds filtering
+    console.log('Showing all listings:', allListings.length);
+    return allListings;
+  }, [allListings]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -263,21 +208,10 @@ export default function ListingsPage() {
   };
 
   const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
-    console.log('Map bounds changed:', bounds);
-    
-    // Only update bounds if they represent a meaningful zoom/pan (not initial load)
-    const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
-    
-    // Don't filter on initial load or very large bounds
-    if (boundsSize > 10) {
-      console.log('Bounds too large, not filtering');
-      return;
-    }
-    
-    // Add a small delay to prevent too frequent filtering
-    setTimeout(() => {
-      setMapBounds(bounds);
-    }, 500);
+    console.log('Map bounds changed (DISABLED):', bounds);
+    // DISABLED: Don't filter listings based on map bounds
+    // This was causing listings to disappear
+    return;
   };
 
   // Only show loading on initial load, not when navigating back

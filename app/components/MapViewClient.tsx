@@ -16,8 +16,6 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
   const router = useRouter();
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any>(null);
-  const didFitRef = useRef(false);
-  const lastCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   const isInitializedRef = useRef(false);
 
   const ensureHeight = (el: HTMLElement) => {
@@ -205,22 +203,11 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
     })();
   }, [points, router]);
 
-  // Handle center changes (when user searches) - DISABLED to prevent snapping
+  // DISABLED: Center changes to prevent snapping
   useEffect(() => {
-    // DISABLED: This was causing the map to snap back to Tucson
-    // Only enable if we have a specific search center from user action
-    if (mapRef.current && center && isInitializedRef.current) {
-      console.log('Center change requested:', center);
-      // Only update if this is a deliberate search action, not automatic
-      if (center.lat !== 32.2226 || center.lng !== -110.9747) {
-        try {
-          mapRef.current.setView([center.lat, center.lng], 12);
-          lastCenterRef.current = center;
-        } catch (err) {
-          console.log('Error setting map view:', err);
-        }
-      }
-    }
+    // COMPLETELY DISABLED: This was causing map snapping
+    console.log('Center change requested (DISABLED):', center);
+    return;
   }, [center]);
 
   return (
