@@ -224,8 +224,14 @@ export default function ListingsPage() {
     const boundsSize = Math.abs(north - south) + Math.abs(east - west);
     
     // If bounds are too large (like initial world view), show all listings
-    if (boundsSize > 20) {
+    if (boundsSize > 30) {
       console.log('Map bounds too large, showing all listings');
+      return allListings;
+    }
+    
+    // Only filter if we have a reasonable zoom level
+    if (boundsSize < 0.1) {
+      console.log('Map bounds too small, showing all listings');
       return allListings;
     }
     
@@ -239,8 +245,10 @@ export default function ListingsPage() {
         return true; // Show listing even if no point found
       }
 
-      // Check if point is within map bounds
-      const inBounds = point.lat >= south && point.lat <= north && point.lng >= west && point.lng <= east;
+      // Check if point is within map bounds with some padding
+      const padding = 0.01; // Small padding to prevent edge cases
+      const inBounds = point.lat >= (south - padding) && point.lat <= (north + padding) && 
+                      point.lng >= (west - padding) && point.lng <= (east + padding);
       console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
       return inBounds;
     });
@@ -269,15 +277,21 @@ export default function ListingsPage() {
     const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
     
     // Don't filter on initial load or very large bounds
-    if (boundsSize > 20) {
+    if (boundsSize > 30) {
       console.log('Bounds too large, not filtering');
       return;
     }
     
-    // Add a small delay to prevent too frequent filtering
+    // Don't filter if bounds are too small (zoomed in too much)
+    if (boundsSize < 0.1) {
+      console.log('Bounds too small, not filtering');
+      return;
+    }
+    
+    // Add a longer delay to prevent too frequent filtering
     setTimeout(() => {
       setMapBounds(bounds);
-    }, 500);
+    }, 1000);
   };
 
   // Only show loading on initial load, not when navigating back

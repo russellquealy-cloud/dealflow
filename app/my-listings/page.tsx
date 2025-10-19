@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import ListingCard from '@/components/ListingCard';
+import Image from 'next/image';
 
 export type ListingLike = {
   id: string | number;
@@ -362,9 +363,11 @@ export default function MyListingsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
                     {editForm.images?.map((image, index) => (
                       <div key={index} style={{ position: 'relative', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
-                        <img 
+                        <Image 
                           src={image} 
                           alt={`Property image ${index + 1}`}
+                          width={120}
+                          height={80}
                           style={{ width: '100%', height: 80, objectFit: 'cover' }}
                         />
                         <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>

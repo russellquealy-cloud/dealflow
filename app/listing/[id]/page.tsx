@@ -31,15 +31,17 @@ export default async function ListingPage({ params }: { params: { id: string } }
       </div>
 
       {img && (
-        <div style={{ position: 'relative', width: '100%', height: 360, borderRadius: 12, overflow: 'hidden' }}>
-          <Image src={img} alt="Cover" fill style={{ objectFit: 'cover' }} priority />
+        <div style={{ position: 'relative', width: '100%', height: 500, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+          <Image src={img} alt="Cover" fill style={{ objectFit: 'contain' }} priority />
         </div>
       )}
 
       {gallery.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 8, overflowX: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 16 }}>
           {gallery.map((g) => (
-            <Image key={g} src={g} alt="Photo" width={160} height={110} style={{ borderRadius: 8, objectFit: 'cover' }} />
+            <div key={g} style={{ position: 'relative', width: '100%', height: 250, borderRadius: 12, overflow: 'hidden' }}>
+              <Image src={g} alt="Photo" fill style={{ objectFit: 'contain' }} />
+            </div>
           ))}
         </div>
       )}
