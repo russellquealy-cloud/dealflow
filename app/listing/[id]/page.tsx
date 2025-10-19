@@ -13,6 +13,17 @@ export default async function ListingPage({ params }: { params: { id: string } }
 
   const img = coverUrlFromListing(data);
   const gallery = galleryFromListing(data);
+  
+  // Debug image loading
+  console.log('Listing page image debug:', {
+    id: params.id,
+    rawData: data,
+    coverImageUrl: data.cover_image_url,
+    imageUrl: data.image_url,
+    images: data.images,
+    finalImg: img,
+    gallery: gallery
+  });
 
   const price = data.price ?? 0;
   const arv = data.arv ?? 0;
@@ -32,7 +43,19 @@ export default async function ListingPage({ params }: { params: { id: string } }
 
       {img && (
         <div style={{ position: 'relative', width: '100%', height: 500, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
-          <Image src={img} alt="Cover" fill style={{ objectFit: 'contain' }} priority />
+          <Image 
+            src={img} 
+            alt="Cover" 
+            fill 
+            style={{ objectFit: 'contain' }} 
+            priority 
+            onError={(e) => {
+              console.error('Cover image failed to load:', img, e);
+            }}
+            onLoad={() => {
+              console.log('Cover image loaded successfully:', img);
+            }}
+          />
         </div>
       )}
 
@@ -40,7 +63,18 @@ export default async function ListingPage({ params }: { params: { id: string } }
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 16 }}>
           {gallery.map((g) => (
             <div key={g} style={{ position: 'relative', width: '100%', height: 250, borderRadius: 12, overflow: 'hidden' }}>
-              <Image src={g} alt="Photo" fill style={{ objectFit: 'contain' }} />
+              <Image 
+                src={g} 
+                alt="Photo" 
+                fill 
+                style={{ objectFit: 'contain' }} 
+                onError={(e) => {
+                  console.error('Gallery image failed to load:', g, e);
+                }}
+                onLoad={() => {
+                  console.log('Gallery image loaded successfully:', g);
+                }}
+              />
             </div>
           ))}
         </div>

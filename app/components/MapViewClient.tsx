@@ -41,6 +41,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       const map = Lmod.map(root, { center: [39.8283, -98.5795], zoom: 4 });
       mapRef.current = map;
       isInitializedRef.current = true;
+      
+      console.log('🗺️ Map initialized with center:', [39.8283, -98.5795], 'zoom: 4');
 
       Lmod.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
@@ -124,12 +126,25 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       const emitBounds = () => {
         if (onBoundsChange && mapRef.current) {
           const bounds = mapRef.current.getBounds();
-          console.log('Map bounds emitted:', bounds);
+          const center = mapRef.current.getCenter();
+          console.log('🗺️ Map bounds emitted:', bounds);
+          console.log('🗺️ Map center:', center);
           onBoundsChange(bounds);
         }
       };
       map.on('moveend', emitBounds);
       map.on('zoomend', emitBounds);
+      
+      // Add debugging for map view changes
+      map.on('viewreset', () => {
+        console.log('🗺️ Map view reset');
+      });
+      map.on('zoomstart', () => {
+        console.log('🗺️ Map zoom start');
+      });
+      map.on('zoomend', () => {
+        console.log('🗺️ Map zoom end');
+      });
     })();
 
     return () => {
