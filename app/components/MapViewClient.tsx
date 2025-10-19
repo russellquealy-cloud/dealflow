@@ -158,6 +158,23 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
       return;
     }
     
+    // Validate points have valid coordinates
+    const validPoints = points.filter(p => 
+      typeof p.lat === 'number' && 
+      typeof p.lng === 'number' && 
+      !isNaN(p.lat) && 
+      !isNaN(p.lng) &&
+      p.lat >= -90 && p.lat <= 90 &&
+      p.lng >= -180 && p.lng <= 180
+    );
+    
+    if (validPoints.length === 0) {
+      console.log('⚠️ No valid points to render markers for');
+      return;
+    }
+    
+    console.log('✅ Valid points for rendering:', validPoints.length);
+    
     (async () => {
       console.log('=== MAP MARKER RENDERING ===');
       console.log('Points received:', points);
@@ -188,10 +205,10 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
           markersRef.current = null;
         }
 
-        console.log('🎯 Creating markers for', points.length, 'points');
+        console.log('🎯 Creating markers for', validPoints.length, 'points');
         const group = L.layerGroup();
         
-        for (const p of points) {
+        for (const p of validPoints) {
           try {
             console.log('📍 Creating marker for point:', p);
             

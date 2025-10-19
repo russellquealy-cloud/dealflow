@@ -18,6 +18,7 @@ const arrStr = (v: unknown): string[] =>
 
 export function coverUrlFromListing(l: Listingish): string {
   return (
+    str(l['cover_image_url']) ||
     str(l['cover_url']) ||
     str(l['hero_url']) ||
     str(l['image_url']) ||
@@ -29,11 +30,18 @@ export function coverUrlFromListing(l: Listingish): string {
 }
 
 export function galleryFromListing(l: Listingish): string[] {
+  // Try multiple possible field names for images
+  const images = arrStr(l['images']) || arrStr(l['gallery']) || [];
   const fromCsv =
     typeof l['image_urls'] === 'string'
       ? l['image_urls'].split(',').map((s) => s.trim()).filter(Boolean)
       : [];
-  const base = arrStr(l['gallery']) || arrStr(l['images']) || fromCsv;
-  const cover = coverUrlFromListing(l);
-  return cover ? [cover, ...base.filter((u) => u && u !== cover)] : base;
+  
+  // Combine all possible image sources
+  const allImages = [...images, ...fromCsv].filter(Boolean);
+  
+  // Remove duplicates
+  const uniqueImages = [...new Set(allImages)];
+  
+  return uniqueImages;
 }

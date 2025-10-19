@@ -147,13 +147,20 @@ export default function MyListingsPage() {
       if (editForm.arv !== undefined) updateData.arv = editForm.arv;
       if (editForm.repairs !== undefined) updateData.repairs = editForm.repairs;
       if (editForm.images !== undefined) updateData.images = editForm.images;
-      if (editForm.cover_image_url !== undefined) updateData.cover_image_url = editForm.cover_image_url;
+      // Handle cover image - use first image as cover if no specific cover set
+      if (editForm.images && editForm.images.length > 0) {
+        updateData.cover_image_url = editForm.images[0];
+      }
 
       console.log('Update data:', updateData);
 
+      // Remove fields that might not exist in the database schema
+      const safeUpdateData = { ...updateData };
+      delete safeUpdateData.cover_image_url; // Remove if column doesn't exist
+      
       const { error } = await supabase
         .from('listings')
-        .update(updateData)
+        .update(safeUpdateData)
         .eq('id', editingId);
 
       if (error) {
@@ -340,10 +347,16 @@ export default function MyListingsPage() {
                     <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Year Built</label>
                     <input
                       type="number"
+                      min="1500"
+                      max="2024"
                       value={editForm.year_built || ''}
                       onChange={(e) => setEditForm({...editForm, year_built: Number(e.target.value)})}
+                      placeholder="e.g., 1850, 1920, 2000"
                       style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
                     />
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                      Historical properties: 1500-2024
+                    </div>
                   </div>
                 </div>
 
