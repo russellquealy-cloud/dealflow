@@ -68,7 +68,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  // Map bounds state removed to prevent snap-back issues
+  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -138,27 +138,27 @@ export default function ListingsPage() {
           return;
         }
 
-        const rows = data as unknown as Row[];
+      const rows = data as unknown as Row[];
         console.log('Raw rows:', rows.length);
 
-        const items: ListItem[] = rows.map((r) => {
-          const price = toNum(r.price);
-          const arv = toNum(r.arv);
-          const repairs = toNum(r.repairs ?? r.repair_costs);
-          const spread = toNum(r.spread) ?? (arv !== undefined && price !== undefined && repairs !== undefined ? arv - price - repairs : undefined);
-          const roi = toNum(r.roi) ?? (spread !== undefined && price !== undefined ? Math.round((spread / price) * 100) : undefined);
+      const items: ListItem[] = rows.map((r) => {
+        const price = toNum(r.price);
+        const arv = toNum(r.arv);
+        const repairs = toNum(r.repairs ?? r.repair_costs);
+        const spread = toNum(r.spread) ?? (arv !== undefined && price !== undefined && repairs !== undefined ? arv - price - repairs : undefined);
+        const roi = toNum(r.roi) ?? (spread !== undefined && price !== undefined ? Math.round((spread / price) * 100) : undefined);
 
-          return {
-            id: String(r.id),
-            title: r.title ?? undefined,
-            address: r.address ?? undefined,
-            city: r.city ?? undefined,
-            state: r.state ?? undefined,
-            zip: r.zip ?? undefined,
-            price,
-            bedrooms: (r.bedrooms ?? r.beds) ?? undefined,
-            bathrooms: (r.bathrooms ?? r.baths) ?? undefined,
-            home_sqft: (r.home_sqft ?? r.square_feet) ?? undefined,
+        return {
+          id: String(r.id),
+          title: r.title ?? undefined,
+          address: r.address ?? undefined,
+          city: r.city ?? undefined,
+          state: r.state ?? undefined,
+          zip: r.zip ?? undefined,
+          price,
+          bedrooms: (r.bedrooms ?? r.beds) ?? undefined,
+          bathrooms: (r.bathrooms ?? r.baths) ?? undefined,
+          home_sqft: (r.home_sqft ?? r.square_feet) ?? undefined,
             lot_size: toNum(r.lot_size),
             garage: r.garage ?? undefined,
             year_built: r.year_built ?? undefined,
@@ -167,14 +167,14 @@ export default function ListingsPage() {
             owner_phone: r.contact_phone ?? r.owner_phone ?? undefined,
             owner_email: r.contact_email ?? r.owner_email ?? undefined,
             owner_name: r.contact_name ?? r.owner_name ?? undefined,
-            images: Array.isArray(r.images) ? r.images : undefined,
+          images: Array.isArray(r.images) ? r.images : undefined,
             cover_image_url: r.image_url ?? r.cover_image_url ?? undefined,
-            arv,
-            repairs,
-            spread,
-            roi,
-          };
-        });
+          arv,
+          repairs,
+          spread,
+          roi,
+        };
+      });
 
         const pts: MapPoint[] = [];
         for (const r of rows) {
@@ -273,14 +273,48 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]); // Re-added dependencies for filtering
 
-  // Map bounds filtering completely disabled to prevent snap-back
+  // Map bounds filtering - show only listings in current map view
   const filteredListings = React.useMemo(() => {
-    console.log('=== SHOWING ALL LISTINGS (MAP FILTERING DISABLED) ===');
+    console.log('=== FILTERING LISTINGS BY MAP BOUNDS ===');
     console.log('📊 All listings:', allListings.length);
+    console.log('🗺️ Map bounds:', mapBounds);
     
-    // Always show all listings to prevent map interference
-    return allListings;
-  }, [allListings]);
+    // If no map bounds yet, show all listings initially
+    if (!mapBounds) {
+      console.log('No map bounds yet, showing all listings:', allListings.length);
+      return allListings;
+    }
+
+    const { south, north, west, east } = mapBounds;
+    const boundsSize = Math.abs(north - south) + Math.abs(east - west);
+    
+    // If bounds are too large (like initial world view), show all listings
+    if (boundsSize > 10) {
+      console.log('Map bounds too large, showing all listings');
+      return allListings;
+    }
+    
+    console.log('Map bounds:', { south, north, west, east, size: boundsSize });
+    
+    const filtered = allListings.filter((listing) => {
+      // Find the corresponding point for this listing
+      const point = allPoints.find(p => p.id === listing.id);
+      if (!point) {
+        console.log('No point found for listing:', listing.id);
+        return true; // Show listing even if no point found
+      }
+
+      // Check if point is within map bounds with some padding
+      const padding = 0.01; // Small padding to prevent edge cases
+      const inBounds = point.lat >= (south - padding) && point.lat <= (north + padding) && 
+                      point.lng >= (west - padding) && point.lng <= (east + padding);
+      console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
+      return inBounds;
+    });
+    
+    console.log('✅ Filtered listings:', filtered.length);
+    return filtered;
+  }, [allListings, allPoints, mapBounds]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -295,7 +329,11 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  // Map bounds handling completely disabled to prevent snap-back
+  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+    console.log('Map bounds changed:', bounds);
+    // Only update bounds for filtering, don't trigger any map changes
+    setMapBounds(bounds);
+  };
 
   // Only show loading on initial load, not when navigating back
   if (loading && !hasLoaded) {
@@ -348,10 +386,10 @@ export default function ListingsPage() {
                  MapComponent={(props) => {
                    console.log('🗺️ Passing points to MapViewClient:', props.points);
                    console.log('🗺️ Points length:', props.points?.length || 0);
-                   return <MapViewClient {...props} />;
+                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} />;
                  }} 
                />
-             </div>
+      </div>
     </div>
   );
 }

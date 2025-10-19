@@ -37,12 +37,39 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
       if (mapRef.current) return;
 
-      // Use a more neutral center (US center) instead of hardcoded Tucson
-      const map = Lmod.map(root, { center: [39.8283, -98.5795], zoom: 4 });
+      // Try to restore last map position from localStorage
+      let initialCenter = [39.8283, -98.5795]; // Default US center
+      let initialZoom = 4;
+      
+      try {
+        const savedCenter = localStorage.getItem('dealflow-map-center');
+        const savedZoom = localStorage.getItem('dealflow-map-zoom');
+        
+        if (savedCenter) {
+          const [lat, lng] = JSON.parse(savedCenter);
+          if (typeof lat === 'number' && typeof lng === 'number' && 
+              lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            initialCenter = [lat, lng];
+            console.log('🗺️ Restored map center from localStorage:', initialCenter);
+          }
+        }
+        
+        if (savedZoom) {
+          const zoom = parseInt(savedZoom);
+          if (zoom >= 1 && zoom <= 18) {
+            initialZoom = zoom;
+            console.log('🗺️ Restored map zoom from localStorage:', initialZoom);
+          }
+        }
+      } catch (err) {
+        console.log('⚠️ Could not restore map position:', err);
+      }
+      
+      const map = Lmod.map(root, { center: initialCenter, zoom: initialZoom });
       mapRef.current = map;
       isInitializedRef.current = true;
       
-      console.log('🗺️ Map initialized with center:', [39.8283, -98.5795], 'zoom: 4');
+      console.log('🗺️ Map initialized with center:', initialCenter, 'zoom:', initialZoom);
 
       Lmod.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
@@ -132,8 +159,30 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           onBoundsChange(bounds);
         }
       };
-      map.on('moveend', emitBounds);
-      map.on('zoomend', emitBounds);
+      
+      const saveMapPosition = () => {
+        if (mapRef.current) {
+          const center = mapRef.current.getCenter();
+          const zoom = mapRef.current.getZoom();
+          
+          try {
+            localStorage.setItem('dealflow-map-center', JSON.stringify([center.lat, center.lng]));
+            localStorage.setItem('dealflow-map-zoom', zoom.toString());
+            console.log('🗺️ Saved map position:', { center: [center.lat, center.lng], zoom });
+          } catch (err) {
+            console.log('⚠️ Could not save map position:', err);
+          }
+        }
+      };
+      
+      map.on('moveend', () => {
+        emitBounds();
+        saveMapPosition();
+      });
+      map.on('zoomend', () => {
+        emitBounds();
+        saveMapPosition();
+      });
       
       // Add debugging for map view changes
       map.on('viewreset', () => {
@@ -173,6 +222,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       console.log('⚠️ No points to render markers for');
       return;
     }
+    
+    console.log('🔍 All points data:', JSON.stringify(points, null, 2));
     
     // Validate points have valid coordinates
     const validPoints = points.filter(p => 
