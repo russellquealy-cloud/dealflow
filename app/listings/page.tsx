@@ -311,7 +311,7 @@ export default function ListingsPage() {
     const boundsSize = Math.abs(north - south) + Math.abs(east - west);
     
     // If bounds are too large (like initial world view), show all listings
-    if (boundsSize > 50) { // Increased threshold to be less aggressive
+    if (boundsSize > 100) { // Much larger threshold to be less aggressive
       console.log('Map bounds too large, showing all listings');
       return allListings;
     }
@@ -327,7 +327,7 @@ export default function ListingsPage() {
       }
 
       // Check if point is within map bounds with some padding
-      const padding = 0.01; // Smaller padding for more precise filtering
+      const padding = 0.1; // Larger padding to be more forgiving
       const inBounds = point.lat >= (south - padding) && point.lat <= (north + padding) && 
                       point.lng >= (west - padding) && point.lng <= (east + padding);
       console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);

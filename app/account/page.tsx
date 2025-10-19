@@ -87,12 +87,6 @@ export default function AccountPage() {
               {user?.email}
             </div>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>User ID</label>
-            <div style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#f9fafb', fontSize: 12, fontFamily: 'monospace' }}>
-              {user?.id}
-            </div>
-          </div>
         </div>
       </div>
 
