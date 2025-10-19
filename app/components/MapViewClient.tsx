@@ -142,28 +142,35 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
             try {
               console.log('📍 Creating marker for point:', p);
               
-              // Create a custom marker with better visibility
-              const markerIcon = L.divIcon({
-                className: 'custom-marker',
-                html: `<div style="
-                  background-color: #dc2626;
-                  width: 20px;
-                  height: 20px;
-                  border-radius: 50%;
-                  border: 2px solid white;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  color: white;
-                  font-size: 8px;
-                  font-weight: bold;
-                ">🏠</div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-              });
-
-              const marker = L.marker([p.lat, p.lng], { icon: markerIcon });
+              // Use default marker first, then try custom if needed
+              let marker;
+              try {
+                // Try custom marker
+                const markerIcon = L.divIcon({
+                  className: 'custom-marker',
+                  html: `<div style="
+                    background-color: #dc2626;
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 10px;
+                    font-weight: bold;
+                    cursor: pointer;
+                  ">🏠</div>`,
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 12]
+                });
+                marker = L.marker([p.lat, p.lng], { icon: markerIcon });
+              } catch (err) {
+                console.log('Custom marker failed, using default:', err);
+                marker = L.marker([p.lat, p.lng]);
+              }
               marker.addTo(group);
               marker.on('click', () => {
                 console.log('Marker clicked:', p.id);
@@ -180,20 +187,8 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
           markersRef.current = group;
           console.log('🎉 All markers added to map successfully');
           
-          // Only fit bounds once on initial load
-          if (!didFitRef.current && points.length > 0) {
-            try {
-              // Add a delay to ensure map is fully rendered
-              setTimeout(() => {
-                const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
-                map.fitBounds(bounds, { padding: [20, 20] });
-                didFitRef.current = true;
-                console.log('Map bounds fitted to markers');
-              }, 500);
-            } catch (err) {
-              console.log('Error fitting bounds:', err);
-            }
-          }
+          // Don't auto-fit bounds to prevent snapping
+          console.log('Markers added, no auto-fitting to prevent snapping');
         } else {
           console.log('⚠️ No points to render markers for');
         }

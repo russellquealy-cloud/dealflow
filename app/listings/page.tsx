@@ -207,15 +207,15 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]);
 
-  // Filter listings by map bounds when available
+  // Show all listings initially, then filter by map bounds when user moves map
   const filteredListings = React.useMemo(() => {
     console.log('=== FILTERING LISTINGS ===');
     console.log('📊 All listings:', allListings.length);
     console.log('🗺️ Map bounds:', !!mapBounds);
     
-    // If no map bounds set yet, show all listings initially
-    if (!mapBounds) {
-      console.log('No map bounds, showing all listings:', allListings.length);
+    // Always show all listings initially to prevent disappearing
+    if (!mapBounds || allListings.length === 0) {
+      console.log('No map bounds or no listings, showing all listings:', allListings.length);
       return allListings;
     }
 
@@ -227,7 +227,7 @@ export default function ListingsPage() {
       const point = allPoints.find(p => p.id === listing.id);
       if (!point) {
         console.log('No point found for listing:', listing.id);
-        return false; // Don't show listing if no point found
+        return true; // Show listing even if no point found
       }
 
       // Check if point is within map bounds
@@ -255,7 +255,10 @@ export default function ListingsPage() {
 
   const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
     console.log('Map bounds changed:', bounds);
-    setMapBounds(bounds);
+    // Add a small delay to prevent too frequent filtering
+    setTimeout(() => {
+      setMapBounds(bounds);
+    }, 300);
   };
 
   // Only show loading on initial load, not when navigating back
