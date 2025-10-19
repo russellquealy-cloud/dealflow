@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { formatCurrency } from '@/lib/format';
 import ContactButtons from '@/components/ContactButtons';
 import { coverUrlFromListing, galleryFromListing } from '@/lib/images';
-import Image from 'next/image';
+import ImageGallery from '@/components/ImageGallery';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,44 +41,11 @@ export default async function ListingPage({ params }: { params: { id: string } }
         {[data.address1, data.city, data.state, data.zip].filter(Boolean).join(', ')}
       </div>
 
-      {img && (
-        <div style={{ position: 'relative', width: '100%', height: 500, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
-          <Image 
-            src={img} 
-            alt="Cover" 
-            fill 
-            style={{ objectFit: 'contain' }} 
-            priority 
-            onError={(e) => {
-              console.error('Cover image failed to load:', img, e);
-            }}
-            onLoad={() => {
-              console.log('Cover image loaded successfully:', img);
-            }}
-          />
-        </div>
-      )}
-
-      {gallery.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 16 }}>
-          {gallery.map((g) => (
-            <div key={g} style={{ position: 'relative', width: '100%', height: 250, borderRadius: 12, overflow: 'hidden' }}>
-              <Image 
-                src={g} 
-                alt="Photo" 
-                fill 
-                style={{ objectFit: 'contain' }} 
-                onError={(e) => {
-                  console.error('Gallery image failed to load:', g, e);
-                }}
-                onLoad={() => {
-                  console.log('Gallery image loaded successfully:', g);
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <ImageGallery 
+        coverImage={img || undefined} 
+        galleryImages={gallery || []} 
+        title={`${formatCurrency(price)} - ${[data.address1, data.city, data.state, data.zip].filter(Boolean).join(', ')}`}
+      />
 
       <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12 }}>
         <Info label="Beds" value={data.bedrooms ?? '—'} />

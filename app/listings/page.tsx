@@ -68,7 +68,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
+  // Map bounds state removed to prevent snap-back issues
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -273,17 +273,14 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]); // Re-added dependencies for filtering
 
-  // Map bounds filtering - show only listings in current map view
+  // Map bounds filtering completely disabled to prevent snap-back
   const filteredListings = React.useMemo(() => {
-    console.log('=== FILTERING LISTINGS BY MAP BOUNDS ===');
+    console.log('=== SHOWING ALL LISTINGS (MAP FILTERING DISABLED) ===');
     console.log('📊 All listings:', allListings.length);
-    console.log('🗺️ Map bounds:', mapBounds);
     
-    // For now, always show all listings to avoid filtering issues
-    // TODO: Re-enable map bounds filtering once basic functionality works
-    console.log('Showing all listings (map bounds filtering disabled)');
+    // Always show all listings to prevent map interference
     return allListings;
-  }, [allListings, mapBounds]);
+  }, [allListings]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -298,12 +295,7 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
-    console.log('Map bounds changed:', bounds);
-    // For now, just log the bounds change without filtering
-    // TODO: Re-enable map bounds filtering once basic functionality works
-    setMapBounds(bounds);
-  };
+  // Map bounds handling completely disabled to prevent snap-back
 
   // Only show loading on initial load, not when navigating back
   if (loading && !hasLoaded) {
@@ -356,7 +348,7 @@ export default function ListingsPage() {
                  MapComponent={(props) => {
                    console.log('🗺️ Passing points to MapViewClient:', props.points);
                    console.log('🗺️ Points length:', props.points?.length || 0);
-                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} />;
+                   return <MapViewClient {...props} />;
                  }} 
                />
              </div>
