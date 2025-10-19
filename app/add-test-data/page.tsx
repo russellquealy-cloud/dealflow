@@ -20,7 +20,7 @@ export default function AddTestDataPage() {
       // First check if we have any listings
       const { data: existingData, error: checkError } = await supabase
         .from('listings')
-        .select('count(*)')
+        .select('id')
         .limit(1);
 
       if (checkError) {
@@ -29,7 +29,7 @@ export default function AddTestDataPage() {
         return;
       }
 
-      addLog(`📊 Current listings count: ${(existingData as unknown[])?.[0] ? 'Some data exists' : 'No data'}`);
+      addLog(`📊 Current listings: ${existingData?.length ? 'Some data exists' : 'No data'}`);
 
       // Test data for Tucson area
       const testListings = [
