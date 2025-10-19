@@ -49,14 +49,32 @@ export default function Header() {
 };
 
   const handlePostDeal = async () => {
-    // Check session more thoroughly
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session && session.user) {
-      // User is signed in, go to new listing page
-      router.push('/my-listings/new');
-    } else {
-      // User is not signed in, go to login page
-      router.push('/login');
+    try {
+      // Check session more thoroughly with better error handling
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      console.log('Post Deal - Session check:', { session: !!session, user: !!session?.user, error });
+      
+      if (error) {
+        console.error('Session check error:', error);
+        // If there's an error checking session, redirect to login
+        router.push('/login?next=/my-listings/new');
+        return;
+      }
+      
+      if (session && session.user) {
+        console.log('User is signed in, redirecting to new listing');
+        // User is signed in, go to new listing page
+        router.push('/my-listings/new');
+      } else {
+        console.log('User not signed in, redirecting to login');
+        // User is not signed in, go to login page with redirect
+        router.push('/login?next=/my-listings/new');
+      }
+    } catch (err) {
+      console.error('Error in handlePostDeal:', err);
+      // If there's any error, redirect to login
+      router.push('/login?next=/my-listings/new');
     }
   };
 
