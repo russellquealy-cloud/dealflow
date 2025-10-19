@@ -211,7 +211,7 @@ export default function ListingsPage() {
                 bathrooms: 2,
                 home_sqft: 1800,
                 lot_size: 0.25,
-                garage: true,
+                garage: 1,
                 year_built: 1920,
                 description: 'Charming historic home in downtown Tucson',
                 images: ['https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800'],
@@ -229,7 +229,7 @@ export default function ListingsPage() {
                 bathrooms: 3,
                 home_sqft: 2400,
                 lot_size: 0.5,
-                garage: true,
+                garage: 1,
                 year_built: 2015,
                 description: 'Stunning modern home with mountain views',
                 images: ['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'],
@@ -247,7 +247,7 @@ export default function ListingsPage() {
                 bathrooms: 2,
                 home_sqft: 2000,
                 lot_size: 0.3,
-                garage: true,
+                garage: 1,
                 year_built: 1995,
                 description: 'Spacious ranch with mountain views',
                 images: ['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'],
@@ -311,7 +311,7 @@ export default function ListingsPage() {
     const boundsSize = Math.abs(north - south) + Math.abs(east - west);
     
     // If bounds are too large (like initial world view), show all listings
-    if (boundsSize > 20) {
+    if (boundsSize > 50) { // Increased threshold to be less aggressive
       console.log('Map bounds too large, showing all listings');
       return allListings;
     }
@@ -327,7 +327,7 @@ export default function ListingsPage() {
       }
 
       // Check if point is within map bounds with some padding
-      const padding = 0.05; // Larger padding to prevent edge cases
+      const padding = 0.01; // Smaller padding for more precise filtering
       const inBounds = point.lat >= (south - padding) && point.lat <= (north + padding) && 
                       point.lng >= (west - padding) && point.lng <= (east + padding);
       console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import MessageForm from './MessageForm';
 
 export type ListingLike = {
   id: string | number;
@@ -197,6 +198,17 @@ export default function ListingCard({ listing }: Props) {
                 </a>
               )}
             </div>
+          )}
+
+          {/* Message Form */}
+          {ownerEmail && (
+            <MessageForm
+              listingId={String(listing.id)}
+              ownerEmail={ownerEmail}
+              ownerPhone={ownerPhone}
+              ownerName={listing.owner_name}
+              listingTitle={listing.title}
+            />
           )}
         </div>
       </div>
