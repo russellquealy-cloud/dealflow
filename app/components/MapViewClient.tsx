@@ -97,6 +97,12 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
 
   // Render markers - FIXED: Better error handling and marker management
   useEffect(() => {
+    console.log('=== MAP MARKER RENDERING EFFECT TRIGGERED ===');
+    console.log('Points received:', points);
+    console.log('Points length:', points?.length || 0);
+    console.log('Map ref:', !!mapRef.current);
+    console.log('Initialized:', isInitializedRef.current);
+    
     (async () => {
       console.log('=== MAP MARKER RENDERING ===');
       console.log('Points received:', points);
@@ -109,6 +115,9 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
       }
       
       console.log('✅ Map is ready, rendering markers for points:', points?.length || 0);
+      
+      // Add a small delay to ensure map is fully ready
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       try {
         const L = (await import('leaflet')).default;

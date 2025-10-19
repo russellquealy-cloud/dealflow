@@ -68,6 +68,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -168,12 +169,26 @@ export default function ListingsPage() {
         console.log('✅ Processed data:', { items: items.length, points: pts.length });
         console.log('📋 Sample item:', items[0]);
         console.log('📍 Sample point:', pts[0]);
+        console.log('📍 All points:', pts);
         
         if (!cancelled) {
           setAllListings(items);
           setAllPoints(pts);
           setLoading(false);
           setHasLoaded(true);
+          
+          // If no points found, create some test points for debugging
+          if (pts.length === 0 && items.length > 0) {
+            console.log('⚠️ No points found, creating test points for debugging');
+            const testPoints: MapPoint[] = items.slice(0, 3).map((item, index) => ({
+              id: item.id,
+              lat: 32.2226 + (index * 0.01), // Tucson area with slight offset
+              lng: -110.9747 + (index * 0.01),
+              price: toNum(item.price)
+            }));
+            console.log('🧪 Test points created:', testPoints);
+            setAllPoints(testPoints);
+          }
         }
       } catch (err) {
         console.error('Error loading listings:', err);
@@ -185,15 +200,38 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]);
 
-  // Show all listings - don't filter by map bounds to prevent disappearing
+  // Filter listings by map bounds when available
   const filteredListings = React.useMemo(() => {
     console.log('=== FILTERING LISTINGS ===');
     console.log('📊 All listings:', allListings.length);
+    console.log('🗺️ Map bounds:', !!mapBounds);
     
-    // Always show all listings to prevent disappearing
-    console.log('Showing all listings:', allListings.length);
-    return allListings;
-  }, [allListings]);
+    // If no map bounds set yet, show all listings
+    if (!mapBounds) {
+      console.log('No map bounds, showing all listings:', allListings.length);
+      return allListings;
+    }
+
+    const { south, north, west, east } = mapBounds;
+    console.log('Map bounds:', { south, north, west, east });
+    
+    const filtered = allListings.filter((listing) => {
+      // Find the corresponding point for this listing
+      const point = allPoints.find(p => p.id === listing.id);
+      if (!point) {
+        console.log('No point found for listing:', listing.id);
+        return true; // Show listing even if no point found
+      }
+
+      // Check if point is within map bounds
+      const inBounds = point.lat >= south && point.lat <= north && point.lng >= west && point.lng <= east;
+      console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
+      return inBounds;
+    });
+    
+    console.log('✅ Filtered listings:', filtered.length);
+    return filtered;
+  }, [allListings, allPoints, mapBounds]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -208,9 +246,9 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = () => {
-    // Don't filter by map bounds to prevent listings from disappearing
-    console.log('Map bounds changed (ignored)');
+  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+    console.log('Map bounds changed:', bounds);
+    setMapBounds(bounds);
   };
 
   // Only show loading on initial load, not when navigating back
@@ -257,13 +295,17 @@ export default function ListingsPage() {
       </div>
 
       {/* the split fills the rest of the viewport - NO SCROLL */}
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
-        <ListingsSplitClient 
-          points={allPoints} 
-          listings={filteredListings} 
-          MapComponent={(props) => <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} />} 
-        />
-      </div>
+             <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
+               <ListingsSplitClient 
+                 points={allPoints} 
+                 listings={filteredListings} 
+                 MapComponent={(props) => {
+                   console.log('🗺️ Passing points to MapViewClient:', props.points);
+                   console.log('🗺️ Points length:', props.points?.length || 0);
+                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} center={undefined} />;
+                 }} 
+               />
+             </div>
     </div>
   );
 }

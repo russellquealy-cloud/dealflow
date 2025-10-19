@@ -1,77 +1,154 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import ListingCard from '@/components/ListingCard';
-import type { Listing } from '@/types';
 
-export const dynamic = 'force-dynamic';
-
-function toUndef<T>(v: T | null | undefined): T | undefined {
-  return v === null || v === undefined ? undefined : v;
-}
-
-function toStr(v: unknown): string | undefined {
-  return typeof v === 'string' ? v : undefined;
-}
+export type ListingLike = {
+  id: string | number;
+  title?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  price?: number | string;
+  bedrooms?: number;
+  bathrooms?: number;
+  home_sqft?: number;
+  lot_size?: number;
+  garage?: boolean;
+  year_built?: number;
+  assignment_fee?: number;
+  description?: string;
+  owner_phone?: string;
+  owner_email?: string;
+  owner_name?: string;
+  images?: string[];
+  cover_image_url?: string;
+  arv?: number;
+  repairs?: number;
+  spread?: number;
+  roi?: number;
+};
 
 function toNum(v: unknown): number | undefined {
-  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
 }
 
-function toStrArray(v: unknown): string[] | undefined {
-  return Array.isArray(v) && v.every((x) => typeof x === 'string') ? (v as string[]) : undefined;
-}
+export default function MyListingsPage() {
+  const router = useRouter();
+  const [listings, setListings] = useState<ListingLike[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function MyListingsPage() {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login?next=/my-listings');
+        return;
+      }
+      loadListings(session.user.id);
+    };
 
-  if (!session) redirect('/login?next=/my-listings');
+    checkAuth();
+  }, [router]);
 
-  const { data: rows = [], error } = await supabase
-    .from('listings')
-    .select('*')
-    .eq('owner_id', session.user.id)
-    .order('created_at', { ascending: false });
+  const loadListings = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('owner_id', userId)
+        .order('created_at', { ascending: false });
 
-  if (error) {
+      if (error) {
+        console.error('Error loading listings:', error);
+        return;
+      }
+
+      const processedListings: ListingLike[] = (data || []).map((r: unknown) => {
+        const row = r as Record<string, unknown>;
+        return {
+        id: String(row.id),
+        title: row.title as string | undefined,
+        address: row.address as string | undefined,
+        city: row.city as string | undefined,
+        state: row.state as string | undefined,
+        zip: row.zip as string | undefined,
+        price: toNum(row.price),
+        bedrooms: toNum(row.bedrooms ?? row.beds),
+        bathrooms: toNum(row.bathrooms ?? row.baths),
+        home_sqft: toNum(row.home_sqft ?? row.square_feet),
+        lot_size: toNum(row.lot_size),
+        garage: row.garage as boolean | undefined,
+        year_built: toNum(row.year_built),
+        assignment_fee: toNum(row.assignment_fee),
+        description: row.description as string | undefined,
+        owner_phone: (row.contact_phone ?? row.owner_phone) as string | undefined,
+        owner_email: (row.contact_email ?? row.owner_email) as string | undefined,
+        owner_name: (row.contact_name ?? row.owner_name) as string | undefined,
+        images: Array.isArray(row.images) ? row.images as string[] : undefined,
+        cover_image_url: (row.image_url ?? row.cover_image_url) as string | undefined,
+        arv: toNum(row.arv),
+        repairs: toNum(row.repairs ?? row.repair_costs),
+        spread: toNum(row.spread),
+        roi: toNum(row.roi),
+      };
+      });
+
+      setListings(processedListings);
+    } catch (err) {
+      console.error('Error loading listings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <main style={{ padding: 16 }}>
-        <h1>My Listings</h1>
-        <p style={{ color: '#b91c1c' }}>{error.message}</p>
-      </main>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 65px)' }}>
+        <div>Loading your listings...</div>
+      </div>
     );
   }
 
-  const listings = rows as unknown as Listing[];
-
   return (
     <main style={{ padding: 24 }}>
-      <div className="mb-3">
-        <a href="/my-listings/new" className="rounded-md border px-3 py-2 hover:bg-gray-50">
+      <div style={{ marginBottom: 16 }}>
+        <a 
+          href="/my-listings/new" 
+          style={{ 
+            display: 'inline-block',
+            padding: '8px 16px', 
+            border: '1px solid #0ea5e9', 
+            borderRadius: 8,
+            background: '#0ea5e9',
+            color: '#fff',
+            textDecoration: 'none',
+            fontWeight: 600
+          }}
+        >
           Post a Deal
         </a>
       </div>
 
-      <h1 style={{ margin: 0, marginBottom: 12 }}>My Listings</h1>
+      <h1 style={{ margin: '0 0 12px 0', fontSize: 24, fontWeight: 800 }}>My Listings</h1>
 
       <div style={{ display: 'grid', gap: 12 }}>
-        {listings.map((l) => {
-          const listingObj = {
-            id: String(l.id),
-            address: toStr(toUndef(l.address)),
-            price: toNum(toUndef(l.price)),
-            bedrooms: toNum((l as unknown as { bedrooms?: number; beds?: number }).bedrooms ?? (l as unknown as { beds?: number }).beds),
-            bathrooms: toNum((l as unknown as { bathrooms?: number; baths?: number }).bathrooms ?? (l as unknown as { baths?: number }).baths),
-            home_sqft: toNum((l as unknown as { home_sqft?: number; square_feet?: number }).home_sqft ?? (l as unknown as { square_feet?: number }).square_feet),
-            images: toStrArray((l as unknown as { images?: unknown }).images),
-            city: toStr(toUndef(l.city)),
-            state: toStr(toUndef(l.state)),
-            zip: toStr(toUndef(l.zip)),
-            title: toStr(toUndef(l.title)),
-          };
-          return <ListingCard key={String(l.id)} listing={listingObj} />;
-        })}
-        {!listings.length && <div>No listings yet.</div>}
+        {listings.map((listing) => (
+          <ListingCard key={String(listing.id)} listing={listing} />
+        ))}
+        {listings.length === 0 && (
+          <div style={{ textAlign: 'center', color: '#6b7280', padding: '40px 20px' }}>
+            No listings yet. <a href="/my-listings/new" style={{ color: '#0ea5e9' }}>Create your first listing</a>
+          </div>
+        )}
       </div>
     </main>
   );
