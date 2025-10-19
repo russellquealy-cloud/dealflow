@@ -9,10 +9,9 @@ export type Point = { id: string; lat: number; lng: number; price?: number };
 type Props = { 
   points: Point[]; 
   onBoundsChange?: (b: any) => void;
-  center?: { lat: number; lng: number };
 };
 
-export default function MapViewClient({ points, onBoundsChange, center }: Props) {
+export default function MapViewClient({ points, onBoundsChange }: Props) {
   const router = useRouter();
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any>(null);
@@ -124,7 +123,9 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
 
       const emitBounds = () => {
         if (onBoundsChange && mapRef.current) {
-          onBoundsChange(mapRef.current.getBounds());
+          const bounds = mapRef.current.getBounds();
+          console.log('Map bounds emitted:', bounds);
+          onBoundsChange(bounds);
         }
       };
       map.on('moveend', emitBounds);
@@ -277,12 +278,6 @@ export default function MapViewClient({ points, onBoundsChange, center }: Props)
     })();
   }, [points, router]);
 
-  // DISABLED: Center changes to prevent snapping
-  useEffect(() => {
-    // COMPLETELY DISABLED: This was causing map snapping
-    console.log('Center change requested (DISABLED):', center);
-    return;
-  }, [center]);
 
   return (
     <div

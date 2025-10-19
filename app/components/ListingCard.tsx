@@ -65,6 +65,14 @@ export default function ListingCard({ listing }: Props) {
       .join(', ');
 
   const img = listing.cover_image_url ?? (listing.images && listing.images[0]) ?? null;
+  
+  // Debug image loading
+  console.log('ListingCard image debug:', {
+    id: listing.id,
+    cover_image_url: listing.cover_image_url,
+    images: listing.images,
+    finalImg: img
+  });
 
   const arv = toNum(listing.arv);
   const repairs = toNum(listing.repairs);
@@ -84,7 +92,26 @@ export default function ListingCard({ listing }: Props) {
         <Link href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', overflow: 'hidden', borderRadius: 10, background: '#f3f4f6' }}>
             {img ? (
-              <Image src={img} alt="" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+              <Image 
+                src={img} 
+                alt="" 
+                fill 
+                style={{ objectFit: 'cover' }} 
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                onError={(e) => {
+                  console.error('Image failed to load:', img, e);
+                  // Try to reload the image after a short delay
+                  setTimeout(() => {
+                    const imgElement = e.target as HTMLImageElement;
+                    if (imgElement) {
+                      imgElement.src = img;
+                    }
+                  }, 1000);
+                }}
+                onLoad={() => {
+                  console.log('Image loaded successfully:', img);
+                }}
+              />
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
                 No Image
