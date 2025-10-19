@@ -68,7 +68,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  // const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
+  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -201,7 +201,7 @@ export default function ListingsPage() {
               {
                 id: 'test-1',
                 title: 'Beautiful Historic Home',
-                address: '123 Main St',
+                address: '123 E Broadway Blvd',
                 city: 'Tucson',
                 state: 'AZ',
                 zip: '85701',
@@ -219,10 +219,10 @@ export default function ListingsPage() {
               {
                 id: 'test-2',
                 title: 'Modern Desert Oasis',
-                address: '456 Desert View Dr',
+                address: '456 N Campbell Ave',
                 city: 'Tucson',
                 state: 'AZ',
-                zip: '85718',
+                zip: '85719',
                 price: 450000,
                 bedrooms: 4,
                 bathrooms: 3,
@@ -233,12 +233,31 @@ export default function ListingsPage() {
                 description: 'Stunning modern home with mountain views',
                 images: ['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'],
                 cover_image_url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
+              },
+              {
+                id: 'test-3',
+                title: 'Mountain View Ranch',
+                address: '789 E Speedway Blvd',
+                city: 'Tucson',
+                state: 'AZ',
+                zip: '85719',
+                price: 350000,
+                bedrooms: 3,
+                bathrooms: 2,
+                home_sqft: 2000,
+                lot_size: 0.3,
+                garage: true,
+                year_built: 1995,
+                description: 'Spacious ranch with mountain views',
+                images: ['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'],
+                cover_image_url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
               }
             ];
             
             const testPoints: MapPoint[] = [
               { id: 'test-1', lat: 32.2226, lng: -110.9747, price: 250000 },
-              { id: 'test-2', lat: 32.2326, lng: -110.9847, price: 450000 }
+              { id: 'test-2', lat: 32.2326, lng: -110.9847, price: 450000 },
+              { id: 'test-3', lat: 32.2426, lng: -110.9947, price: 350000 }
             ];
             
             setAllListings(testListings);
@@ -275,15 +294,48 @@ export default function ListingsPage() {
     return () => { cancelled = true; };
   }, [filters, searchQuery]); // Re-added dependencies for filtering
 
-  // Map bounds filtering - TEMPORARILY DISABLED to fix listings not showing
+  // Map bounds filtering - show only listings in current map view
   const filteredListings = React.useMemo(() => {
-    console.log('=== SHOWING ALL LISTINGS (MAP FILTERING TEMPORARILY DISABLED) ===');
+    console.log('=== FILTERING LISTINGS BY MAP BOUNDS ===');
     console.log('📊 All listings:', allListings.length);
+    console.log('🗺️ Map bounds:', mapBounds);
     
-    // Temporarily show all listings to fix the issue
-    console.log('Showing all listings:', allListings.length);
-    return allListings;
-  }, [allListings]);
+    // If no map bounds yet, show all listings initially
+    if (!mapBounds) {
+      console.log('No map bounds yet, showing all listings:', allListings.length);
+      return allListings;
+    }
+
+    const { south, north, west, east } = mapBounds;
+    const boundsSize = Math.abs(north - south) + Math.abs(east - west);
+    
+    // If bounds are too large (like initial world view), show all listings
+    if (boundsSize > 20) {
+      console.log('Map bounds too large, showing all listings');
+      return allListings;
+    }
+    
+    console.log('Map bounds:', { south, north, west, east, size: boundsSize });
+    
+    const filtered = allListings.filter((listing) => {
+      // Find the corresponding point for this listing
+      const point = allPoints.find(p => p.id === listing.id);
+      if (!point) {
+        console.log('No point found for listing:', listing.id);
+        return false; // Don't show listing if no point found
+      }
+
+      // Check if point is within map bounds with some padding
+      const padding = 0.05; // Larger padding to prevent edge cases
+      const inBounds = point.lat >= (south - padding) && point.lat <= (north + padding) && 
+                      point.lng >= (west - padding) && point.lng <= (east + padding);
+      console.log(`Listing ${listing.id}: lat=${point.lat}, lng=${point.lng}, inBounds=${inBounds}`);
+      return inBounds;
+    });
+    
+    console.log('✅ Filtered listings:', filtered.length);
+    return filtered;
+  }, [allListings, allPoints, mapBounds]);
 
   const handleSearch = () => {
     // Trigger a reload with the search query
@@ -298,11 +350,11 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  // const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
-  //   console.log('Map bounds changed:', bounds);
-  //   // Only update bounds for filtering, don't trigger any map changes
-  //   setMapBounds(bounds);
-  // };
+  const handleMapBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+    console.log('Map bounds changed:', bounds);
+    // Only update bounds for filtering, don't trigger any map changes
+    setMapBounds(bounds);
+  };
 
   // Only show loading on initial load, not when navigating back
   if (loading && !hasLoaded) {
@@ -363,7 +415,7 @@ export default function ListingsPage() {
                  MapComponent={(props) => {
                    console.log('🗺️ Passing points to MapViewClient:', props.points);
                    console.log('🗺️ Points length:', props.points?.length || 0);
-                   return <MapViewClient {...props} />;
+                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} />;
                  }} 
                />
       </div>
