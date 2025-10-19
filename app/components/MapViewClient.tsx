@@ -37,28 +37,43 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
       if (mapRef.current) return;
 
-      // Try to restore last map position from localStorage
+      // Try to restore last map position from localStorage or use search center
       let initialCenter = [39.8283, -98.5795]; // Default US center
       let initialZoom = 4;
       
       try {
-        const savedCenter = localStorage.getItem('dealflow-map-center');
-        const savedZoom = localStorage.getItem('dealflow-map-zoom');
-        
-        if (savedCenter) {
-          const [lat, lng] = JSON.parse(savedCenter);
+        // Check for search center first
+        const searchCenter = localStorage.getItem('dealflow-search-center');
+        if (searchCenter) {
+          const { lat, lng } = JSON.parse(searchCenter);
           if (typeof lat === 'number' && typeof lng === 'number' && 
               lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
             initialCenter = [lat, lng];
-            console.log('🗺️ Restored map center from localStorage:', initialCenter);
+            initialZoom = 10; // Zoom in for search results
+            console.log('🗺️ Using search center:', initialCenter);
+            // Clear search center after use
+            localStorage.removeItem('dealflow-search-center');
           }
-        }
-        
-        if (savedZoom) {
-          const zoom = parseInt(savedZoom);
-          if (zoom >= 1 && zoom <= 18) {
-            initialZoom = zoom;
-            console.log('🗺️ Restored map zoom from localStorage:', initialZoom);
+        } else {
+          // Fall back to saved position
+          const savedCenter = localStorage.getItem('dealflow-map-center');
+          const savedZoom = localStorage.getItem('dealflow-map-zoom');
+          
+          if (savedCenter) {
+            const [lat, lng] = JSON.parse(savedCenter);
+            if (typeof lat === 'number' && typeof lng === 'number' && 
+                lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+              initialCenter = [lat, lng];
+              console.log('🗺️ Restored map center from localStorage:', initialCenter);
+            }
+          }
+          
+          if (savedZoom) {
+            const zoom = parseInt(savedZoom);
+            if (zoom >= 1 && zoom <= 18) {
+              initialZoom = zoom;
+              console.log('🗺️ Restored map zoom from localStorage:', initialZoom);
+            }
           }
         }
       } catch (err) {

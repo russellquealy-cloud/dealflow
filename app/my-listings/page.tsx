@@ -154,9 +154,16 @@ export default function MyListingsPage() {
 
       console.log('Update data:', updateData);
 
-      // Remove fields that might not exist in the database schema
-      const safeUpdateData = { ...updateData };
-      delete safeUpdateData.cover_image_url; // Remove if column doesn't exist
+             // Remove fields that might not exist in the database schema
+             const safeUpdateData = { ...updateData };
+             
+             // Remove fields that might not exist in the database schema
+             if (!safeUpdateData.year_built) {
+               delete safeUpdateData.year_built;
+             }
+             if (!safeUpdateData.cover_image_url) {
+               delete safeUpdateData.cover_image_url;
+             }
       
       const { error } = await supabase
         .from('listings')

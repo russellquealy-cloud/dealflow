@@ -3,6 +3,7 @@ import { formatCurrency } from '@/lib/format';
 import ContactButtons from '@/components/ContactButtons';
 import { coverUrlFromListing, galleryFromListing } from '@/lib/images';
 import ImageGallery from '@/components/ImageGallery';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,25 @@ export default async function ListingPage({ params }: { params: { id: string } }
 
   return (
     <main style={{ padding: 24 }}>
+      <div style={{ marginBottom: 16 }}>
+        <Link 
+          href="/listings" 
+          style={{ 
+            display: 'inline-block',
+            padding: '8px 16px', 
+            border: '1px solid #0ea5e9', 
+            borderRadius: 8,
+            background: '#0ea5e9',
+            color: '#fff',
+            textDecoration: 'none',
+            fontWeight: 600,
+            marginBottom: 16
+          }}
+        >
+          ← Back to Listings
+        </Link>
+      </div>
+      
       <h1 style={{ margin: 0, marginBottom: 8 }}>{formatCurrency(price)}</h1>
       <div style={{ color: '#6b7280', marginBottom: 16 }}>
         {[data.address1, data.city, data.state, data.zip].filter(Boolean).join(', ')}

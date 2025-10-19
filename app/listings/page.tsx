@@ -22,6 +22,7 @@ type Row = {
   baths?: number | null;
   home_sqft?: number | null;
   square_feet?: number | null;
+  sqft?: number | null;
   latitude?: number | null;
   longitude?: number | null;
   lat?: number | null;
@@ -35,7 +36,7 @@ type Row = {
   spread?: number | string | null;
   roi?: number | string | null;
   lot_size?: number | null;
-  garage?: boolean | null;
+  garage?: number | null;
   year_built?: number | null;
   assignment_fee?: number | string | null;
   description?: string | null;
@@ -160,17 +161,17 @@ export default function ListingsPage() {
           price,
           bedrooms: (r.bedrooms ?? r.beds) ?? undefined,
           bathrooms: (r.bathrooms ?? r.baths) ?? undefined,
-          home_sqft: (r.home_sqft ?? r.square_feet) ?? undefined,
-            lot_size: toNum(r.lot_size),
-            garage: r.garage ?? undefined,
-            year_built: r.year_built ?? undefined,
-            assignment_fee: toNum(r.assignment_fee),
-            description: r.description ?? undefined,
-            owner_phone: r.contact_phone ?? r.owner_phone ?? undefined,
-            owner_email: r.contact_email ?? r.owner_email ?? undefined,
-            owner_name: r.contact_name ?? r.owner_name ?? undefined,
+          home_sqft: (r.home_sqft ?? r.sqft) ?? undefined,
+          lot_size: toNum(r.lot_size),
+          garage: r.garage ?? undefined,
+          year_built: r.year_built ?? undefined,
+          assignment_fee: toNum(r.assignment_fee),
+          description: r.description ?? undefined,
+          owner_phone: r.contact_phone ?? undefined,
+          owner_email: r.contact_email ?? undefined,
+          owner_name: r.contact_name ?? undefined,
           images: Array.isArray(r.images) ? r.images : undefined,
-            cover_image_url: r.image_url ?? r.cover_image_url ?? undefined,
+          cover_image_url: r.cover_image_url ?? r.image_url ?? undefined,
           arv,
           repairs,
           spread,
@@ -180,9 +181,9 @@ export default function ListingsPage() {
 
         const pts: MapPoint[] = [];
         for (const r of rows) {
-          // Try both latitude/longitude and lat/lng
-          const lat = r.latitude ?? r.lat;
-          const lng = r.longitude ?? r.lng;
+          // Use the correct column names from your schema
+          const lat = r.latitude;
+          const lng = r.longitude;
           if (typeof lat === 'number' && typeof lng === 'number') {
             pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
           }
@@ -337,9 +338,39 @@ export default function ListingsPage() {
     return filtered;
   }, [allListings, allPoints, mapBounds]);
 
-  const handleSearch = () => {
-    // Trigger a reload with the search query
-    setSearchQuery(searchQuery);
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    try {
+      console.log('Searching for:', searchQuery);
+      
+      // Use OpenStreetMap Nominatim for geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`
+      );
+      const results = await response.json();
+      
+      if (results && results.length > 0) {
+        const { lat, lon, display_name } = results[0];
+        console.log('Geocoding result:', { lat, lon, display_name });
+        
+        // Update map center to search result
+        // We'll need to pass this to the map component
+        const searchCenter = { lat: parseFloat(lat), lng: parseFloat(lon) };
+        
+        // Store search center for map to use
+        localStorage.setItem('dealflow-search-center', JSON.stringify(searchCenter));
+        
+        // Trigger a reload with the search query
+        setSearchQuery(searchQuery);
+      } else {
+        console.log('No geocoding results found for:', searchQuery);
+        alert('Location not found. Please try a different search term.');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      alert('Search failed. Please try again.');
+    }
   };
 
   const handleReset = () => {
