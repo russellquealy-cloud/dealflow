@@ -59,6 +59,19 @@ export default function ListingCard({ listing }: Props) {
   const ownerEmail = listing.owner_email;
   // const ownerName = listing.owner_name;
   
+  // Debug logging for listing data
+  console.log('ListingCard data debug:', {
+    id: listing.id,
+    price,
+    beds,
+    baths,
+    sqft,
+    lotSize,
+    garage,
+    yearBuilt,
+    rawListing: listing
+  });
+  
   const address =
     listing.address ??
     [listing.title, [listing.city, listing.state].filter(Boolean).join(', '), listing.zip]

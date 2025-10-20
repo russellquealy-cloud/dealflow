@@ -133,18 +133,22 @@ export default function AccountPage() {
             </ul>
           </div>
         </div>
-        <button style={{ 
-          marginTop: 16,
-          padding: '8px 16px', 
-          border: '1px solid #10b981', 
-          borderRadius: 8, 
-          background: '#10b981', 
-          color: '#fff', 
-          cursor: 'pointer',
-          fontWeight: 600
-        }}>
+        <Link 
+          href="/pricing"
+          style={{ 
+            display: 'inline-block',
+            marginTop: 16,
+            padding: '8px 16px', 
+            border: '1px solid #10b981', 
+            borderRadius: 8, 
+            background: '#10b981', 
+            color: '#fff', 
+            textDecoration: 'none',
+            fontWeight: 600
+          }}
+        >
           Upgrade to Pro
-        </button>
+        </Link>
       </div>
 
       {/* Profile Type */}

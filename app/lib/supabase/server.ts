@@ -12,6 +12,22 @@ export const createClient = async () => {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
+        set(name: string, value: string, options) {
+          try {
+            cookieStore.set(name, value, options);
+          } catch (error) {
+            // Handle cookie setting in Server Components
+            console.error('Error setting cookie:', error);
+          }
+        },
+        remove(name: string, options) {
+          try {
+            cookieStore.set(name, '', { ...options, maxAge: 0 });
+          } catch (error) {
+            // Handle cookie removal in Server Components
+            console.error('Error removing cookie:', error);
+          }
+        },
       },
     }
   );

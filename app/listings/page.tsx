@@ -49,32 +49,7 @@ type Row = {
   owner_name?: string | null;
 };
 
-type SpatialRow = {
-  id: string;
-  title?: string;
-  price?: number;
-  beds?: number;
-  baths?: number;
-  sqft?: number;
-  lot_size?: number;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  contact_phone?: string;
-  contact_email?: string;
-  contact_name?: string;
-  lon?: number;
-  lat?: number;
-  arv?: number;
-  repairs?: number;
-  image_url?: string;
-  garage?: number;
-  year_built?: number;
-  assignment_fee?: number;
-  description?: string;
-  images?: string[];
-};
+// Removed SpatialRow type as it's no longer used - we query listings table directly
 
 const toNum = (v: unknown): number | undefined => {
   if (typeof v === 'number' && Number.isFinite(v)) return v;
@@ -127,18 +102,55 @@ export default function ListingsPage() {
           return;
         }
         
-        // Use spatial function for better performance and proper filtering
-        const query = supabase.rpc('listings_in_bbox', {
-          q: searchQuery.trim() || '',
-          minx: -180,
-          miny: -90,
-          maxx: 180,
-          maxy: 90,
-          min_price: filters.minPrice || null,
-          max_price: filters.maxPrice || null,
-          min_beds: filters.minBeds || null,
-          min_baths: filters.minBaths || null
-        });
+        // Build the query directly from the listings table
+        let query = supabase
+          .from('listings')
+          .select('*, latitude, longitude');
+        
+        // Apply filters
+        if (filters.minPrice) {
+          query = query.gte('price', filters.minPrice);
+        }
+        if (filters.maxPrice) {
+          query = query.lte('price', filters.maxPrice);
+        }
+        if (filters.minBeds) {
+          query = query.gte('beds', filters.minBeds);
+        }
+        if (filters.maxBeds) {
+          query = query.lte('beds', filters.maxBeds);
+        }
+        if (filters.minBaths) {
+          query = query.gte('baths', filters.minBaths);
+        }
+        if (filters.maxBaths) {
+          query = query.lte('baths', filters.maxBaths);
+        }
+        if (filters.minSqft) {
+          query = query.gte('sqft', filters.minSqft);
+        }
+        if (filters.maxSqft) {
+          query = query.lte('sqft', filters.maxSqft);
+        }
+        
+        // Apply search query if provided
+        if (searchQuery.trim()) {
+          query = query.or(`address.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%,zip.ilike.%${searchQuery}%`);
+        }
+        
+        // Apply sorting
+        if (filters.sortBy === 'price_asc') {
+          query = query.order('price', { ascending: true, nullsFirst: false });
+        } else if (filters.sortBy === 'price_desc') {
+          query = query.order('price', { ascending: false, nullsFirst: false });
+        } else if (filters.sortBy === 'sqft_asc') {
+          query = query.order('sqft', { ascending: true, nullsFirst: false });
+        } else if (filters.sortBy === 'sqft_desc') {
+          query = query.order('sqft', { ascending: false, nullsFirst: false });
+        } else {
+          // Default to newest
+          query = query.order('created_at', { ascending: false, nullsFirst: false });
+        }
 
         const { data, error } = await query;
         console.log('Database query result:', { data, error, count: data?.length });
@@ -197,11 +209,17 @@ export default function ListingsPage() {
 
         const pts: MapPoint[] = [];
         for (const r of rows) {
-          // Use the correct column names from the spatial function
-          const lat = r.lat;
-          const lng = r.lon;
-          if (typeof lat === 'number' && typeof lng === 'number') {
+          // Try multiple column name variations for latitude/longitude
+          const lat = r.latitude ?? r.lat;
+          const lng = r.longitude ?? r.lng ?? r.lon;
+          
+          console.log(`🔍 Point data for listing ${r.id}:`, { lat, lng, hasLatitude: !!r.latitude, hasLat: !!r.lat, hasLongitude: !!r.longitude, hasLng: !!r.lng, hasLon: !!r.lon });
+          
+          if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
             pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
+            console.log(`✅ Added point for listing ${r.id}:`, { lat, lng });
+          } else {
+            console.log(`⚠️ Skipped listing ${r.id} - invalid coordinates:`, { lat, lng });
           }
         }
 
@@ -361,66 +379,112 @@ export default function ListingsPage() {
     console.log('Map bounds changed:', bounds);
     setMapBounds(bounds);
     
-    // Use spatial function to get listings in current bounds
+    // Don't filter if the map is too zoomed out (showing too much area)
+    const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
+    if (boundsSize > 50) {
+      console.log('Map bounds too large, not filtering listings');
+      return;
+    }
+    
+    // Filter listings by map bounds - query the database with spatial constraints
     try {
-      const { data: spatialData, error: spatialError } = await supabase.rpc('listings_in_bbox', {
-        q: searchQuery.trim() || '',
-        minx: bounds.west,
-        miny: bounds.south,
-        maxx: bounds.east,
-        maxy: bounds.north,
-        min_price: filters.minPrice || null,
-        max_price: filters.maxPrice || null,
-        min_beds: filters.minBeds || null,
-        min_baths: filters.minBaths || null
-      });
+      let query = supabase
+        .from('listings')
+        .select('*, latitude, longitude')
+        .gte('latitude', bounds.south)
+        .lte('latitude', bounds.north)
+        .gte('longitude', bounds.west)
+        .lte('longitude', bounds.east);
       
-      if (spatialError) {
-        console.error('Spatial query error:', spatialError);
+      // Apply existing filters
+      if (filters.minPrice) query = query.gte('price', filters.minPrice);
+      if (filters.maxPrice) query = query.lte('price', filters.maxPrice);
+      if (filters.minBeds) query = query.gte('beds', filters.minBeds);
+      if (filters.maxBeds) query = query.lte('beds', filters.maxBeds);
+      if (filters.minBaths) query = query.gte('baths', filters.minBaths);
+      if (filters.maxBaths) query = query.lte('baths', filters.maxBaths);
+      if (filters.minSqft) query = query.gte('sqft', filters.minSqft);
+      if (filters.maxSqft) query = query.lte('sqft', filters.maxSqft);
+      
+      if (searchQuery.trim()) {
+        query = query.or(`address.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%,zip.ilike.%${searchQuery}%`);
+      }
+      
+      // Apply sorting
+      if (filters.sortBy === 'price_asc') {
+        query = query.order('price', { ascending: true, nullsFirst: false });
+      } else if (filters.sortBy === 'price_desc') {
+        query = query.order('price', { ascending: false, nullsFirst: false });
+      } else if (filters.sortBy === 'sqft_asc') {
+        query = query.order('sqft', { ascending: true, nullsFirst: false });
+      } else if (filters.sortBy === 'sqft_desc') {
+        query = query.order('sqft', { ascending: false, nullsFirst: false });
+      } else {
+        query = query.order('created_at', { ascending: false, nullsFirst: false });
+      }
+
+      const { data: boundedData, error: boundedError } = await query;
+      
+      if (boundedError) {
+        console.error('Bounded query error:', boundedError);
         return;
       }
       
-      console.log('Spatial query result:', spatialData?.length, 'listings');
+      console.log('Bounded query result:', boundedData?.length, 'listings in view');
       
-      // Process spatial data
-      const spatialItems: ListItem[] = spatialData?.map((r: SpatialRow) => ({
-        id: String(r.id),
-        title: r.title ?? undefined,
-        address: r.address ?? undefined,
-        city: r.city ?? undefined,
-        state: r.state ?? undefined,
-        zip: r.zip ?? undefined,
-        price: toNum(r.price),
-        bedrooms: r.beds ?? undefined,
-        bathrooms: r.baths ?? undefined,
-        home_sqft: r.sqft ?? undefined,
-        lot_size: toNum(r.lot_size),
-        garage: r.garage ?? undefined,
-        year_built: r.year_built ?? undefined,
-        assignment_fee: toNum(r.assignment_fee),
-        description: r.description ?? undefined,
-        owner_phone: r.contact_phone ?? undefined,
-        owner_email: r.contact_email ?? undefined,
-        owner_name: r.contact_name ?? undefined,
-        images: Array.isArray(r.images) ? r.images : undefined,
-        cover_image_url: r.image_url ?? undefined,
-        arv: toNum(r.arv),
-        repairs: toNum(r.repairs),
-        spread: undefined,
-        roi: undefined,
-      })) || [];
-      
-      const spatialPoints: MapPoint[] = spatialData?.map((r: SpatialRow) => ({
-        id: String(r.id),
-        lat: r.lat,
-        lng: r.lon,
-        price: toNum(r.price)
-      })) || [];
-      
-      setAllListings(spatialItems);
-      setAllPoints(spatialPoints);
+      if (boundedData) {
+        const rows = boundedData as unknown as Row[];
+        
+        const items: ListItem[] = rows.map((r) => {
+          const price = toNum(r.price);
+          const arv = toNum(r.arv);
+          const repairs = toNum(r.repairs ?? r.repair_costs);
+          const spread = toNum(r.spread) ?? (arv !== undefined && price !== undefined && repairs !== undefined ? arv - price - repairs : undefined);
+          const roi = toNum(r.roi) ?? (spread !== undefined && price !== undefined ? Math.round((spread / price) * 100) : undefined);
+
+          return {
+            id: String(r.id),
+            title: r.title ?? undefined,
+            address: r.address ?? undefined,
+            city: r.city ?? undefined,
+            state: r.state ?? undefined,
+            zip: r.zip ?? undefined,
+            price,
+            bedrooms: r.beds ?? undefined,
+            bathrooms: r.baths ?? undefined,
+            home_sqft: r.sqft ?? undefined,
+            lot_size: toNum(r.lot_size),
+            garage: r.garage ?? undefined,
+            year_built: r.year_built ?? undefined,
+            assignment_fee: toNum(r.assignment_fee),
+            description: r.description ?? undefined,
+            owner_phone: r.contact_phone ?? undefined,
+            owner_email: r.contact_email ?? undefined,
+            owner_name: r.contact_name ?? undefined,
+            images: Array.isArray(r.images) ? r.images : undefined,
+            cover_image_url: r.cover_image_url ?? r.image_url ?? undefined,
+            arv,
+            repairs,
+            spread,
+            roi,
+          };
+        });
+        
+        const pts: MapPoint[] = [];
+        for (const r of rows) {
+          const lat = r.latitude ?? r.lat;
+          const lng = r.longitude ?? r.lng ?? r.lon;
+          
+          if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+            pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
+          }
+        }
+        
+        setAllListings(items);
+        setAllPoints(pts);
+      }
     } catch (error) {
-      console.error('Error fetching spatial data:', error);
+      console.error('Error fetching bounded data:', error);
     }
   };
 

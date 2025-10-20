@@ -67,6 +67,7 @@ export default function Header() {
       <Link href="/listings" style={link}>Deal Flow</Link>
       <div style={right}>
         <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
+        <Link href="/pricing" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Pricing</Link>
         <button 
           onClick={handlePostDeal}
           style={{ 

@@ -257,106 +257,122 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     
     console.log('✅ Valid points for rendering:', validPoints.length);
     
-    (async () => {
-      console.log('=== MAP MARKER RENDERING ===');
-      console.log('Points received:', points);
-      console.log('Points length:', points?.length || 0);
+    // Wait for map to be ready before rendering markers
+    const waitForMap = async () => {
+      let attempts = 0;
+      const maxAttempts = 50; // Wait up to 5 seconds
       
-      const map = mapRef.current;
-      if (!map || !isInitializedRef.current) {
-        console.log('❌ Map not ready for markers:', { map: !!map, initialized: isInitializedRef.current });
-        return;
-      }
-      
-      console.log('✅ Map is ready, rendering markers for points:', points?.length || 0);
-      
-      // Add a small delay to ensure map is fully ready
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      try {
-        const L = (await import('leaflet')).default;
-
-        // Clear existing markers safely
-        if (markersRef.current) {
-          try {
-            markersRef.current.clearLayers?.();
-            map.removeLayer(markersRef.current);
-          } catch (err) {
-            console.log('Error clearing markers:', err);
-          }
-          markersRef.current = null;
-        }
-
-        console.log('🎯 Creating markers for', validPoints.length, 'points');
-        const group = L.layerGroup();
+      while (attempts < maxAttempts) {
+        const map = mapRef.current;
+        const isInitialized = isInitializedRef.current;
         
-        for (const p of validPoints) {
-          try {
-            console.log('📍 Creating marker for point:', p);
-            
-            // Create a simple red circle marker
-            const markerIcon = L.divIcon({
-              className: 'custom-marker',
-              html: `<div style="
-                background-color: #dc2626;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                border: 2px solid white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 8px;
-                font-weight: bold;
-                cursor: pointer;
-              ">🏠</div>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 10]
-            });
-            
-            const marker = L.marker([p.lat, p.lng], { icon: markerIcon });
-            marker.addTo(group);
-            marker.on('click', () => {
-              console.log('Marker clicked:', p.id);
-              router.push(`/listing/${p.id}`);
-            });
-            
-            console.log('✅ Marker created successfully for:', p.id, 'at', p.lat, p.lng);
-          } catch (err) {
-            console.error('❌ Error creating marker for point:', p, err);
-            // Fallback to default marker
-            try {
-              const fallbackMarker = L.marker([p.lat, p.lng]);
-              fallbackMarker.addTo(group);
-              fallbackMarker.on('click', () => {
-                console.log('Fallback marker clicked:', p.id);
-                router.push(`/listing/${p.id}`);
-              });
-              console.log('✅ Fallback marker created for:', p.id);
-            } catch (fallbackErr) {
-              console.error('❌ Fallback marker also failed:', fallbackErr);
-            }
-          }
-        }
-        
-        group.addTo(map);
-        markersRef.current = group;
-        console.log('🎉 All markers added to map successfully');
-        
-        // Don't auto-fit bounds to prevent snapping
-        console.log('Markers added, no auto-fitting to prevent snapping');
-        
-        requestAnimationFrame(() => {
-          if (mapRef.current) {
-            mapRef.current.invalidateSize(false);
-          }
+        console.log(`🔄 Checking map readiness (attempt ${attempts + 1}/${maxAttempts}):`, { 
+          map: !!map, 
+          initialized: isInitialized 
         });
-      } catch (err) {
-        console.error('Error in marker rendering:', err);
+        
+        if (map && isInitialized) {
+          console.log('✅ Map is ready, rendering markers for points:', points?.length || 0);
+          
+          // Add a small delay to ensure map is fully ready
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          try {
+            const L = (await import('leaflet')).default;
+
+            // Clear existing markers safely
+            if (markersRef.current) {
+              try {
+                markersRef.current.clearLayers?.();
+                map.removeLayer(markersRef.current);
+              } catch (err) {
+                console.log('Error clearing markers:', err);
+              }
+              markersRef.current = null;
+            }
+
+            console.log('🎯 Creating markers for', validPoints.length, 'points');
+            const group = L.layerGroup();
+            
+            for (const p of validPoints) {
+              try {
+                console.log('📍 Creating marker for point:', p);
+                
+                // Create a simple red circle marker
+                const markerIcon = L.divIcon({
+                  className: 'custom-marker',
+                  html: `<div style="
+                    background-color: #dc2626;
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 8px;
+                    font-weight: bold;
+                    cursor: pointer;
+                  ">🏠</div>`,
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10]
+                });
+                
+                const marker = L.marker([p.lat, p.lng], { icon: markerIcon });
+                marker.addTo(group);
+                marker.on('click', () => {
+                  console.log('Marker clicked:', p.id);
+                  router.push(`/listing/${p.id}`);
+                });
+                
+                console.log('✅ Marker created successfully for:', p.id, 'at', p.lat, p.lng);
+              } catch (err) {
+                console.error('❌ Error creating marker for point:', p, err);
+                // Fallback to default marker
+                try {
+                  const fallbackMarker = L.marker([p.lat, p.lng]);
+                  fallbackMarker.addTo(group);
+                  fallbackMarker.on('click', () => {
+                    console.log('Fallback marker clicked:', p.id);
+                    router.push(`/listing/${p.id}`);
+                  });
+                  console.log('✅ Fallback marker created for:', p.id);
+                } catch (fallbackErr) {
+                  console.error('❌ Fallback marker also failed:', fallbackErr);
+                }
+              }
+            }
+            
+            group.addTo(map);
+            markersRef.current = group;
+            console.log('🎉 All markers added to map successfully');
+            
+            // Don't auto-fit bounds to prevent snapping
+            console.log('Markers added, no auto-fitting to prevent snapping');
+            
+            requestAnimationFrame(() => {
+              if (mapRef.current) {
+                mapRef.current.invalidateSize(false);
+              }
+            });
+            
+            return; // Exit the function successfully
+          } catch (err) {
+            console.error('Error in marker rendering:', err);
+            return;
+          }
+        }
+        
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms before next attempt
       }
-    })();
+      
+      console.log('❌ Map initialization timeout after', maxAttempts, 'attempts');
+    };
+    
+    waitForMap();
   }, [points, router]);
 
 
