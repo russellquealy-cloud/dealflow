@@ -72,7 +72,7 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
+  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -521,34 +521,36 @@ export default function ListingsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden' }}>
       {/* header + search */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px 8px 18px', flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Find Deals</h2>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0">
+        <h2 className="text-2xl lg:text-3xl font-bold m-0">Find Deals</h2>
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
           <input 
             aria-label="Search city or address" 
             placeholder="Search city or address"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            style={{ height: 36, width: 360, maxWidth: '62vw', border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px' }} 
+            className="flex-1 h-10 border border-gray-300 rounded-lg px-3 text-sm lg:text-base" 
           />
-          <button 
-            onClick={handleSearch}
-            style={{ height: 36, padding: '0 14px', border: '1px solid #111', borderRadius: 8, background: '#111', color: '#fff' }}
-          >
-            Search
-          </button>
-          <button 
-            onClick={handleReset}
-            style={{ height: 36, padding: '0 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}
-          >
-            Reset view
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleSearch}
+              className="h-10 px-4 border border-gray-800 rounded-lg bg-gray-800 text-white text-sm font-medium"
+            >
+              Search
+            </button>
+            <button 
+              onClick={handleReset}
+              className="h-10 px-3 border border-gray-200 rounded-lg bg-white text-gray-700 text-sm font-medium"
+            >
+              Reset
+            </button>
+          </div>
         </div>
       </div>
 
       {/* filters */}
-      <div style={{ padding: '6px 18px 12px 18px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+      <div className="px-4 lg:px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white z-10 relative">
         <FiltersBar value={filters} onChange={setFilters} />
       </div>
 
