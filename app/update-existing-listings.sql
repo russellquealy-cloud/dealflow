@@ -24,7 +24,10 @@ SET
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
     'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+  contact_name = 'John Smith',
+  contact_email = 'john.smith@example.com',
+  contact_phone = '555-123-4567'
 WHERE id = '64e49eda-3b34-4004-a041-2bfd6b26ecb7';
 
 -- Update the second listing
@@ -45,7 +48,13 @@ SET
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
     'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+  contact_name = 'Amanda White',
+  contact_email = 'amanda.white@example.com',
+  contact_phone = '555-890-1234',
+  contact_name = 'Sarah Johnson',
+  contact_email = 'sarah.johnson@example.com',
+  contact_phone = '555-234-5678'
 WHERE id = 'fb85cc91-e76c-436b-8d6f-1143933d0374';
 
 -- Update the third listing
@@ -65,7 +74,13 @@ SET
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+  contact_name = 'Michelle Garcia',
+  contact_email = 'michelle.garcia@example.com',
+  contact_phone = '555-012-3456',
+  contact_name = 'Mike Wilson',
+  contact_email = 'mike.wilson@example.com',
+  contact_phone = '555-345-6789'
 WHERE id = 'd6242826-c396-4a0d-bcc7-be39d3bb5ac4';
 
 -- Update Historic Downtown Gem
@@ -85,7 +100,10 @@ SET
     'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
     'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+  contact_name = 'Robert Anderson',
+  contact_email = 'robert.anderson@example.com',
+  contact_phone = '555-789-0123'
 WHERE id = 'b1dd3f39-aba8-4f6c-b9e1-4b21dec458bd';
 
 -- Update Modern Desert Oasis
@@ -106,7 +124,10 @@ SET
     'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
     'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
+  contact_name = 'Lisa Davis',
+  contact_email = 'lisa.davis@example.com',
+  contact_phone = '555-456-7890'
 WHERE id = 'df0b627a-8267-4a6a-adbb-e38c00a3eeb3';
 
 -- Update Mountain View Ranch
@@ -126,7 +147,13 @@ SET
     'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
     'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
+  contact_name = 'Christopher Lee',
+  contact_email = 'christopher.lee@example.com',
+  contact_phone = '555-901-2345',
+  contact_name = 'David Brown',
+  contact_email = 'david.brown@example.com',
+  contact_phone = '555-567-8901'
 WHERE id = '9a659527-d7d8-48e6-bc3a-83dcc3340dbf';
 
 -- Update South Austin Bungalow
@@ -146,7 +173,13 @@ SET
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+  contact_name = 'Michelle Garcia',
+  contact_email = 'michelle.garcia@example.com',
+  contact_phone = '555-012-3456',
+  contact_name = 'Mike Wilson',
+  contact_email = 'mike.wilson@example.com',
+  contact_phone = '555-345-6789'
 WHERE id = 'ba3ce286-61f4-4434-aaab-e85fa7e5ea17';
 
 -- Update East Austin Modern
@@ -166,7 +199,10 @@ SET
     'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+  contact_name = 'Amanda White',
+  contact_email = 'amanda.white@example.com',
+  contact_phone = '555-890-1234'
 WHERE id = 'da5bbffb-2862-482c-94bd-3954d90e18fe';
 
 -- Update Venice Beach Bungalow
@@ -186,7 +222,13 @@ SET
     'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
     'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
+  contact_name = 'Christopher Lee',
+  contact_email = 'christopher.lee@example.com',
+  contact_phone = '555-901-2345',
+  contact_name = 'David Brown',
+  contact_email = 'david.brown@example.com',
+  contact_phone = '555-567-8901'
 WHERE id = 'a8834a1c-e400-49ba-839c-92a0b992bab1';
 
 -- Update Hollywood Hills Modern
@@ -207,7 +249,10 @@ SET
     'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+  contact_name = 'Robert Anderson',
+  contact_email = 'robert.anderson@example.com',
+  contact_phone = '555-789-0123'
 WHERE id = '2e9c6787-bd39-4620-a628-292b2c904d1e';
 
 -- Update Art Deco District Condo
@@ -227,7 +272,10 @@ SET
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
     'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
+  contact_name = 'Lisa Davis',
+  contact_email = 'lisa.davis@example.com',
+  contact_phone = '555-456-7890'
 WHERE id = '9487600b-b3e7-4e3a-9927-6d150d7d7f8e';
 
 -- Update Coconut Grove Villa
@@ -247,7 +295,13 @@ SET
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+  contact_name = 'Michelle Garcia',
+  contact_email = 'michelle.garcia@example.com',
+  contact_phone = '555-012-3456',
+  contact_name = 'Mike Wilson',
+  contact_email = 'mike.wilson@example.com',
+  contact_phone = '555-345-6789'
 WHERE id = '9f849bd3-aab9-42a8-afa6-f6a666504398';
 
 -- Update Denver Highlands Craftsman
@@ -267,7 +321,13 @@ SET
     'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
     'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
+  contact_name = 'Christopher Lee',
+  contact_email = 'christopher.lee@example.com',
+  contact_phone = '555-901-2345',
+  contact_name = 'David Brown',
+  contact_email = 'david.brown@example.com',
+  contact_phone = '555-567-8901'
 WHERE id = 'd446dfd5-f5a4-470c-b23d-d42be357578e';
 
 -- Update Boulder Mountain Home
@@ -287,7 +347,10 @@ SET
     'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
     'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+  contact_name = 'Robert Anderson',
+  contact_email = 'robert.anderson@example.com',
+  contact_phone = '555-789-0123'
 WHERE id = 'ed9f53f4-b61f-4654-b1c4-7b3df08663c2';
 
 -- Update Summerlin Modern
@@ -307,7 +370,10 @@ SET
     'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+  contact_name = 'Amanda White',
+  contact_email = 'amanda.white@example.com',
+  contact_phone = '555-890-1234'
 WHERE id = '72e25ff7-a174-428f-8dbc-748117a46422';
 
 -- Update Old Town Adobe
@@ -327,7 +393,13 @@ SET
     'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
     'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
+  contact_name = 'Christopher Lee',
+  contact_email = 'christopher.lee@example.com',
+  contact_phone = '555-901-2345',
+  contact_name = 'David Brown',
+  contact_email = 'david.brown@example.com',
+  contact_phone = '555-567-8901'
 WHERE id = 'ed397f2c-a81e-4071-924a-92e096ea816a';
 
 -- Update Salt Lake City Bungalow
@@ -347,7 +419,13 @@ SET
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800'
   ],
-  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'
+  cover_image_url = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+  contact_name = 'Michelle Garcia',
+  contact_email = 'michelle.garcia@example.com',
+  contact_phone = '555-012-3456',
+  contact_name = 'Mike Wilson',
+  contact_email = 'mike.wilson@example.com',
+  contact_phone = '555-345-6789'
 WHERE id = '4001b49b-34d8-46e2-8da2-84b0619103bc';
 
 -- Verify the updates worked

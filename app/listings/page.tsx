@@ -107,6 +107,19 @@ export default function ListingsPage() {
           .from('listings')
           .select('*, latitude, longitude');
         
+        // Apply map bounds filtering if available
+        if (mapBounds) {
+          const boundsSize = Math.abs(mapBounds.north - mapBounds.south) + Math.abs(mapBounds.east - mapBounds.west);
+          if (boundsSize <= 20) {
+            console.log('🗺️ Applying map bounds filtering to initial load:', mapBounds);
+            query = query
+              .gte('latitude', mapBounds.south)
+              .lte('latitude', mapBounds.north)
+              .gte('longitude', mapBounds.west)
+              .lte('longitude', mapBounds.east);
+          }
+        }
+        
         // Apply filters
         if (filters.minPrice) {
           query = query.gte('price', filters.minPrice);
@@ -325,9 +338,9 @@ export default function ListingsPage() {
       }
     };
 
-    load();
-    return () => { cancelled = true; };
-  }, [filters, searchQuery]); // Re-added dependencies for filtering
+        load();
+        return () => { cancelled = true; };
+      }, [filters, searchQuery, mapBounds]); // Re-added dependencies for filtering
 
   // No need for manual filtering - spatial function handles it
   const filteredListings = allListings;
@@ -381,7 +394,7 @@ export default function ListingsPage() {
     
     // Don't filter if the map is too zoomed out (showing too much area)
     const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
-    if (boundsSize > 50) {
+    if (boundsSize > 20) {
       console.log('Map bounds too large, not filtering listings');
       return;
     }

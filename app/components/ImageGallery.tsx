@@ -11,7 +11,6 @@ type Props = {
 
 export default function ImageGallery({ coverImage, galleryImages, title }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Safely combine cover image and gallery images
   const allImages = React.useMemo(() => {
@@ -27,35 +26,21 @@ export default function ImageGallery({ coverImage, galleryImages, title }: Props
     );
   }, [allImages]);
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation for main image
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isModalOpen) return;
-      
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         setSelectedIndex(prev => prev > 0 ? prev - 1 : uniqueImages.length - 1);
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         setSelectedIndex(prev => prev < uniqueImages.length - 1 ? prev + 1 : 0);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        setIsModalOpen(false);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, uniqueImages.length]);
-
-  const openModal = (index: number) => {
-    setSelectedIndex(index);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-  };
+  }, [uniqueImages.length]);
 
   const nextImage = () => {
     setSelectedIndex(prev => prev < uniqueImages.length - 1 ? prev + 1 : 0);
@@ -85,77 +70,131 @@ export default function ImageGallery({ coverImage, galleryImages, title }: Props
   }
 
   return (
-    <>
+    <div style={{ marginBottom: 16 }}>
       {/* Main Image Display */}
-      <div style={{ marginBottom: 16 }}>
-        <div 
-          style={{ 
-            position: 'relative', 
-            width: '100%', 
-            height: 500, 
-            borderRadius: 12, 
-            overflow: 'hidden', 
-            cursor: 'pointer',
-            background: '#f3f4f6'
+      <div style={{ 
+        position: 'relative', 
+        width: '100%', 
+        height: 500, 
+        borderRadius: 12, 
+        overflow: 'hidden', 
+        background: '#f3f4f6',
+        marginBottom: 16
+      }}>
+        <Image 
+          src={uniqueImages[selectedIndex]} 
+          alt={title} 
+          fill 
+          style={{ objectFit: 'contain' }} 
+          priority 
+          onError={(e) => {
+            console.error('Main image failed to load:', uniqueImages[selectedIndex], e);
           }}
-          onClick={() => openModal(0)}
-        >
-          <Image 
-            src={uniqueImages[0]} 
-            alt={title} 
-            fill 
-            style={{ objectFit: 'contain' }} 
-            priority 
-            onError={(e) => {
-              console.error('Main image failed to load:', uniqueImages[0], e);
-            }}
-            onLoad={() => {
-              console.log('Main image loaded successfully:', uniqueImages[0]);
-            }}
-          />
-          {uniqueImages.length > 1 && (
-            <div style={{
-              position: 'absolute',
-              bottom: 16,
-              right: 16,
-              background: 'rgba(0, 0, 0, 0.7)',
-              color: 'white',
-              padding: '8px 12px',
-              borderRadius: 8,
-              fontSize: 14,
-              fontWeight: 600
-            }}>
-              {uniqueImages.length} photos
-            </div>
-          )}
-        </div>
+          onLoad={() => {
+            console.log('Main image loaded successfully:', uniqueImages[selectedIndex]);
+          }}
+        />
+        
+        {/* Navigation arrows on main image */}
+        {uniqueImages.length > 1 && (
+          <>
+            <button
+              onClick={prevImage}
+              style={{
+                position: 'absolute',
+                left: 16,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'rgba(0, 0, 0, 0.6)',
+                border: 'none',
+                color: 'white',
+                fontSize: 24,
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10
+              }}
+            >
+              ‹
+            </button>
+            <button
+              onClick={nextImage}
+              style={{
+                position: 'absolute',
+                right: 16,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'rgba(0, 0, 0, 0.6)',
+                border: 'none',
+                color: 'white',
+                fontSize: 24,
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10
+              }}
+            >
+              ›
+            </button>
+          </>
+        )}
+        
+        {/* Image counter */}
+        {uniqueImages.length > 1 && (
+          <div style={{
+            position: 'absolute',
+            bottom: 16,
+            right: 16,
+            background: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600
+          }}>
+            {selectedIndex + 1} of {uniqueImages.length}
+          </div>
+        )}
       </div>
 
-      {/* Thumbnail Gallery */}
+      {/* Square Thumbnail Gallery - Horizontal Scroll */}
       {uniqueImages.length > 1 && (
         <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
-          gap: 8, 
-          marginBottom: 16 
+          display: 'flex',
+          gap: 12,
+          overflowX: 'auto',
+          paddingBottom: 8,
+          marginBottom: 16,
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#cbd5e1 #f1f5f9'
         }}>
-          {uniqueImages.slice(1).map((img, index) => (
+          {uniqueImages.map((img, index) => (
             <div 
               key={img} 
               style={{ 
                 position: 'relative', 
-                width: '100%', 
-                height: 80, 
-                borderRadius: 8, 
+                width: 120, 
+                height: 120, 
+                borderRadius: 12, 
                 overflow: 'hidden',
                 cursor: 'pointer',
-                background: '#f3f4f6'
+                background: '#f3f4f6',
+                border: selectedIndex === index ? '3px solid #0ea5e9' : '3px solid transparent',
+                flexShrink: 0
               }}
-              onClick={() => openModal(index + 1)}
+              onClick={() => setSelectedIndex(index)}
             >
               <Image 
                 src={img} 
-                alt={`Photo ${index + 2}`} 
+                alt={`Photo ${index + 1}`} 
                 fill 
                 style={{ objectFit: 'cover' }} 
                 onError={(e) => {
@@ -169,152 +208,18 @@ export default function ImageGallery({ coverImage, galleryImages, title }: Props
           ))}
         </div>
       )}
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.9)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20
-          }}
-          onClick={closeModal}
-        >
-          <div 
-            style={{
-              position: 'relative',
-              maxWidth: '90vw',
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              onClick={closeModal}
-              style={{
-                position: 'absolute',
-                top: -40,
-                right: 0,
-                background: 'rgba(255, 255, 255, 0.2)',
-                border: 'none',
-                color: 'white',
-                fontSize: 24,
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1001
-              }}
-            >
-              ×
-            </button>
-
-            {/* Navigation Arrows */}
-            {uniqueImages.length > 1 && (
-              <>
-                <button
-                  onClick={prevImage}
-                  style={{
-                    position: 'absolute',
-                    left: -60,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    border: 'none',
-                    color: 'white',
-                    fontSize: 24,
-                    width: 50,
-                    height: 50,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1001
-                  }}
-                >
-                  ‹
-                </button>
-                <button
-                  onClick={nextImage}
-                  style={{
-                    position: 'absolute',
-                    right: -60,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    border: 'none',
-                    color: 'white',
-                    fontSize: 24,
-                    width: 50,
-                    height: 50,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1001
-                  }}
-                >
-                  ›
-                </button>
-              </>
-            )}
-
-            {/* Main Image */}
-            <div style={{ position: 'relative', width: '100%', height: '80vh' }}>
-              <Image 
-                src={uniqueImages[selectedIndex]} 
-                alt={`${title} - Photo ${selectedIndex + 1}`} 
-                fill 
-                style={{ objectFit: 'contain' }} 
-                onError={(e) => {
-                  console.error('Modal image failed to load:', uniqueImages[selectedIndex], e);
-                }}
-                onLoad={() => {
-                  console.log('Modal image loaded successfully:', uniqueImages[selectedIndex]);
-                }}
-              />
-            </div>
-
-            {/* Image Counter */}
-            {uniqueImages.length > 1 && (
-              <div style={{
-                color: 'white',
-                fontSize: 16,
-                marginTop: 16,
-                textAlign: 'center'
-              }}>
-                {selectedIndex + 1} of {uniqueImages.length}
-              </div>
-            )}
-
-            {/* Instructions */}
-            <div style={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: 14,
-              marginTop: 8,
-              textAlign: 'center'
-            }}>
-              Use arrow keys or click arrows to navigate • Press ESC to close
-            </div>
-          </div>
+      
+      {/* Instructions */}
+      {uniqueImages.length > 1 && (
+        <div style={{
+          color: '#6b7280',
+          fontSize: 14,
+          textAlign: 'center',
+          fontStyle: 'italic'
+        }}>
+          Click thumbnails or use arrow keys to navigate
         </div>
       )}
-    </>
+    </div>
   );
 }
