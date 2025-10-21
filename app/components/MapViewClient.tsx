@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type Point = { id: string; lat: number; lng: number; price?: number };
@@ -16,6 +16,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
+  const [zoomMessage, setZoomMessage] = useState<string | null>(null);
 
   const ensureHeight = (el: HTMLElement) => {
     el.style.minWidth = '0';
@@ -90,8 +91,14 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         attribution: '&copy; OpenStreetMap',
       }).addTo(map);
 
-      // Add drawing tools
+      // Add drawing tools with better error handling
       try {
+        // Load leaflet-draw CSS first
+        const drawCSS = document.createElement('link');
+        drawCSS.rel = 'stylesheet';
+        drawCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css';
+        document.head.appendChild(drawCSS);
+        
         const drawPlugin = await import('leaflet-draw');
         const LDraw = drawPlugin.default || drawPlugin;
         
@@ -100,6 +107,10 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           console.log('⚠️ Leaflet-draw Control not available, skipping drawing tools');
           return;
         }
+        
+        // Create a feature group for drawn items
+        const drawnItems = Lmod.featureGroup();
+        map.addLayer(drawnItems);
         
         // Initialize the draw control
         const drawControl = new LDraw.Control({
@@ -113,30 +124,55 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                 message: '<strong>Error:</strong> shape edges cannot cross!'
               },
               shapeOptions: {
-                color: '#bada55'
+                color: '#3b82f6',
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.2
               }
             },
             polyline: {
               shapeOptions: {
-                color: '#f357a1',
-                weight: 4
+                color: '#ef4444',
+                weight: 3,
+                opacity: 0.8
               }
             },
             circle: {
               shapeOptions: {
-                color: '#662d91'
+                color: '#10b981',
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.2
               }
             },
             rectangle: {
               shapeOptions: {
-                color: '#bada55'
+                color: '#f59e0b',
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.2
               }
             },
-            marker: true,
+            marker: {
+              icon: Lmod.divIcon({
+                className: 'custom-draw-marker',
+                html: `<div style="
+                  background-color: #3b82f6;
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                  cursor: pointer;
+                "></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+              })
+            },
             circlemarker: false
           },
           edit: {
-            featureGroup: Lmod.layerGroup(),
+            featureGroup: drawnItems,
             remove: true
           }
         });
@@ -175,8 +211,10 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         if (onBoundsChange && mapRef.current) {
           const bounds = mapRef.current.getBounds();
           const center = mapRef.current.getCenter();
+          const zoom = mapRef.current.getZoom();
           console.log('🗺️ Map bounds emitted:', bounds);
           console.log('🗺️ Map center:', center);
+          console.log('🗺️ Map zoom:', zoom);
           
           // Convert Leaflet bounds to our expected format
           const boundsObject = {
@@ -188,6 +226,18 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           
           const boundsSize = Math.abs(boundsObject.north - boundsObject.south) + Math.abs(boundsObject.east - boundsObject.west);
           console.log('🗺️ Converted bounds:', boundsObject, 'Size:', boundsSize);
+          
+          // Provide user feedback based on zoom level and bounds size
+          if (zoom < 8) {
+            setZoomMessage('Zoom in closer to see listings in this area');
+          } else if (boundsSize > 5) {
+            setZoomMessage('Move closer to see listings in this area');
+          } else if (boundsSize < 0.01) {
+            setZoomMessage('Map view is too close - zoom out to see more listings');
+          } else {
+            setZoomMessage(null);
+          }
+          
           onBoundsChange(boundsObject);
         }
       };
@@ -309,19 +359,71 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
             }
 
             console.log('🎯 Creating markers for', validPoints.length, 'points');
-            const group = L.layerGroup();
+            
+            // Try to load markercluster plugin for clustering
+            let MarkerClusterGroup: any = null;
+            try {
+              const clusterPlugin = await import('leaflet.markercluster');
+              MarkerClusterGroup = clusterPlugin.default || clusterPlugin;
+              
+              // Load cluster CSS
+              const clusterCSS = document.createElement('link');
+              clusterCSS.rel = 'stylesheet';
+              clusterCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css';
+              document.head.appendChild(clusterCSS);
+              
+              console.log('✅ MarkerCluster plugin loaded');
+            } catch (err) {
+              console.log('⚠️ Could not load markercluster plugin, using simple markers:', err);
+            }
+            
+            // Create marker group (clustered or simple)
+            const group = MarkerClusterGroup ? new MarkerClusterGroup({
+              chunkedLoading: true,
+              spiderfyOnMaxZoom: true,
+              showCoverageOnHover: false,
+              zoomToBoundsOnClick: true,
+              maxClusterRadius: 50,
+              iconCreateFunction: function(cluster: any) {
+                const childCount = cluster.getChildCount();
+                let size = 'small';
+                if (childCount > 10) size = 'large';
+                else if (childCount > 5) size = 'medium';
+                
+                return L.divIcon({
+                  html: `<div style="
+                    background-color: #3b82f6;
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    ${size === 'large' ? 'width: 50px; height: 50px; font-size: 14px;' : 
+                      size === 'medium' ? 'width: 40px; height: 40px; font-size: 12px;' : 
+                      'width: 30px; height: 30px; font-size: 10px;'}
+                  ">${childCount}</div>`,
+                  className: 'custom-cluster',
+                  iconSize: size === 'large' ? [50, 50] : size === 'medium' ? [40, 40] : [30, 30]
+                });
+              }
+            }) : L.layerGroup();
             
             for (const p of validPoints) {
               try {
                 console.log('📍 Creating marker for point:', p);
                 
-                // Create a simple red circle marker
+                // Create a property marker with price display
+                const priceText = p.price ? `$${p.price.toLocaleString()}` : '';
                 const markerIcon = L.divIcon({
                   className: 'custom-marker',
                   html: `<div style="
                     background-color: #dc2626;
-                    width: 20px;
-                    height: 20px;
+                    width: 24px;
+                    height: 24px;
                     border-radius: 50%;
                     border: 2px solid white;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -332,9 +434,10 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                     font-size: 8px;
                     font-weight: bold;
                     cursor: pointer;
+                    position: relative;
                   ">🏠</div>`,
-                  iconSize: [20, 20],
-                  iconAnchor: [10, 10]
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 12]
                 });
                 
                 const marker = L.marker([p.lat, p.lng], { icon: markerIcon });
@@ -343,6 +446,15 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                   console.log('Marker clicked:', p.id);
                   router.push(`/listing/${p.id}`);
                 });
+                
+                // Add tooltip with price
+                if (priceText) {
+                  marker.bindTooltip(priceText, {
+                    permanent: false,
+                    direction: 'top',
+                    offset: [0, -10]
+                  });
+                }
                 
                 console.log('✅ Marker created successfully for:', p.id, 'at', p.lat, p.lng);
               } catch (err) {
@@ -394,9 +506,30 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
 
   return (
-    <div
-      id="df-map"
-      style={{ height: '100%', width: '100%', minHeight: 0, minWidth: 0, borderRadius: 12, border: '1px solid #e5e7eb' }}
-    />
+    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      <div
+        id="df-map"
+        style={{ height: '100%', width: '100%', minHeight: 0, minWidth: 0, borderRadius: 12, border: '1px solid #e5e7eb' }}
+      />
+      {zoomMessage && (
+        <div style={{
+          position: 'absolute',
+          top: 10,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          zIndex: 1000,
+          maxWidth: '80%',
+          textAlign: 'center'
+        }}>
+          {zoomMessage}
+        </div>
+      )}
+    </div>
   );
 }

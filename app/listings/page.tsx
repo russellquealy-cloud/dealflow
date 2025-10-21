@@ -107,30 +107,33 @@ export default function ListingsPage() {
           .from('listings')
           .select('*, latitude, longitude');
         
-        // Apply map bounds filtering if available
-        if (mapBounds && 
-            typeof mapBounds.south === 'number' && 
-            typeof mapBounds.north === 'number' && 
-            typeof mapBounds.west === 'number' && 
-            typeof mapBounds.east === 'number' &&
-            !isNaN(mapBounds.south) && 
-            !isNaN(mapBounds.north) && 
-            !isNaN(mapBounds.west) && 
-            !isNaN(mapBounds.east)) {
-          const boundsSize = Math.abs(mapBounds.north - mapBounds.south) + Math.abs(mapBounds.east - mapBounds.west);
-          if (boundsSize <= 20 && boundsSize >= 0.01) {
-            console.log('🗺️ Applying map bounds filtering to initial load:', mapBounds);
-            query = query
-              .gte('latitude', mapBounds.south)
-              .lte('latitude', mapBounds.north)
-              .gte('longitude', mapBounds.west)
-              .lte('longitude', mapBounds.east);
-          } else {
-            console.log('Map bounds too large or too small for initial load, not filtering. Bounds size:', boundsSize, mapBounds);
-          }
-        } else if (mapBounds) {
-          console.log('Invalid map bounds for initial load, skipping filtering:', mapBounds);
-        }
+       // Apply map bounds filtering if available
+       if (mapBounds && 
+           typeof mapBounds.south === 'number' && 
+           typeof mapBounds.north === 'number' && 
+           typeof mapBounds.west === 'number' && 
+           typeof mapBounds.east === 'number' &&
+           !isNaN(mapBounds.south) && 
+           !isNaN(mapBounds.north) && 
+           !isNaN(mapBounds.west) && 
+           !isNaN(mapBounds.east)) {
+         const latRange = Math.abs(mapBounds.north - mapBounds.south);
+         const lngRange = Math.abs(mapBounds.east - mapBounds.west);
+         const boundsSize = latRange + lngRange;
+         
+         if (boundsSize <= 10 && boundsSize >= 0.01) {
+           console.log('🗺️ Applying map bounds filtering to initial load:', mapBounds, 'Bounds size:', boundsSize);
+           query = query
+             .gte('latitude', mapBounds.south)
+             .lte('latitude', mapBounds.north)
+             .gte('longitude', mapBounds.west)
+             .lte('longitude', mapBounds.east);
+         } else {
+           console.log('Map bounds too large or too small for initial load, not filtering. Bounds size:', boundsSize, mapBounds);
+         }
+       } else if (mapBounds) {
+         console.log('Invalid map bounds for initial load, skipping filtering:', mapBounds);
+       }
         
         // Apply filters
         if (filters.minPrice) {
@@ -419,12 +422,24 @@ export default function ListingsPage() {
     
     setMapBounds(bounds);
     
-    // Don't filter if the map is too zoomed out (showing too much area) or if bounds are too small (collapsed to point)
-    const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
-    if (boundsSize > 20 || boundsSize < 0.01) {
-      console.log('Map bounds too large or too small, not filtering listings. Bounds size:', boundsSize);
+    // Calculate bounds size for better filtering logic
+    const latRange = Math.abs(bounds.north - bounds.south);
+    const lngRange = Math.abs(bounds.east - bounds.west);
+    const boundsSize = latRange + lngRange;
+    
+    // More intelligent filtering based on bounds size
+    // Allow city-level viewing (boundsSize ~2-5 degrees)
+    // Prevent country-level viewing (boundsSize > 10 degrees)
+    // Prevent point-level viewing (boundsSize < 0.01 degrees)
+    if (boundsSize > 10) {
+      console.log('Map bounds too large (country-level), not filtering listings. Bounds size:', boundsSize);
+      return;
+    } else if (boundsSize < 0.01) {
+      console.log('Map bounds too small (point-level), not filtering listings. Bounds size:', boundsSize);
       return;
     }
+    
+    console.log('🗺️ Filtering listings for bounds size:', boundsSize, 'degrees');
     
     // Filter listings by map bounds - query the database with spatial constraints
     try {
