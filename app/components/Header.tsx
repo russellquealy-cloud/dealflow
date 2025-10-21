@@ -4,7 +4,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/supabase/client";
+import PostDealButton from "./PostDealButton";
 
 const wrap: React.CSSProperties = {
   borderBottom: "1px solid #eee",
@@ -40,27 +41,23 @@ export default function Header() {
   }, []);
 
   const signOut = async () => {
-  // end client session
-  await supabase.auth.signOut();
-  // also hit server route to clear cookies if set
-  await fetch('/auth/signout', { method: 'POST' }).catch(() => {});
-  router.push('/'); // back home
-  router.refresh();
-};
-
-  const handlePostDeal = async () => {
     try {
-      console.log('Post Deal button clicked');
-      
-      // Always redirect to new listing page - let the server handle auth
-      console.log('Redirecting to new listing page');
-      router.push('/my-listings/new');
-    } catch (err) {
-      console.error('Error in handlePostDeal:', err);
-      // If there's any error, redirect to login
-      router.push('/login?next=/my-listings/new');
+      console.log('🔐 Signing out...');
+      // end client session
+      await supabase.auth.signOut();
+      // also hit server route to clear cookies if set
+      await fetch('/auth/signout', { method: 'POST' }).catch(() => {});
+      console.log('🔐 Sign out complete, redirecting...');
+      router.push('/'); // back home
+      router.refresh();
+    } catch (error) {
+      console.error('🔐 Sign out error:', error);
+      // Force redirect even if sign out fails
+      router.push('/');
+      router.refresh();
     }
   };
+
 
   return (
     <header style={wrap}>
@@ -68,18 +65,7 @@ export default function Header() {
       <div style={right}>
         <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
         <Link href="/pricing" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Pricing</Link>
-        <button 
-          onClick={handlePostDeal}
-          style={{ 
-            ...btn, 
-            background: "#10b981", 
-            color: "#fff", 
-            border: "1px solid #10b981",
-            fontWeight: 600 
-          }}
-        >
-          Post a Deal
-        </button>
+        <PostDealButton />
                {email ? (
                  <>
                    <Link href="/account" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Account</Link>
