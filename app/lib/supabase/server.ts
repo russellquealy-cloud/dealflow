@@ -10,10 +10,13 @@ export const createClient = async () => {
     {
       cookies: {
         get(name: string) {
-          return cookieStore.get(name)?.value;
+          const value = cookieStore.get(name)?.value;
+          console.log(`🍪 Server cookie get: ${name} = ${value ? 'exists' : 'missing'}`);
+          return value;
         },
         set(name: string, value: string, options) {
           try {
+            console.log(`🍪 Server cookie set: ${name}`);
             cookieStore.set(name, value, options);
           } catch (error) {
             // Handle cookie setting in Server Components
@@ -22,6 +25,7 @@ export const createClient = async () => {
         },
         remove(name: string, options) {
           try {
+            console.log(`🍪 Server cookie remove: ${name}`);
             cookieStore.set(name, '', { ...options, maxAge: 0 });
           } catch (error) {
             // Handle cookie removal in Server Components
