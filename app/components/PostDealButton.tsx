@@ -23,6 +23,10 @@ export default function PostDealButton() {
         error: error?.message
       });
       
+      // Check cookies
+      const cookies = document.cookie.split(';').filter(c => c.includes('supabase'));
+      console.log('🍪 Supabase cookies found:', cookies.length > 0 ? cookies : 'None');
+      
       if (error) {
         console.error('🔐 Session error:', error);
         router.push('/login?next=/my-listings/new');
