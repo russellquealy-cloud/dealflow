@@ -171,7 +171,17 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           const center = mapRef.current.getCenter();
           console.log('🗺️ Map bounds emitted:', bounds);
           console.log('🗺️ Map center:', center);
-          onBoundsChange(bounds);
+          
+          // Convert Leaflet bounds to our expected format
+          const boundsObject = {
+            south: bounds.getSouth(),
+            north: bounds.getNorth(),
+            west: bounds.getWest(),
+            east: bounds.getEast()
+          };
+          
+          console.log('🗺️ Converted bounds:', boundsObject);
+          onBoundsChange(boundsObject);
         }
       };
       

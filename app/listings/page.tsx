@@ -108,7 +108,15 @@ export default function ListingsPage() {
           .select('*, latitude, longitude');
         
         // Apply map bounds filtering if available
-        if (mapBounds) {
+        if (mapBounds && 
+            typeof mapBounds.south === 'number' && 
+            typeof mapBounds.north === 'number' && 
+            typeof mapBounds.west === 'number' && 
+            typeof mapBounds.east === 'number' &&
+            !isNaN(mapBounds.south) && 
+            !isNaN(mapBounds.north) && 
+            !isNaN(mapBounds.west) && 
+            !isNaN(mapBounds.east)) {
           const boundsSize = Math.abs(mapBounds.north - mapBounds.south) + Math.abs(mapBounds.east - mapBounds.west);
           if (boundsSize <= 20) {
             console.log('🗺️ Applying map bounds filtering to initial load:', mapBounds);
@@ -117,7 +125,11 @@ export default function ListingsPage() {
               .lte('latitude', mapBounds.north)
               .gte('longitude', mapBounds.west)
               .lte('longitude', mapBounds.east);
+          } else {
+            console.log('Map bounds too large for initial load, not filtering:', mapBounds);
           }
+        } else if (mapBounds) {
+          console.log('Invalid map bounds for initial load, skipping filtering:', mapBounds);
         }
         
         // Apply filters
@@ -390,6 +402,21 @@ export default function ListingsPage() {
 
   const handleMapBoundsChange = async (bounds: { south: number; north: number; west: number; east: number }) => {
     console.log('Map bounds changed:', bounds);
+    
+    // Validate bounds to prevent undefined values
+    if (!bounds || 
+        typeof bounds.south !== 'number' || 
+        typeof bounds.north !== 'number' || 
+        typeof bounds.west !== 'number' || 
+        typeof bounds.east !== 'number' ||
+        isNaN(bounds.south) || 
+        isNaN(bounds.north) || 
+        isNaN(bounds.west) || 
+        isNaN(bounds.east)) {
+      console.log('Invalid bounds received, skipping filtering:', bounds);
+      return;
+    }
+    
     setMapBounds(bounds);
     
     // Don't filter if the map is too zoomed out (showing too much area)
