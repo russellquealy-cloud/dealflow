@@ -4,17 +4,16 @@ import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 
-
 export const dynamic = 'force-dynamic';
 
 function LoginInner() {
   const params = useSearchParams();
-  const next = (params ? params.get('next') : null) ?? '/';
-  const error = params ? params.get('error') : null;
+  const next = params?.get('next') ?? '/';
+  const error = params?.get('error');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState<string | null>(error);
+  const [message, setMessage] = useState<string | null>(error || null);
   const [loading, setLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic-link'>('password');
 
@@ -145,7 +144,7 @@ function LoginInner() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main style={{ padding: 16 }}>Loading…</main>}>
+    <Suspense fallback={<div style={{ padding: 16, textAlign: 'center' }}>Loading login form...</div>}>
       <LoginInner />
     </Suspense>
   );
