@@ -118,7 +118,7 @@ export default function ListingsPage() {
             !isNaN(mapBounds.west) && 
             !isNaN(mapBounds.east)) {
           const boundsSize = Math.abs(mapBounds.north - mapBounds.south) + Math.abs(mapBounds.east - mapBounds.west);
-          if (boundsSize <= 20) {
+          if (boundsSize <= 20 && boundsSize >= 0.01) {
             console.log('🗺️ Applying map bounds filtering to initial load:', mapBounds);
             query = query
               .gte('latitude', mapBounds.south)
@@ -126,7 +126,7 @@ export default function ListingsPage() {
               .gte('longitude', mapBounds.west)
               .lte('longitude', mapBounds.east);
           } else {
-            console.log('Map bounds too large for initial load, not filtering:', mapBounds);
+            console.log('Map bounds too large or too small for initial load, not filtering. Bounds size:', boundsSize, mapBounds);
           }
         } else if (mapBounds) {
           console.log('Invalid map bounds for initial load, skipping filtering:', mapBounds);
@@ -419,10 +419,10 @@ export default function ListingsPage() {
     
     setMapBounds(bounds);
     
-    // Don't filter if the map is too zoomed out (showing too much area)
+    // Don't filter if the map is too zoomed out (showing too much area) or if bounds are too small (collapsed to point)
     const boundsSize = Math.abs(bounds.north - bounds.south) + Math.abs(bounds.east - bounds.west);
-    if (boundsSize > 20) {
-      console.log('Map bounds too large, not filtering listings');
+    if (boundsSize > 20 || boundsSize < 0.01) {
+      console.log('Map bounds too large or too small, not filtering listings. Bounds size:', boundsSize);
       return;
     }
     

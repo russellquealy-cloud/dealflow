@@ -95,6 +95,12 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         const drawPlugin = await import('leaflet-draw');
         const LDraw = drawPlugin.default || drawPlugin;
         
+        // Check if Control exists and is a constructor
+        if (!LDraw.Control || typeof LDraw.Control !== 'function') {
+          console.log('⚠️ Leaflet-draw Control not available, skipping drawing tools');
+          return;
+        }
+        
         // Initialize the draw control
         const drawControl = new LDraw.Control({
           position: 'topright',
@@ -180,7 +186,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
             east: bounds.getEast()
           };
           
-          console.log('🗺️ Converted bounds:', boundsObject);
+          const boundsSize = Math.abs(boundsObject.north - boundsObject.south) + Math.abs(boundsObject.east - boundsObject.west);
+          console.log('🗺️ Converted bounds:', boundsObject, 'Size:', boundsSize);
           onBoundsChange(boundsObject);
         }
       };
