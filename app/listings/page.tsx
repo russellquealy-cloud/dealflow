@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient, { type MapPoint, type ListItem } from '@/components/ListingsSplitClient';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/supabase/client';
 
 const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
 

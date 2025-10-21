@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/supabase/client';
 
 export default function DebugDBPage() {
   const [status, setStatus] = useState('Loading...');

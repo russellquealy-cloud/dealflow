@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/supabase/client';
 
 export default function AddTestDataPage() {
   const [status, setStatus] = useState('Ready to add test data');

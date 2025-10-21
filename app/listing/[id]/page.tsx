@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/supabase/client';
 import { formatCurrency } from '@/lib/format';
 import ContactButtons from '@/components/ContactButtons';
 import { coverUrlFromListing, galleryFromListing } from '@/lib/images';

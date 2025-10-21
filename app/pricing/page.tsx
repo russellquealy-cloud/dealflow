@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 
 export default function PricingPage() {
