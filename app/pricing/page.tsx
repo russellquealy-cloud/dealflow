@@ -33,11 +33,11 @@ export default function PricingPage() {
       description: 'Get started with wholesale real estate',
       color: '#6b7280',
       features: [
-        { text: '2 listings / month', included: true },
-        { text: 'View map + public listings', included: true },
-        { text: 'Limited filters', included: true },
+        { text: 'View map + all listings', included: true },
+        { text: 'Basic filters', included: true },
         { text: 'No contact data access', included: false },
-        { text: 'Post up to 2 wholesale deals', included: true },
+        { text: 'No posting allowed', included: false },
+        { text: 'Perfect for browsing deals', included: true },
       ],
       cta: 'Get Started',
       popular: false
@@ -55,6 +55,7 @@ export default function PricingPage() {
         { text: 'Comps preview', included: true },
         { text: 'Save/favorite searches', included: true },
         { text: 'Message wholesalers directly', included: true },
+        { text: 'Cannot post deals (buyers only)', included: false },
       ],
       cta: 'Upgrade to Investor Basic',
       popular: false
@@ -71,6 +72,7 @@ export default function PricingPage() {
         { text: 'Saved comps', included: true },
         { text: 'Downloadable reports (PDF)', included: true },
         { text: 'Priority support', included: true },
+        { text: 'Cannot post deals (buyers only)', included: false },
       ],
       cta: 'Upgrade to Investor Pro',
       popular: true
@@ -79,7 +81,7 @@ export default function PricingPage() {
       name: 'Wholesaler Basic',
       price: '$25',
       period: '/month',
-      description: 'For wholesalers building their business',
+      description: 'For wholesalers who want to post deals',
       color: '#f59e0b',
       features: [
         { text: '5 listings / month', included: true, bold: true },
@@ -94,7 +96,7 @@ export default function PricingPage() {
       name: 'Wholesaler Pro',
       price: '$49',
       period: '/month',
-      description: 'For established wholesalers',
+      description: 'For active wholesalers posting many deals',
       color: '#8b5cf6',
       features: [
         { text: '20 listings / month', included: true, bold: true },

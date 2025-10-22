@@ -107,8 +107,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         // Check if Control exists and is a constructor
         if (!LDraw.Control || typeof LDraw.Control !== 'function') {
           console.log('⚠️ Leaflet-draw Control not available, skipping drawing tools');
-          return;
-        }
+        } else {
         
         // Create a feature group for drawn items
         const drawnItems = Lmod.featureGroup();
@@ -219,7 +218,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           });
         });
         
-        console.log('✅ Drawing tools added to map with filtering support');
+          console.log('✅ Drawing tools added to map with filtering support');
+        }
       } catch (err) {
         console.log('⚠️ Could not load drawing tools:', err);
       }
