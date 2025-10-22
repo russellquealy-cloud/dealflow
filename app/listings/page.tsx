@@ -485,7 +485,14 @@ export default function ListingsPage() {
         return;
       }
       
-      console.log('Bounded query result:', boundedData?.length, 'listings in view');
+      console.log('🗺️ ===MAP BOUNDS FILTERING RESULTS===');
+      console.log('🗺️ Query returned:', boundedData?.length, 'listings');
+      console.log('🗺️ Bounds used:', bounds);
+      console.log('🗺️ Sample listing coords:', boundedData?.[0] ? { 
+        id: boundedData[0].id,
+        lat: (boundedData[0] as Row).latitude,
+        lng: (boundedData[0] as Row).longitude 
+      } : 'none');
       
       if (boundedData) {
         const rows = boundedData as unknown as Row[];
@@ -535,11 +542,18 @@ export default function ListingsPage() {
           }
         }
         
+        console.log('🗺️ Updating state with filtered data:',{
+          itemsCount: items.length,
+          pointsCount: pts.length
+        });
+        
         setAllListings(items);
         setAllPoints(pts);
+        
+        console.log('🗺️ State updated successfully');
       }
     } catch (error) {
-      console.error('Error fetching bounded data:', error);
+      console.error('❌ Error fetching bounded data:', error);
     }
   };
 
@@ -561,9 +575,9 @@ export default function ListingsPage() {
   console.log('Filtered listings:', filteredListings.length);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden', position: 'relative' }}>
       {/* header + search */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
         <h2 className="text-2xl lg:text-3xl font-bold m-0">Find Deals</h2>
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
           <input 
@@ -592,12 +606,12 @@ export default function ListingsPage() {
       </div>
 
       {/* filters */}
-      <div className="px-4 lg:px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white z-10 relative">
+      <div className="px-4 lg:px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white z-20 relative shadow-sm">
         <FiltersBar value={filters} onChange={setFilters} />
       </div>
 
       {/* the split fills the rest of the viewport - NO SCROLL */}
-             <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
+             <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
                <ListingsSplitClient 
                  points={allPoints} 
                  listings={filteredListings} 

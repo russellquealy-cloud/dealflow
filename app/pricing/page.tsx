@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 export default function PricingPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userType, setUserType] = useState<'all' | 'investor' | 'wholesaler'>('all');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -126,16 +127,83 @@ export default function PricingPage() {
     }
   ];
 
+  // Filter tiers based on user type selection
+  const displayedTiers = userType === 'all' 
+    ? tiers 
+    : tiers.filter(tier => 
+        (userType === 'investor' && (tier.name.includes('Investor') || tier.name.includes('Free') || tier.name.includes('Enterprise'))) ||
+        (userType === 'wholesaler' && (tier.name.includes('Wholesaler') || tier.name.includes('Free') || tier.name.includes('Enterprise')))
+      );
+
   return (
     <main style={{ padding: '40px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <h1 style={{ margin: 0, fontSize: 40, fontWeight: 900, marginBottom: 12, color: '#fff' }}>
             Choose Your Plan
           </h1>
-          <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.9)', maxWidth: 700, margin: '0 auto' }}>
+          <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.9)', maxWidth: 700, margin: '0 auto', marginBottom: 24 }}>
             Whether you&apos;re an investor looking for deals or a wholesaler selling properties, we have the perfect plan for you.
           </p>
+          
+          {/* User Type Toggle */}
+          <div style={{
+            display: 'inline-flex',
+            gap: 4,
+            background: 'rgba(255,255,255,0.2)',
+            padding: 4,
+            borderRadius: 12,
+            backdropFilter: 'blur(10px)'
+          }}>
+            <button
+              onClick={() => setUserType('all')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: 8,
+                border: 'none',
+                background: userType === 'all' ? '#fff' : 'transparent',
+                color: userType === 'all' ? '#667eea' : '#fff',
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: 700,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              All Plans
+            </button>
+            <button
+              onClick={() => setUserType('investor')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: 8,
+                border: 'none',
+                background: userType === 'investor' ? '#fff' : 'transparent',
+                color: userType === 'investor' ? '#667eea' : '#fff',
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: 700,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              💼 Investors
+            </button>
+            <button
+              onClick={() => setUserType('wholesaler')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: 8,
+                border: 'none',
+                background: userType === 'wholesaler' ? '#fff' : 'transparent',
+                color: userType === 'wholesaler' ? '#667eea' : '#fff',
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: 700,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🏡 Wholesalers
+            </button>
+          </div>
         </div>
 
         <div style={{ 
@@ -144,7 +212,7 @@ export default function PricingPage() {
           gap: 20,
           marginBottom: 64
         }}>
-          {tiers.map((tier, index) => (
+          {displayedTiers.map((tier, index) => (
             <div 
               key={index}
               style={{ 

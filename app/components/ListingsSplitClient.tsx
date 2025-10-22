@@ -18,9 +18,9 @@ export default function ListingsSplitClient({ points, listings, MapComponent }: 
   console.log('ListingsSplitClient render:', { points: points.length, listings: listings.length });
   
   return (
-    <div style={{ height: '100%', padding: '12px 18px 18px 18px', boxSizing: 'border-box' }}>
+    <div style={{ height: '100%', padding: '12px 18px 18px 18px', boxSizing: 'border-box', overflow: 'hidden' }}>
       {/* Mobile View Toggle - Only visible on mobile */}
-      <div className="lg:hidden flex gap-2 mb-4">
+      <div className="lg:hidden flex gap-2 mb-4 z-30 relative bg-white">
         <button
           onClick={() => setMobileView('map')}
           className={`flex-1 py-3 px-4 rounded-lg border font-semibold ${
@@ -44,23 +44,24 @@ export default function ListingsSplitClient({ points, listings, MapComponent }: 
       </div>
 
       {/* Desktop: Side by side, Mobile: Stacked with toggle */}
-      <div className="h-full grid grid-cols-1 lg:grid-cols-[minmax(540px,1fr)_1fr] gap-4 lg:gap-4">
+      <div style={{ height: 'calc(100% - 60px)' }} className="grid grid-cols-1 lg:grid-cols-[minmax(540px,1fr)_1fr] gap-4 lg:gap-4 lg:h-full">
         {/* MAP */}
         <div className={`
-          border border-gray-200 rounded-xl bg-white min-w-0 min-h-0 flex
+          border border-gray-200 rounded-xl bg-white min-w-0 flex overflow-hidden
           ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}
-        `}>
-          <div className="flex-1 min-w-0 min-h-0 w-full h-full">
+          h-full lg:h-auto
+        `} style={{ maxHeight: '100%' }}>
+          <div className="flex-1 min-w-0 w-full h-full">
             <MapComponent points={points} />
           </div>
         </div>
 
         {/* LIST */}
         <div className={`
-          border border-gray-200 rounded-xl bg-white min-w-0 min-h-0 overflow-y-auto p-3
+          border border-gray-200 rounded-xl bg-white min-w-0 overflow-y-auto p-3
           ${mobileView === 'map' ? 'hidden lg:block' : 'block'}
-          ${mobileView === 'list' ? 'max-h-[calc(100vh-200px)]' : ''}
-        `}>
+          h-full lg:h-auto
+        `} style={{ maxHeight: '100%' }}>
           <div className="grid gap-3">
             {listings.length === 0 ? (
               <div className="text-center text-gray-500 py-5">
