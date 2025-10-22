@@ -10,12 +10,13 @@ type Props = {
   points: MapPoint[];
   listings: ListItem[];
   MapComponent: React.ComponentType<{ points: MapPoint[]; onBoundsChange?: (bounds: unknown) => void }>;
+  onBoundsChange?: (bounds: unknown) => void;
 };
 
-export default function ListingsSplitClient({ points, listings, MapComponent }: Props) {
+export default function ListingsSplitClient({ points, listings, MapComponent, onBoundsChange }: Props) {
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
   
-  console.log('ListingsSplitClient render:', { points: points.length, listings: listings.length });
+  console.log('ListingsSplitClient render:', { points: points.length, listings: listings.length, hasOnBoundsChange: !!onBoundsChange });
   
   return (
     <div style={{ height: '100%', padding: '12px 18px 18px 18px', boxSizing: 'border-box', overflow: 'hidden' }}>
@@ -52,7 +53,7 @@ export default function ListingsSplitClient({ points, listings, MapComponent }: 
           h-full lg:h-auto
         `} style={{ maxHeight: '100%' }}>
           <div className="flex-1 min-w-0 w-full h-full">
-            <MapComponent points={points} />
+            <MapComponent points={points} onBoundsChange={onBoundsChange} />
           </div>
         </div>
 
