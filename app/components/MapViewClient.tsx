@@ -18,6 +18,8 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
   const isInitializedRef = useRef(false);
   const [zoomMessage, setZoomMessage] = useState<string | null>(null);
 
+  console.log('🗺️ MapViewClient render - onBoundsChange:', !!onBoundsChange);
+
   const ensureHeight = (el: HTMLElement) => {
     el.style.minWidth = '0';
     el.style.minHeight = '0';
@@ -297,10 +299,12 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       };
       
       map.on('moveend', () => {
+        console.log('🗺️ Map moveend event fired');
         emitBounds();
         saveMapPosition();
       });
       map.on('zoomend', () => {
+        console.log('🗺️ Map zoomend event fired');
         emitBounds();
         saveMapPosition();
       });
@@ -315,6 +319,12 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       map.on('zoomend', () => {
         console.log('🗺️ Map zoom end');
       });
+      
+      // Emit initial bounds after map is fully loaded
+      setTimeout(() => {
+        console.log('🗺️ Emitting initial bounds after map load');
+        emitBounds();
+      }, 1000);
     })();
 
     return () => {
