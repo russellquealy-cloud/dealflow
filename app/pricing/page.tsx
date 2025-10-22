@@ -15,343 +15,366 @@ export default function PricingPage() {
     });
   }, []);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (tier: string) => {
     if (!isLoggedIn) {
-      router.push('/login?next=/pricing');
+      router.push(`/login?next=/pricing&tier=${tier}`);
       return;
     }
     // TODO: Implement Stripe checkout or payment flow
-    alert('Payment integration coming soon! This will connect to Stripe/PayPal.');
+    alert(`Payment integration coming soon for ${tier}! This will connect to Stripe/PayPal.`);
   };
 
+  const tiers = [
+    {
+      name: 'Free / Starter',
+      price: '$0',
+      period: '/month',
+      description: 'Get started with wholesale real estate',
+      color: '#6b7280',
+      features: [
+        { text: '2 listings / month', included: true },
+        { text: 'View map + public listings', included: true },
+        { text: 'Limited filters', included: true },
+        { text: 'No contact data access', included: false },
+        { text: 'Post up to 2 wholesale deals', included: true },
+      ],
+      cta: 'Get Started',
+      popular: false
+    },
+    {
+      name: 'Investor Basic',
+      price: '$25',
+      period: '/month',
+      description: 'For active investors seeking deals',
+      color: '#10b981',
+      features: [
+        { text: 'Unlimited viewing', included: true, bold: true },
+        { text: 'Unlimited contact info', included: true, bold: true },
+        { text: 'Full property details', included: true },
+        { text: 'Comps preview', included: true },
+        { text: 'Save/favorite searches', included: true },
+        { text: 'Message wholesalers directly', included: true },
+      ],
+      cta: 'Upgrade to Investor Basic',
+      popular: false
+    },
+    {
+      name: 'Investor Pro',
+      price: '$49',
+      period: '/month',
+      description: 'For serious investors who want the edge',
+      color: '#3b82f6',
+      features: [
+        { text: 'Everything in Investor Basic', included: true },
+        { text: 'AI analyzer (ARV, repair, MAO)', included: true, bold: true },
+        { text: 'Saved comps', included: true },
+        { text: 'Downloadable reports (PDF)', included: true },
+        { text: 'Priority support', included: true },
+      ],
+      cta: 'Upgrade to Investor Pro',
+      popular: true
+    },
+    {
+      name: 'Wholesaler Basic',
+      price: '$25',
+      period: '/month',
+      description: 'For wholesalers building their business',
+      color: '#f59e0b',
+      features: [
+        { text: '5 listings / month', included: true, bold: true },
+        { text: 'Create up to 5 active deals', included: true },
+        { text: 'Basic analytics (views, interest)', included: true },
+        { text: 'No buyer contact data', included: false },
+      ],
+      cta: 'Upgrade to Wholesaler Basic',
+      popular: false
+    },
+    {
+      name: 'Wholesaler Pro',
+      price: '$49',
+      period: '/month',
+      description: 'For established wholesalers',
+      color: '#8b5cf6',
+      features: [
+        { text: '20 listings / month', included: true, bold: true },
+        { text: 'AI repair estimator', included: true, bold: true },
+        { text: 'Investor demand analytics by ZIP', included: true },
+        { text: 'Featured placement', included: true },
+        { text: 'Verified badge', included: true },
+        { text: 'Investor chat unlocked', included: true },
+      ],
+      cta: 'Upgrade to Wholesaler Pro',
+      popular: true
+    },
+    {
+      name: 'Enterprise / Team',
+      price: '$99+',
+      period: '',
+      description: 'For teams and large operations',
+      color: '#1f2937',
+      features: [
+        { text: 'Unlimited listings', included: true, bold: true },
+        { text: 'Team seats', included: true, bold: true },
+        { text: 'Multi-user management', included: true },
+        { text: 'CRM export', included: true },
+        { text: 'Off-market data feed', included: true },
+        { text: 'Bulk investor lists', included: true },
+        { text: 'Custom branding / white-label', included: true },
+      ],
+      cta: 'Contact Sales',
+      popular: false
+    }
+  ];
+
   return (
-    <main style={{ padding: '40px 24px', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
-        <h1 style={{ margin: 0, fontSize: 40, fontWeight: 900, marginBottom: 12 }}>
-          Choose Your Plan
-        </h1>
-        <p style={{ fontSize: 18, color: '#6b7280', maxWidth: 600, margin: '0 auto' }}>
-          Start with our Free plan and upgrade when you&apos;re ready to unlock powerful features.
-        </p>
-      </div>
-
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-        gap: 24,
-        marginBottom: 64
-      }}>
-        {/* Free Plan */}
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: 16, 
-          padding: 32,
-          background: '#fff',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div style={{ marginBottom: 24 }}>
-            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>Free</h2>
-            <div style={{ marginTop: 12 }}>
-              <span style={{ fontSize: 40, fontWeight: 900 }}>$0</span>
-              <span style={{ fontSize: 18, color: '#6b7280' }}>/month</span>
-            </div>
-            <p style={{ color: '#6b7280', marginTop: 12 }}>
-              Perfect for getting started and testing the platform.
-            </p>
-          </div>
-
-          <div style={{ marginBottom: 32, flex: 1 }}>
-            <p style={{ fontWeight: 600, marginBottom: 12 }}>What&apos;s included:</p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Post up to 5 listings
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Map search with filters
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Basic deal analyzer (Lite)
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> View contact information
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Basic profile page
-              </li>
-              <li style={{ padding: '8px 0', color: '#9ca3af', display: 'flex', gap: 8 }}>
-                <span>❌</span> Saved searches & alerts
-              </li>
-              <li style={{ padding: '8px 0', color: '#9ca3af', display: 'flex', gap: 8 }}>
-                <span>❌</span> AI-powered analytics
-              </li>
-            </ul>
-          </div>
-
-          <Link 
-            href={isLoggedIn ? '/account' : '/login'}
-            style={{ 
-              display: 'block',
-              textAlign: 'center',
-              padding: '12px 24px', 
-              border: '1px solid #d1d5db', 
-              borderRadius: 10, 
-              background: '#fff', 
-              color: '#374151',
-              textDecoration: 'none',
-              fontWeight: 600
-            }}
-          >
-            {isLoggedIn ? 'Current Plan' : 'Get Started'}
-          </Link>
+    <main style={{ padding: '40px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <h1 style={{ margin: 0, fontSize: 40, fontWeight: 900, marginBottom: 12, color: '#fff' }}>
+            Choose Your Plan
+          </h1>
+          <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.9)', maxWidth: 700, margin: '0 auto' }}>
+            Whether you&apos;re an investor looking for deals or a wholesaler selling properties, we have the perfect plan for you.
+          </p>
         </div>
 
-        {/* Pro Plan */}
-        <div style={{ 
-          border: '2px solid #3b82f6', 
-          borderRadius: 16, 
-          padding: 32,
-          background: '#fff',
-          position: 'relative',
-          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div style={{
-            position: 'absolute',
-            top: -12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#3b82f6',
-            color: '#fff',
-            padding: '4px 16px',
-            borderRadius: 20,
-            fontSize: 12,
-            fontWeight: 700
-          }}>
-            MOST POPULAR
-          </div>
-
-          <div style={{ marginBottom: 24 }}>
-            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: '#3b82f6' }}>Pro</h2>
-            <div style={{ marginTop: 12 }}>
-              <span style={{ fontSize: 40, fontWeight: 900 }}>$29</span>
-              <span style={{ fontSize: 18, color: '#6b7280' }}>/month</span>
-            </div>
-            <p style={{ color: '#6b7280', marginTop: 12 }}>
-              For serious investors and wholesalers who want the edge.
-            </p>
-          </div>
-
-          <div style={{ marginBottom: 32, flex: 1 }}>
-            <p style={{ fontWeight: 600, marginBottom: 12 }}>Everything in Free, plus:</p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> <strong>Unlimited listings</strong>
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> <strong>AI-powered deal analyzer (Pro)</strong>
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Full profit & comps reports (PDF download)
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Buy Box setup - auto-match deals
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Saved searches & email alerts
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Private messaging with lead tracking
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Deal history & reviews
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Regional leaderboards
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Featured listing placement
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Verification badge
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Priority support
-              </li>
-            </ul>
-          </div>
-
-          <button
-            onClick={handleUpgrade}
-            style={{ 
-              padding: '12px 24px', 
-              border: 'none', 
-              borderRadius: 10, 
-              background: '#3b82f6', 
-              color: '#fff',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 16
-            }}
-          >
-            Upgrade to Pro
-          </button>
-        </div>
-
-        {/* Enterprise Plan */}
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: 16, 
-          padding: 32,
-          background: '#fff',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div style={{ marginBottom: 24 }}>
-            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>Enterprise</h2>
-            <div style={{ marginTop: 12 }}>
-              <span style={{ fontSize: 40, fontWeight: 900 }}>Custom</span>
-            </div>
-            <p style={{ color: '#6b7280', marginTop: 12 }}>
-              For teams and large-scale operations.
-            </p>
-          </div>
-
-          <div style={{ marginBottom: 32, flex: 1 }}>
-            <p style={{ fontWeight: 600, marginBottom: 12 }}>Everything in Pro, plus:</p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Team collaboration tools
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> White-label options
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> API access
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Custom integrations
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Dedicated account manager
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Custom reporting
-              </li>
-              <li style={{ padding: '8px 0', color: '#374151', display: 'flex', gap: 8 }}>
-                <span>✅</span> Priority feature requests
-              </li>
-            </ul>
-          </div>
-
-          <Link 
-            href="/contact"
-            style={{ 
-              display: 'block',
-              textAlign: 'center',
-              padding: '12px 24px', 
-              border: '1px solid #d1d5db', 
-              borderRadius: 10, 
-              background: '#fff', 
-              color: '#374151',
-              textDecoration: 'none',
-              fontWeight: 600
-            }}
-          >
-            Contact Sales
-          </Link>
-        </div>
-      </div>
-
-      {/* Feature Comparison */}
-      <div style={{ 
-        border: '1px solid #e5e7eb', 
-        borderRadius: 16, 
-        padding: 32,
-        background: '#f9fafb',
-        marginBottom: 48
-      }}>
-        <h2 style={{ margin: '0 0 24px 0', fontSize: 28, fontWeight: 800, textAlign: 'center' }}>
-          Why Upgrade to Pro?
-        </h2>
-        
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-          gap: 24 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+          gap: 20,
+          marginBottom: 64
         }}>
-          <div style={{ padding: 20, background: '#fff', borderRadius: 12 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🤖</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>AI-Powered Analytics</h3>
-            <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
-              Get instant ARV estimates, repair cost analysis, and profit calculations powered by advanced AI.
-            </p>
-          </div>
+          {tiers.map((tier, index) => (
+            <div 
+              key={index}
+              style={{ 
+                border: tier.popular ? '3px solid #fbbf24' : '1px solid rgba(255,255,255,0.2)', 
+                borderRadius: 16, 
+                padding: 28,
+                background: '#fff',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                boxShadow: tier.popular ? '0 10px 30px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.1)',
+                transform: tier.popular ? 'scale(1.03)' : 'scale(1)',
+                transition: 'transform 0.2s ease'
+              }}
+            >
+              {tier.popular && (
+                <div style={{
+                  position: 'absolute',
+                  top: -12,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#fbbf24',
+                  color: '#1f2937',
+                  padding: '4px 16px',
+                  borderRadius: 20,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.5px'
+                }}>
+                  🔥 POPULAR
+                </div>
+              )}
 
-          <div style={{ padding: 20, background: '#fff', borderRadius: 12 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Buy Box Matching</h3>
-            <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
-              Set your investment criteria and get automatically notified when matching deals hit the market.
-            </p>
-          </div>
+              <div style={{ marginBottom: 20 }}>
+                <h2 style={{ 
+                  margin: 0, 
+                  fontSize: 22, 
+                  fontWeight: 800, 
+                  color: tier.color 
+                }}>
+                  {tier.name}
+                </h2>
+                <div style={{ marginTop: 12 }}>
+                  <span style={{ fontSize: 36, fontWeight: 900, color: '#1f2937' }}>{tier.price}</span>
+                  <span style={{ fontSize: 16, color: '#6b7280' }}>{tier.period}</span>
+                </div>
+                <p style={{ color: '#6b7280', marginTop: 8, fontSize: 14, minHeight: 40 }}>
+                  {tier.description}
+                </p>
+              </div>
 
-          <div style={{ padding: 20, background: '#fff', borderRadius: 12 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>First Access</h3>
-            <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
-              Pro users see new listings first and can feature their own deals at the top of search results.
-            </p>
-          </div>
+              <div style={{ marginBottom: 24, flex: 1 }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {tier.features.map((feature, fIndex) => (
+                    <li 
+                      key={fIndex}
+                      style={{ 
+                        padding: '10px 0', 
+                        color: feature.included ? '#374151' : '#9ca3af', 
+                        display: 'flex', 
+                        gap: 10,
+                        alignItems: 'flex-start',
+                        fontSize: 14,
+                        borderBottom: fIndex < tier.features.length - 1 ? '1px solid #f3f4f6' : 'none'
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>{feature.included ? '✅' : '❌'}</span>
+                      <span style={{ fontWeight: feature.bold ? 700 : 400 }}>
+                        {feature.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-          <div style={{ padding: 20, background: '#fff', borderRadius: 12 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>✅</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Verification Badge</h3>
-            <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
-              Stand out with a verified badge that builds trust and credibility with potential partners.
-            </p>
+              {tier.name === 'Enterprise / Team' ? (
+                <Link 
+                  href="mailto:russell.quealy@gmail.com?subject=Enterprise%20Plan%20Inquiry"
+                  style={{ 
+                    display: 'block',
+                    textAlign: 'center',
+                    padding: '14px 24px', 
+                    border: `2px solid ${tier.color}`, 
+                    borderRadius: 10, 
+                    background: '#fff', 
+                    color: tier.color,
+                    textDecoration: 'none',
+                    fontWeight: 700,
+                    fontSize: 15
+                  }}
+                >
+                  {tier.cta}
+                </Link>
+              ) : tier.name === 'Free / Starter' ? (
+                <Link 
+                  href={isLoggedIn ? '/account' : '/login'}
+                  style={{ 
+                    display: 'block',
+                    textAlign: 'center',
+                    padding: '14px 24px', 
+                    border: `2px solid ${tier.color}`, 
+                    borderRadius: 10, 
+                    background: '#fff', 
+                    color: tier.color,
+                    textDecoration: 'none',
+                    fontWeight: 700,
+                    fontSize: 15
+                  }}
+                >
+                  {isLoggedIn ? 'Current Plan' : 'Get Started'}
+                </Link>
+              ) : (
+                <button
+                  onClick={() => handleUpgrade(tier.name)}
+                  style={{ 
+                    padding: '14px 24px', 
+                    border: 'none', 
+                    borderRadius: 10, 
+                    background: tier.color, 
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: 15,
+                    transition: 'transform 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  {tier.cta}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Feature Highlights */}
+        <div style={{ 
+          background: '#fff', 
+          borderRadius: 16, 
+          padding: 40,
+          marginBottom: 48,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ margin: '0 0 32px 0', fontSize: 28, fontWeight: 800, textAlign: 'center' }}>
+            Why Upgrade?
+          </h2>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+            gap: 24 
+          }}>
+            <div style={{ padding: 20, background: '#f9fafb', borderRadius: 12, border: '1px solid #e5e7eb' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>🤖</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>AI-Powered Analytics</h3>
+              <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
+                Get instant ARV estimates, repair cost analysis, and MAO calculations powered by advanced AI.
+              </p>
+            </div>
+
+            <div style={{ padding: 20, background: '#f9fafb', borderRadius: 12, border: '1px solid #e5e7eb' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Investor Insights</h3>
+              <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
+                See which areas have the highest investor demand and price your deals competitively.
+              </p>
+            </div>
+
+            <div style={{ padding: 20, background: '#f9fafb', borderRadius: 12, border: '1px solid #e5e7eb' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>⚡</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Featured Placement</h3>
+              <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
+                Pro users can feature their deals at the top of search results for maximum visibility.
+              </p>
+            </div>
+
+            <div style={{ padding: 20, background: '#f9fafb', borderRadius: 12, border: '1px solid #e5e7eb' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Verification Badge</h3>
+              <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
+                Stand out with a verified badge that builds trust and credibility with potential partners.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* FAQ */}
-      <div style={{ maxWidth: 800, margin: '0 auto' }}>
-        <h2 style={{ margin: '0 0 24px 0', fontSize: 28, fontWeight: 800, textAlign: 'center' }}>
-          Frequently Asked Questions
-        </h2>
-        
-        <div style={{ display: 'grid', gap: 24 }}>
-          <div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Can I cancel anytime?</h3>
-            <p style={{ color: '#6b7280', margin: 0 }}>
-              Yes! Cancel your Pro subscription anytime. You&apos;ll still have access until the end of your billing period.
-            </p>
-          </div>
+        {/* FAQ */}
+        <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', borderRadius: 16, padding: 40, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ margin: '0 0 24px 0', fontSize: 28, fontWeight: 800, textAlign: 'center' }}>
+            Frequently Asked Questions
+          </h2>
+          
+          <div style={{ display: 'grid', gap: 24 }}>
+            <div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Can I cancel anytime?</h3>
+              <p style={{ color: '#6b7280', margin: 0, fontSize: 15 }}>
+                Yes! Cancel your subscription anytime. You&apos;ll still have access until the end of your billing period.
+              </p>
+            </div>
 
-          <div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>What payment methods do you accept?</h3>
-            <p style={{ color: '#6b7280', margin: 0 }}>
-              We accept all major credit cards through Stripe, as well as PayPal for your convenience.
-            </p>
-          </div>
+            <div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>What payment methods do you accept?</h3>
+              <p style={{ color: '#6b7280', margin: 0, fontSize: 15 }}>
+                We accept all major credit cards through Stripe, as well as PayPal for your convenience.
+              </p>
+            </div>
 
-          <div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Can I try Pro before committing?</h3>
-            <p style={{ color: '#6b7280', margin: 0 }}>
-              Yes! We offer a 7-day free trial of Pro features. No credit card required to start.
-            </p>
-          </div>
+            <div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Can I switch between tiers?</h3>
+              <p style={{ color: '#6b7280', margin: 0, fontSize: 15 }}>
+                Absolutely! Upgrade or downgrade at any time. Changes take effect at your next billing cycle.
+              </p>
+            </div>
 
-          <div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>What happens to my listings if I downgrade?</h3>
-            <p style={{ color: '#6b7280', margin: 0 }}>
-              Your listings remain active, but you&apos;ll be limited to 5 active listings. You can choose which ones to keep active.
-            </p>
+            <div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>What happens to my listings if I downgrade?</h3>
+              <p style={{ color: '#6b7280', margin: 0, fontSize: 15 }}>
+                Your listings remain active, but you&apos;ll be limited to your new tier&apos;s listing count. You can choose which ones to keep active.
+              </p>
+            </div>
+
+            <div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Do you offer team discounts?</h3>
+              <p style={{ color: '#6b7280', margin: 0, fontSize: 15 }}>
+                Yes! Contact us about Enterprise pricing for teams of 3 or more users. We offer custom pricing and features.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </main>
   );
 }
-

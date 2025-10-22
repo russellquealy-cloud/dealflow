@@ -130,13 +130,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                 fillOpacity: 0.2
               }
             },
-            polyline: {
-              shapeOptions: {
-                color: '#ef4444',
-                weight: 3,
-                opacity: 0.8
-              }
-            },
+            polyline: false, // Disable polyline for simpler UX
             circle: {
               shapeOptions: {
                 color: '#10b981',
@@ -153,22 +147,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                 fillOpacity: 0.2
               }
             },
-            marker: {
-              icon: Lmod.divIcon({
-                className: 'custom-draw-marker',
-                html: `<div style="
-                  background-color: #3b82f6;
-                  width: 20px;
-                  height: 20px;
-                  border-radius: 50%;
-                  border: 2px solid white;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                  cursor: pointer;
-                "></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-              })
-            },
+            marker: false, // Disable marker for simpler UX
             circlemarker: false
           },
           edit: {
@@ -178,7 +157,67 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         });
         
         map.addControl(drawControl);
-        console.log('✅ Drawing tools added to map');
+        
+        // Handle draw created event - filter properties within drawn shape
+        map.on(Lmod.Draw.Event.CREATED, (e: any) => {
+          const layer = e.layer;
+          drawnItems.addLayer(layer);
+          
+          console.log('🎨 Shape drawn:', e.layerType);
+          
+          // Get bounds of the drawn shape
+          const bounds = layer.getBounds();
+          if (bounds && onBoundsChange) {
+            const boundsObject = {
+              south: bounds.getSouth(),
+              north: bounds.getNorth(),
+              west: bounds.getWest(),
+              east: bounds.getEast()
+            };
+            console.log('🎨 Filtering by drawn shape bounds:', boundsObject);
+            onBoundsChange(boundsObject);
+          }
+        });
+        
+        // Handle draw deleted event - reset to map bounds
+        map.on(Lmod.Draw.Event.DELETED, () => {
+          console.log('🎨 Shapes deleted, resetting to map bounds');
+          if (drawnItems.getLayers().length === 0 && onBoundsChange) {
+            // Reset to current map bounds
+            const bounds = map.getBounds();
+            const boundsObject = {
+              south: bounds.getSouth(),
+              north: bounds.getNorth(),
+              west: bounds.getWest(),
+              east: bounds.getEast()
+            };
+            onBoundsChange(boundsObject);
+          }
+        });
+        
+        // Handle draw edited event
+        map.on(Lmod.Draw.Event.EDITED, (e: any) => {
+          console.log('🎨 Shapes edited');
+          // Get the first edited layer's bounds
+          const layers = e.layers;
+          layers.eachLayer((layer: any) => {
+            if (layer.getBounds) {
+              const bounds = layer.getBounds();
+              if (bounds && onBoundsChange) {
+                const boundsObject = {
+                  south: bounds.getSouth(),
+                  north: bounds.getNorth(),
+                  west: bounds.getWest(),
+                  east: bounds.getEast()
+                };
+                console.log('🎨 Filtering by edited shape bounds:', boundsObject);
+                onBoundsChange(boundsObject);
+              }
+            }
+          });
+        });
+        
+        console.log('✅ Drawing tools added to map with filtering support');
       } catch (err) {
         console.log('⚠️ Could not load drawing tools:', err);
       }
@@ -228,12 +267,12 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           console.log('🗺️ Converted bounds:', boundsObject, 'Size:', boundsSize);
           
           // Provide user feedback based on zoom level and bounds size
-          if (zoom < 8) {
-            setZoomMessage('Zoom in closer to see listings in this area');
-          } else if (boundsSize > 5) {
-            setZoomMessage('Move closer to see listings in this area');
+          if (zoom < 6) {
+            setZoomMessage('🔍 Zoom in closer to see property listings');
+          } else if (boundsSize > 10) {
+            setZoomMessage('🔍 Zoom in to filter properties by area');
           } else if (boundsSize < 0.01) {
-            setZoomMessage('Map view is too close - zoom out to see more listings');
+            setZoomMessage('🔍 Zoom out to see more properties');
           } else {
             setZoomMessage(null);
           }
@@ -362,55 +401,64 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
             
             // Try to load markercluster plugin for clustering
             let MarkerClusterGroup: any = null;
+            let useCluster = false;
+            
             try {
-              const clusterPlugin = await import('leaflet.markercluster');
-              MarkerClusterGroup = clusterPlugin.default || clusterPlugin;
+              // Load cluster CSS first
+              if (!document.querySelector('link[href*="leaflet.markercluster"]')) {
+                const clusterCSS = document.createElement('link');
+                clusterCSS.rel = 'stylesheet';
+                clusterCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css';
+                document.head.appendChild(clusterCSS);
+                
+                const clusterDefaultCSS = document.createElement('link');
+                clusterDefaultCSS.rel = 'stylesheet';
+                clusterDefaultCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css';
+                document.head.appendChild(clusterDefaultCSS);
+              }
               
-              // Load cluster CSS
-              const clusterCSS = document.createElement('link');
-              clusterCSS.rel = 'stylesheet';
-              clusterCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css';
-              document.head.appendChild(clusterCSS);
-              
-              console.log('✅ MarkerCluster plugin loaded');
+              const clusterModule = await import('leaflet.markercluster');
+              // Check if we have access to L.markerClusterGroup
+              if (L && (L as any).markerClusterGroup) {
+                MarkerClusterGroup = (L as any).markerClusterGroup;
+                useCluster = true;
+                console.log('✅ MarkerCluster plugin loaded and available');
+              } else {
+                console.log('⚠️ MarkerCluster not available on L object');
+              }
             } catch (err) {
               console.log('⚠️ Could not load markercluster plugin, using simple markers:', err);
             }
             
             // Create marker group (clustered or simple)
-            const group = MarkerClusterGroup ? new MarkerClusterGroup({
+            const group = useCluster && MarkerClusterGroup ? MarkerClusterGroup({
               chunkedLoading: true,
               spiderfyOnMaxZoom: true,
               showCoverageOnHover: false,
               zoomToBoundsOnClick: true,
-              maxClusterRadius: 50,
+              maxClusterRadius: 60,
               iconCreateFunction: function(cluster: any) {
                 const childCount = cluster.getChildCount();
                 let size = 'small';
-                if (childCount > 10) size = 'large';
-                else if (childCount > 5) size = 'medium';
+                let sizeClass = 'marker-cluster-small';
+                
+                if (childCount > 10) {
+                  size = 'large';
+                  sizeClass = 'marker-cluster-large';
+                } else if (childCount > 5) {
+                  size = 'medium';
+                  sizeClass = 'marker-cluster-medium';
+                }
                 
                 return L.divIcon({
-                  html: `<div style="
-                    background-color: #3b82f6;
-                    border: 2px solid white;
-                    border-radius: 50%;
-                    color: white;
-                    font-weight: bold;
-                    text-align: center;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                    ${size === 'large' ? 'width: 50px; height: 50px; font-size: 14px;' : 
-                      size === 'medium' ? 'width: 40px; height: 40px; font-size: 12px;' : 
-                      'width: 30px; height: 30px; font-size: 10px;'}
-                  ">${childCount}</div>`,
-                  className: 'custom-cluster',
-                  iconSize: size === 'large' ? [50, 50] : size === 'medium' ? [40, 40] : [30, 30]
+                  html: `<div><span>${childCount}</span></div>`,
+                  className: `marker-cluster ${sizeClass}`,
+                  iconSize: L.point(40, 40)
                 });
               }
             }) : L.layerGroup();
+            
+            console.log('📌 Using', useCluster ? 'clustered' : 'simple', 'marker group');
             
             for (const p of validPoints) {
               try {
