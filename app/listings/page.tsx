@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient, { type MapPoint, type ListItem } from '@/components/ListingsSplitClient';
@@ -403,7 +403,7 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = async (bounds: unknown) => {
+  const handleMapBoundsChange = useCallback(async (bounds: unknown) => {
     console.log('Map bounds changed:', bounds);
     
     // Validate bounds to prevent undefined values
@@ -563,7 +563,7 @@ export default function ListingsPage() {
     } catch (error) {
       console.error('❌ Error fetching bounded data:', error);
     }
-  };
+  }, [filters, searchQuery]); // Add dependencies for useCallback
 
   // Only show loading on initial load, not when navigating back
   if (loading && !hasLoaded) {

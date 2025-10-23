@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type Point = { id: string; lat: number; lng: number; price?: number };
@@ -16,6 +16,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [zoomMessage, setZoomMessage] = useState<string | null>(null);
 
   console.log('🗺️ MapViewClient render - onBoundsChange:', !!onBoundsChange);
@@ -29,16 +30,48 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     let Lmod: any;
     let ro: ResizeObserver | null = null;
     let io: IntersectionObserver | null = null;
+    let mapEventTimeout: NodeJS.Timeout | null = null;
+    let isInitializing = false;
 
     const root = document.getElementById('df-map');
-    if (!root) return;
+    if (!root) {
+      console.log('🗺️ Map container not found');
+      return;
+    }
+    
+    containerRef.current = root;
     ensureHeight(root);
 
     (async () => {
       const leaflet = await import('leaflet');
       Lmod = leaflet.default ?? leaflet;
 
-      if (mapRef.current) return;
+      // CRITICAL: Check if map already exists and is valid
+      if (mapRef.current && !mapRef.current._container) {
+        console.log('🗺️ Map exists but container is invalid, cleaning up');
+        mapRef.current = null;
+        isInitializedRef.current = false;
+      }
+
+      if (mapRef.current || isInitializing) {
+        console.log('🗺️ Map already exists or initializing, skipping initialization');
+        return;
+      }
+
+      isInitializing = true;
+
+      // CRITICAL: Completely clean the container before initialization
+      if ((root as any)._leaflet_id) {
+        console.log('🗺️ Container has Leaflet ID, cleaning up');
+        // Remove all Leaflet data
+        delete (root as any)._leaflet_id;
+        // Clear all child elements
+        while (root.firstChild) {
+          root.removeChild(root.firstChild);
+        }
+        // Force a small delay to ensure cleanup
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
       // Try to restore last map position from localStorage or use search center
       let initialCenter = [39.8283, -98.5795]; // Default US center
@@ -83,12 +116,36 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         console.log('⚠️ Could not restore map position:', err);
       }
       
-      // Clear any existing map position to force new defaults
-      localStorage.removeItem('dealflow-map-center');
-      localStorage.removeItem('dealflow-map-zoom');
-      localStorage.removeItem('dealflow-search-center');
+      // Wait for container to have proper dimensions before initializing map
+      const waitForContainerDimensions = () => {
+        return new Promise<void>((resolve) => {
+          const checkDimensions = () => {
+            const rect = root.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              console.log('🗺️ Container has proper dimensions:', { width: rect.width, height: rect.height });
+              resolve();
+            } else {
+              console.log('🗺️ Container dimensions not ready:', { width: rect.width, height: rect.height });
+              setTimeout(checkDimensions, 50);
+            }
+          };
+          checkDimensions();
+        });
+      };
+
+      // Wait for container dimensions before initializing map
+      await waitForContainerDimensions();
+
+      // CRITICAL: Initialize map with proper maxZoom to prevent "Map has no maxZoom specified" error
+      const map = Lmod.map(root, { 
+        center: initialCenter, 
+        zoom: initialZoom,
+        maxZoom: 18, // CRITICAL: Add maxZoom to prevent error
+        minZoom: 1,
+        zoomControl: true,
+        attributionControl: true
+      });
       
-      const map = Lmod.map(root, { center: initialCenter, zoom: initialZoom });
       mapRef.current = map;
       isInitializedRef.current = true;
       
@@ -97,14 +154,6 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       Lmod.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
       }).addTo(map);
-      
-      // Force map to recalculate size immediately after tiles load
-      map.on('load', () => {
-        console.log('🗺️ Map tiles loaded');
-        setTimeout(() => {
-          map.invalidateSize(false);
-        }, 100);
-      });
 
       // Add drawing tools with better error handling
       try {
@@ -237,38 +286,13 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         console.log('⚠️ Could not load drawing tools:', err);
       }
 
-      // Wait for container to have proper dimensions before initializing map
-      const waitForContainerDimensions = () => {
-        return new Promise<void>((resolve) => {
-          const checkDimensions = () => {
-            const rect = root.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-              console.log('🗺️ Container has proper dimensions:', { width: rect.width, height: rect.height });
-              resolve();
-            } else {
-              console.log('🗺️ Container dimensions not ready:', { width: rect.width, height: rect.height });
-              setTimeout(checkDimensions, 50);
-            }
-          };
-          checkDimensions();
-        });
-      };
-
-      // Wait for container dimensions before setting up observers
-      await waitForContainerDimensions();
-
-      setTimeout(() => {
-        if (mapRef.current) {
-          mapRef.current.invalidateSize(false);
-        }
-      }, 100);
-
+      // Set up observers after map initialization
       ro = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { width, height } = entry.contentRect;
           if (width > 0 && height > 0 && mapRef.current) {
             console.log('🗺️ Container resized:', { width, height });
-            mapRef.current.invalidateSize(false);
+          mapRef.current.invalidateSize(false);
           }
         }
       });
@@ -342,15 +366,26 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         }
       };
       
+      // Debounce map events to prevent excessive firing
+      
+      const debouncedMapEvent = () => {
+        if (mapEventTimeout) {
+          clearTimeout(mapEventTimeout);
+        }
+        mapEventTimeout = setTimeout(() => {
+          console.log('🗺️ Map event debounced and fired');
+          emitBounds();
+          saveMapPosition();
+        }, 150); // 150ms debounce
+      };
+
       map.on('moveend', () => {
         console.log('🗺️ Map moveend event fired');
-        emitBounds();
-        saveMapPosition();
+        debouncedMapEvent();
       });
       map.on('zoomend', () => {
         console.log('🗺️ Map zoomend event fired');
-        emitBounds();
-        saveMapPosition();
+        debouncedMapEvent();
       });
       
       // Add debugging for map view changes
@@ -375,29 +410,11 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           clientHeight: root.clientHeight
         });
         
-        // Give the map more time to fully render and establish proper bounds
+        // Give the map time to fully render and establish proper bounds
         setTimeout(() => {
           console.log('🗺️ Emitting initial bounds after map load');
-          console.log('🗺️ Map container dimensions after delay:', {
-            width: root.offsetWidth,
-            height: root.offsetHeight
-          });
-          // Force multiple size recalculations to ensure proper dimensions
-          map.invalidateSize(true);
-          requestAnimationFrame(() => {
-            map.invalidateSize(true);
-            setTimeout(() => {
-              const bounds = map.getBounds();
-              console.log('🗺️ Raw bounds object:', {
-                south: bounds.getSouth(),
-                north: bounds.getNorth(),
-                west: bounds.getWest(),
-                east: bounds.getEast()
-              });
-              emitBounds();
-            }, 100);
-          });
-        }, 500); // Reduced delay from 1000ms to 500ms
+          emitBounds();
+        }, 300); // Reduced delay to prevent flickering
       });
     })();
 
@@ -405,15 +422,49 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       try {
         ro?.disconnect();
         io?.disconnect();
+        if (mapEventTimeout) {
+          clearTimeout(mapEventTimeout);
+        }
+        
+        // CRITICAL: Proper cleanup to prevent "Map container is already initialized" error
         if (mapRef.current) {
+          console.log('🗺️ Cleaning up map instance');
+          
+          // Remove all event listeners
           mapRef.current.off?.();
+          
+          // Remove all layers
+          mapRef.current.eachLayer?.((layer: any) => {
+            mapRef.current.removeLayer(layer);
+          });
+          
+          // Remove the map
           mapRef.current.remove?.();
+          
           mapRef.current = null;
           isInitializedRef.current = false;
         }
-      } catch {}
+        
+        // CRITICAL: Clean the container completely
+        const root = document.getElementById('df-map');
+        if (root) {
+          // Remove all Leaflet data
+          if ((root as any)._leaflet_id) {
+            delete (root as any)._leaflet_id;
+          }
+          
+          // Clear all child elements
+          while (root.firstChild) {
+            root.removeChild(root.firstChild);
+          }
+        }
+        
+        isInitializing = false;
+      } catch (err) {
+        console.log('⚠️ Error during map cleanup:', err);
+      }
     };
-  }, [onBoundsChange]);
+  }, []); // Remove onBoundsChange dependency to prevent re-initialization
 
   // Render markers - ENHANCED: Better error handling and marker management
   useEffect(() => {
@@ -450,10 +501,10 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     // Wait for map to be ready before rendering markers
     const waitForMap = async () => {
       let attempts = 0;
-      const maxAttempts = 10; // Reduced from 50 to prevent infinite loops
+      const maxAttempts = 20; // Increased attempts to give map more time to initialize
       
       while (attempts < maxAttempts) {
-        const map = mapRef.current;
+      const map = mapRef.current;
         const isInitialized = isInitializedRef.current;
         
         console.log(`🔄 Checking map readiness (attempt ${attempts + 1}/${maxAttempts}):`, { 
@@ -468,21 +519,21 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           await new Promise(resolve => setTimeout(resolve, 300));
           
           try {
-            const L = (await import('leaflet')).default;
+      const L = (await import('leaflet')).default;
 
             // Clear existing markers safely
-            if (markersRef.current) {
+      if (markersRef.current) {
               try {
                 // Check if the marker group is still valid before clearing
                 if (map.hasLayer(markersRef.current)) {
-                  markersRef.current.clearLayers?.();
-                  map.removeLayer(markersRef.current);
+        markersRef.current.clearLayers?.();
+        map.removeLayer(markersRef.current);
                 }
               } catch (err) {
                 console.log('Error clearing markers:', err);
               }
-              markersRef.current = null;
-            }
+        markersRef.current = null;
+      }
 
             console.log('🎯 Creating markers for', validPoints.length, 'points');
             
@@ -550,28 +601,28 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                 
                 // Create a property marker with price display
                 const priceText = p.price ? `$${p.price.toLocaleString()}` : '';
-                const markerIcon = L.divIcon({
-                  className: 'custom-marker',
-                  html: `<div style="
+        const markerIcon = L.divIcon({
+          className: 'custom-marker',
+          html: `<div style="
                     background-color: #dc2626;
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
                     border: 2px solid white;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
                     font-size: 8px;
-                    font-weight: bold;
+            font-weight: bold;
                     cursor: pointer;
                     position: relative;
                   ">🏠</div>`,
-                  iconSize: [24, 24],
-                  iconAnchor: [12, 12]
-                });
-                
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
                 const marker = L.marker([p.lat, p.lng], { icon: markerIcon });
                 marker.addTo(group);
                 marker.on('click', () => {
@@ -606,18 +657,18 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
               }
             }
             
-            group.addTo(map);
-            markersRef.current = group;
+      group.addTo(map);
+      markersRef.current = group;
             console.log('🎉 All markers added to map successfully');
             
             // Don't auto-fit bounds to prevent snapping
             console.log('Markers added, no auto-fitting to prevent snapping');
-            
-            requestAnimationFrame(() => {
-              if (mapRef.current) {
-                mapRef.current.invalidateSize(false);
-              }
-            });
+      
+      requestAnimationFrame(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize(false);
+        }
+      });
             
             return; // Exit the function successfully
           } catch (err) {
@@ -639,10 +690,10 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-      <div
-        id="df-map"
-        style={{ height: '100%', width: '100%', minHeight: 0, minWidth: 0, borderRadius: 12, border: '1px solid #e5e7eb' }}
-      />
+    <div
+      id="df-map"
+      style={{ height: '100%', width: '100%', minHeight: 0, minWidth: 0, borderRadius: 12, border: '1px solid #e5e7eb' }}
+    />
       {zoomMessage && (
         <div style={{
           position: 'absolute',
