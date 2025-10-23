@@ -19,9 +19,9 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
   console.log('ListingsSplitClient render:', { points: points.length, listings: listings.length, hasOnBoundsChange: !!onBoundsChange });
   
   return (
-    <div style={{ height: '100%', padding: '12px 18px 18px 18px', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <div style={{ height: '100%', padding: '12px 18px 18px 18px', boxSizing: 'border-box', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Mobile View Toggle - Only visible on mobile */}
-      <div className="lg:hidden flex gap-2 mb-4 z-30 relative bg-white">
+      <div className="lg:hidden flex gap-2 mb-4 z-30 relative bg-white flex-shrink-0">
         <button
           onClick={() => setMobileView('map')}
           className={`flex-1 py-3 px-4 rounded-lg border font-semibold ${
@@ -45,14 +45,13 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
       </div>
 
       {/* Desktop: Side by side, Mobile: Stacked with toggle */}
-      <div style={{ height: 'calc(100% - 60px)' }} className="grid grid-cols-1 lg:grid-cols-[minmax(540px,1fr)_1fr] gap-4 lg:gap-4 lg:h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(540px,1fr)_1fr] gap-4" style={{ flex: 1, minHeight: 0 }}>
         {/* MAP */}
         <div className={`
           border border-gray-200 rounded-xl bg-white min-w-0 flex overflow-hidden
           ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}
-          h-full lg:h-auto
-        `} style={{ maxHeight: '100%' }}>
-          <div className="flex-1 min-w-0 w-full h-full">
+        `} style={{ height: '100%', minHeight: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, width: '100%', height: '100%', minHeight: 0 }}>
             <MapComponent points={points} onBoundsChange={onBoundsChange} />
           </div>
         </div>
@@ -61,8 +60,7 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
         <div className={`
           border border-gray-200 rounded-xl bg-white min-w-0 overflow-y-auto p-3
           ${mobileView === 'map' ? 'hidden lg:block' : 'block'}
-          h-full lg:h-auto
-        `} style={{ maxHeight: '100%' }}>
+        `} style={{ height: '100%', minHeight: 0 }}>
           <div className="grid gap-3">
             {listings.length === 0 ? (
               <div className="text-center text-gray-500 py-5">

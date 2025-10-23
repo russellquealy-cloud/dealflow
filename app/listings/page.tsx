@@ -353,8 +353,8 @@ export default function ListingsPage() {
       }
     };
 
-        load();
-        return () => { cancelled = true; };
+    load();
+    return () => { cancelled = true; };
       }, [filters, searchQuery, mapBounds]); // Re-added dependencies for filtering
 
   // No need for manual filtering - spatial function handles it
@@ -575,7 +575,7 @@ export default function ListingsPage() {
   console.log('Filtered listings:', filteredListings.length);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative' }}>
       {/* header + search */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
         <h2 className="text-2xl lg:text-3xl font-bold m-0">Find Deals</h2>
@@ -611,16 +611,17 @@ export default function ListingsPage() {
       </div>
 
       {/* the split fills the rest of the viewport - NO SCROLL */}
-             <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-               <ListingsSplitClient 
-                 points={allPoints} 
-                 listings={filteredListings} 
-                 MapComponent={(props) => {
-                   console.log('🗺️ Passing points to MapViewClient:', props.points);
-                   console.log('🗺️ Points length:', props.points?.length || 0);
-                   return <MapViewClient {...props} onBoundsChange={handleMapBoundsChange} />;
-                 }} 
-               />
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+        <ListingsSplitClient 
+          points={allPoints} 
+          listings={filteredListings}
+          onBoundsChange={handleMapBoundsChange}
+          MapComponent={(props) => {
+            console.log('🗺️ Passing points to MapViewClient:', props.points);
+            console.log('🗺️ Points length:', props.points?.length || 0);
+            return <MapViewClient {...props} />;
+          }} 
+        />
       </div>
     </div>
   );

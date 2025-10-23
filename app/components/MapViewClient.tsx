@@ -42,7 +42,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
 
       // Try to restore last map position from localStorage or use search center
       let initialCenter = [39.8283, -98.5795]; // Default US center
-      let initialZoom = 4;
+      let initialZoom = 8; // More focused zoom level for better bounds filtering
       
       try {
         // Check for search center first
@@ -83,6 +83,11 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         console.log('⚠️ Could not restore map position:', err);
       }
       
+      // Clear any existing map position to force new defaults
+      localStorage.removeItem('dealflow-map-center');
+      localStorage.removeItem('dealflow-map-zoom');
+      localStorage.removeItem('dealflow-search-center');
+      
       const map = Lmod.map(root, { center: initialCenter, zoom: initialZoom });
       mapRef.current = map;
       isInitializedRef.current = true;
@@ -92,6 +97,14 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       Lmod.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
       }).addTo(map);
+      
+      // Force map to recalculate size immediately after tiles load
+      map.on('load', () => {
+        console.log('🗺️ Map tiles loaded');
+        setTimeout(() => {
+          map.invalidateSize(false);
+        }, 100);
+      });
 
       // Add drawing tools with better error handling
       try {
@@ -224,15 +237,39 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         console.log('⚠️ Could not load drawing tools:', err);
       }
 
+      // Wait for container to have proper dimensions before initializing map
+      const waitForContainerDimensions = () => {
+        return new Promise<void>((resolve) => {
+          const checkDimensions = () => {
+            const rect = root.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              console.log('🗺️ Container has proper dimensions:', { width: rect.width, height: rect.height });
+              resolve();
+            } else {
+              console.log('🗺️ Container dimensions not ready:', { width: rect.width, height: rect.height });
+              setTimeout(checkDimensions, 50);
+            }
+          };
+          checkDimensions();
+        });
+      };
+
+      // Wait for container dimensions before setting up observers
+      await waitForContainerDimensions();
+
       setTimeout(() => {
         if (mapRef.current) {
           mapRef.current.invalidateSize(false);
         }
-      }, 0);
+      }, 100);
 
-      ro = new ResizeObserver(() => {
-        if (mapRef.current) {
-          mapRef.current.invalidateSize(false);
+      ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0 && mapRef.current) {
+            console.log('🗺️ Container resized:', { width, height });
+            mapRef.current.invalidateSize(false);
+          }
         }
       });
       ro.observe(root);
@@ -253,9 +290,6 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           const bounds = mapRef.current.getBounds();
           const center = mapRef.current.getCenter();
           const zoom = mapRef.current.getZoom();
-          console.log('🗺️ Map bounds emitted:', bounds);
-          console.log('🗺️ Map center:', center);
-          console.log('🗺️ Map zoom:', zoom);
           
           // Convert Leaflet bounds to our expected format
           const boundsObject = {
@@ -266,6 +300,16 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           };
           
           const boundsSize = Math.abs(boundsObject.north - boundsObject.south) + Math.abs(boundsObject.east - boundsObject.west);
+          
+          // Don't emit invalid bounds (happens when map hasn't fully initialized)
+          if (boundsSize === 0 || isNaN(boundsSize)) {
+            console.log('⚠️ Map bounds not ready yet (size:', boundsSize, '), skipping emission');
+            return;
+          }
+          
+          console.log('🗺️ Map bounds emitted:', bounds);
+          console.log('🗺️ Map center:', center);
+          console.log('🗺️ Map zoom:', zoom);
           console.log('🗺️ Converted bounds:', boundsObject, 'Size:', boundsSize);
           
           // Provide user feedback based on zoom level and bounds size
@@ -320,11 +364,41 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         console.log('🗺️ Map zoom end');
       });
       
-      // Emit initial bounds after map is fully loaded
-      setTimeout(() => {
-        console.log('🗺️ Emitting initial bounds after map load');
-        emitBounds();
-      }, 1000);
+      // Emit initial bounds after map is fully loaded and rendered
+      map.whenReady(() => {
+        console.log('🗺️ Map is ready');
+        // Log container dimensions for debugging
+        console.log('🗺️ Map container dimensions:', {
+          width: root.offsetWidth,
+          height: root.offsetHeight,
+          clientWidth: root.clientWidth,
+          clientHeight: root.clientHeight
+        });
+        
+        // Give the map more time to fully render and establish proper bounds
+        setTimeout(() => {
+          console.log('🗺️ Emitting initial bounds after map load');
+          console.log('🗺️ Map container dimensions after delay:', {
+            width: root.offsetWidth,
+            height: root.offsetHeight
+          });
+          // Force multiple size recalculations to ensure proper dimensions
+          map.invalidateSize(true);
+          requestAnimationFrame(() => {
+            map.invalidateSize(true);
+            setTimeout(() => {
+              const bounds = map.getBounds();
+              console.log('🗺️ Raw bounds object:', {
+                south: bounds.getSouth(),
+                north: bounds.getNorth(),
+                west: bounds.getWest(),
+                east: bounds.getEast()
+              });
+              emitBounds();
+            }, 100);
+          });
+        }, 500); // Reduced delay from 1000ms to 500ms
+      });
     })();
 
     return () => {
@@ -376,7 +450,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     // Wait for map to be ready before rendering markers
     const waitForMap = async () => {
       let attempts = 0;
-      const maxAttempts = 50; // Wait up to 5 seconds
+      const maxAttempts = 10; // Reduced from 50 to prevent infinite loops
       
       while (attempts < maxAttempts) {
         const map = mapRef.current;
@@ -399,8 +473,11 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
             // Clear existing markers safely
             if (markersRef.current) {
               try {
-                markersRef.current.clearLayers?.();
-                map.removeLayer(markersRef.current);
+                // Check if the marker group is still valid before clearing
+                if (map.hasLayer(markersRef.current)) {
+                  markersRef.current.clearLayers?.();
+                  map.removeLayer(markersRef.current);
+                }
               } catch (err) {
                 console.log('Error clearing markers:', err);
               }
