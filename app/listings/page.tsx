@@ -403,28 +403,36 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
-  const handleMapBoundsChange = async (bounds: { south: number; north: number; west: number; east: number }) => {
+  const handleMapBoundsChange = async (bounds: unknown) => {
     console.log('Map bounds changed:', bounds);
     
     // Validate bounds to prevent undefined values
     if (!bounds || 
-        typeof bounds.south !== 'number' || 
-        typeof bounds.north !== 'number' || 
-        typeof bounds.west !== 'number' || 
-        typeof bounds.east !== 'number' ||
-        isNaN(bounds.south) || 
-        isNaN(bounds.north) || 
-        isNaN(bounds.west) || 
-        isNaN(bounds.east)) {
+        typeof bounds !== 'object' ||
+        !bounds ||
+        !('south' in bounds) ||
+        !('north' in bounds) ||
+        !('west' in bounds) ||
+        !('east' in bounds) ||
+        typeof (bounds as Record<string, unknown>).south !== 'number' || 
+        typeof (bounds as Record<string, unknown>).north !== 'number' || 
+        typeof (bounds as Record<string, unknown>).west !== 'number' || 
+        typeof (bounds as Record<string, unknown>).east !== 'number' ||
+        isNaN((bounds as Record<string, unknown>).south as number) || 
+        isNaN((bounds as Record<string, unknown>).north as number) || 
+        isNaN((bounds as Record<string, unknown>).west as number) || 
+        isNaN((bounds as Record<string, unknown>).east as number)) {
       console.log('Invalid bounds received, skipping filtering:', bounds);
       return;
     }
     
-    setMapBounds(bounds);
+    const typedBounds = bounds as { south: number; north: number; west: number; east: number };
+    
+    setMapBounds(typedBounds);
     
     // Calculate bounds size for better filtering logic
-    const latRange = Math.abs(bounds.north - bounds.south);
-    const lngRange = Math.abs(bounds.east - bounds.west);
+    const latRange = Math.abs(typedBounds.north - typedBounds.south);
+    const lngRange = Math.abs(typedBounds.east - typedBounds.west);
     const boundsSize = latRange + lngRange;
     
     // More intelligent filtering based on bounds size
@@ -446,10 +454,10 @@ export default function ListingsPage() {
       let query = supabase
         .from('listings')
         .select('*, latitude, longitude')
-        .gte('latitude', bounds.south)
-        .lte('latitude', bounds.north)
-        .gte('longitude', bounds.west)
-        .lte('longitude', bounds.east);
+        .gte('latitude', typedBounds.south)
+        .lte('latitude', typedBounds.north)
+        .gte('longitude', typedBounds.west)
+        .lte('longitude', typedBounds.east);
       
       // Apply existing filters
       if (filters.minPrice) query = query.gte('price', filters.minPrice);
@@ -487,7 +495,7 @@ export default function ListingsPage() {
       
       console.log('🗺️ ===MAP BOUNDS FILTERING RESULTS===');
       console.log('🗺️ Query returned:', boundedData?.length, 'listings');
-      console.log('🗺️ Bounds used:', bounds);
+      console.log('🗺️ Bounds used:', typedBounds);
       console.log('🗺️ Sample listing coords:', boundedData?.[0] ? { 
         id: boundedData[0].id,
         lat: (boundedData[0] as Row).latitude,

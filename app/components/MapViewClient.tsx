@@ -504,7 +504,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                 document.head.appendChild(clusterDefaultCSS);
               }
               
-              const clusterModule = await import('leaflet.markercluster');
+              await import('leaflet.markercluster');
               // Check if we have access to L.markerClusterGroup
               if (L && (L as any).markerClusterGroup) {
                 MarkerClusterGroup = (L as any).markerClusterGroup;
@@ -526,14 +526,11 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
               maxClusterRadius: 60,
               iconCreateFunction: function(cluster: any) {
                 const childCount = cluster.getChildCount();
-                let size = 'small';
                 let sizeClass = 'marker-cluster-small';
                 
                 if (childCount > 10) {
-                  size = 'large';
                   sizeClass = 'marker-cluster-large';
                 } else if (childCount > 5) {
-                  size = 'medium';
                   sizeClass = 'marker-cluster-medium';
                 }
                 
