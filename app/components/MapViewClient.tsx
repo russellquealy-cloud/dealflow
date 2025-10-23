@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type Point = { id: string; lat: number; lng: number; price?: number };
@@ -17,9 +17,13 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
   const markersRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const lastRenderedPointsRef = useRef<string>('');
   const [zoomMessage, setZoomMessage] = useState<string | null>(null);
 
   console.log('🗺️ MapViewClient render - onBoundsChange:', !!onBoundsChange);
+
+  // Memoize onBoundsChange to prevent unnecessary re-renders
+  const stableOnBoundsChange = useCallback(onBoundsChange || (() => {}), [onBoundsChange]);
 
   const ensureHeight = (el: HTMLElement) => {
     el.style.minWidth = '0';
@@ -239,7 +243,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                 east: bounds.getEast()
               };
               console.log('🎨 Filtering by drawn shape bounds:', boundsObject);
-              onBoundsChange(boundsObject);
+              stableOnBoundsChange(boundsObject);
             }
           });
           
@@ -255,7 +259,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                 west: bounds.getWest(),
                 east: bounds.getEast()
               };
-              onBoundsChange(boundsObject);
+              stableOnBoundsChange(boundsObject);
             }
           });
           
@@ -275,7 +279,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
                     east: bounds.getEast()
                   };
                   console.log('🎨 Filtering by edited shape bounds:', boundsObject);
-                  onBoundsChange(boundsObject);
+                  stableOnBoundsChange(boundsObject);
                 }
               }
             });
@@ -348,7 +352,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
             setZoomMessage(null);
           }
           
-          onBoundsChange(boundsObject);
+          stableOnBoundsChange(boundsObject);
         }
       };
       
@@ -468,7 +472,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     };
   }, []); // Remove onBoundsChange dependency to prevent re-initialization
 
-  // Render markers - ENHANCED: Better error handling and marker management
+  // Render markers - OPTIMIZED: Prevent flickering with better memoization
   useEffect(() => {
     console.log('=== MAP MARKER RENDERING EFFECT TRIGGERED ===');
     console.log('Points received:', points);
@@ -481,7 +485,21 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       return;
     }
     
-    console.log('🔍 All points data:', JSON.stringify(points, null, 2));
+    // Memoize points to prevent unnecessary re-renders
+    const pointsKey = JSON.stringify(points.map(p => ({ id: p.id, lat: p.lat, lng: p.lng })));
+    console.log('🔍 Points key for memoization:', pointsKey.substring(0, 100) + '...');
+    
+    // CRITICAL: Prevent unnecessary re-renders that cause flickering
+    if (lastRenderedPointsRef.current === pointsKey) {
+      console.log('✅ Points unchanged, skipping marker re-render to prevent flickering');
+      return;
+    }
+    
+    // CRITICAL: Don't render markers if map isn't ready
+    if (!mapRef.current || !isInitializedRef.current) {
+      console.log('⚠️ Map not ready, skipping marker render to prevent flickering');
+      return;
+    }
     
     // Validate points have valid coordinates
     const validPoints = points.filter(p => 
@@ -663,6 +681,9 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       markersRef.current = group;
             console.log('🎉 All markers added to map successfully');
             
+            // CRITICAL: Update the last rendered points to prevent flickering
+            lastRenderedPointsRef.current = pointsKey;
+            
             // Don't auto-fit bounds to prevent snapping
             console.log('Markers added, no auto-fitting to prevent snapping');
       
@@ -687,7 +708,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     };
     
     waitForMap();
-  }, [points, router]);
+  }, [points, stableOnBoundsChange]); // Use stable callback to prevent flickering
 
 
   return (
