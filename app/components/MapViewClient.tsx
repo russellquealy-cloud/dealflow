@@ -18,6 +18,9 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
   const isInitializedRef = useRef(false);
   const containerRef = useRef<HTMLElement | null>(null);
   const lastRenderedPointsRef = useRef<string>('');
+  const mapInitializedRef = useRef(false);
+  const isRenderingRef = useRef(false);
+  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [zoomMessage, setZoomMessage] = useState<string | null>(null);
 
   console.log('🗺️ MapViewClient render - onBoundsChange:', !!onBoundsChange);
@@ -156,6 +159,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       
       mapRef.current = map;
       isInitializedRef.current = true;
+      mapInitializedRef.current = true;
       
       console.log('🗺️ Map initialized with center:', initialCenter, 'zoom:', initialZoom);
 
@@ -453,6 +457,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           
           mapRef.current = null;
           isInitializedRef.current = false;
+          mapInitializedRef.current = false;
         }
         
         // CRITICAL: Clean the container completely
@@ -470,6 +475,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         }
         
         isInitializing = false;
+        isRenderingRef.current = false;
       } catch (err) {
         console.log('⚠️ Error during map cleanup:', err);
       }
@@ -483,6 +489,23 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     console.log('Points length:', points?.length || 0);
     console.log('Map ref:', !!mapRef.current);
     console.log('Initialized:', isInitializedRef.current);
+    console.log('Is rendering:', isRenderingRef.current);
+    console.log('Map initialized:', mapInitializedRef.current);
+    
+    // CRITICAL: Clear any existing render timeout to debounce
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current);
+    }
+    
+    // CRITICAL: Debounce marker rendering to prevent rapid-fire re-renders
+    renderTimeoutRef.current = setTimeout(() => {
+      console.log('🚀 Executing debounced marker render');
+      
+      // CRITICAL: Prevent concurrent rendering that causes flickering
+      if (isRenderingRef.current) {
+        console.log('⚠️ Already rendering markers, skipping to prevent flickering');
+        return;
+      }
     
     if (!points || points.length === 0) {
       console.log('⚠️ No points to render markers for');
@@ -504,6 +527,15 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
       console.log('⚠️ Map not ready, skipping marker render to prevent flickering');
       return;
     }
+    
+    // CRITICAL: Set rendering flag to prevent concurrent renders
+    isRenderingRef.current = true;
+    
+    // CRITICAL: Set a timeout to reset the flag if something goes wrong
+    const renderingTimeout = setTimeout(() => {
+      console.log('⚠️ Rendering timeout, resetting flag');
+      isRenderingRef.current = false;
+    }, 5000); // 5 second timeout
     
     // Validate points have valid coordinates
     const validPoints = points.filter(p => 
@@ -695,11 +727,17 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         if (mapRef.current) {
           mapRef.current.invalidateSize(false);
         }
+        // CRITICAL: Reset rendering flag after successful completion
+        clearTimeout(renderingTimeout);
+        isRenderingRef.current = false;
       });
             
             return; // Exit the function successfully
           } catch (err) {
             console.error('Error in marker rendering:', err);
+            // CRITICAL: Reset rendering flag on error
+            clearTimeout(renderingTimeout);
+            isRenderingRef.current = false;
             return;
           }
         }
@@ -712,6 +750,14 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
     };
     
     waitForMap();
+    }, 300); // 300ms debounce delay
+    
+    // CRITICAL: Cleanup timeout on unmount
+    return () => {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+      }
+    };
   }, [points, stableOnBoundsChange]); // Use stable callback to prevent flickering
 
 
