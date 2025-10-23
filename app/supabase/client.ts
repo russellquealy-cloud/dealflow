@@ -5,6 +5,10 @@ export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
+    auth: {
+      autoRefreshToken: false, // CRITICAL: Disable auto-refresh to prevent rate limiting
+      detectSessionInUrl: false // CRITICAL: Prevent URL-based session detection
+    },
     cookies: {
       get(name: string) {
         if (typeof document === 'undefined') return undefined;
@@ -14,7 +18,10 @@ export const supabase = createBrowserClient(
           .find(row => row.startsWith(`${name}=`))
           ?.split('=')[1];
         
-        console.log(`🍪 Mobile cookie get: ${name} = ${value ? 'exists' : 'missing'}`);
+        // CRITICAL: Reduce logging to prevent console spam
+        if (name.includes('auth-token')) {
+          console.log(`🍪 Auth cookie get: ${name} = ${value ? 'exists' : 'missing'}`);
+        }
         return value;
       },
       set(name: string, value: string, options: Record<string, unknown> = {}) {
@@ -45,7 +52,10 @@ export const supabase = createBrowserClient(
           if (cookieOptions.sameSite) cookieString += `; samesite=${cookieOptions.sameSite}`;
           
           document.cookie = cookieString;
-          console.log(`🍪 Mobile cookie set: ${name}`, cookieOptions);
+          // CRITICAL: Reduce logging to prevent console spam
+          if (name.includes('auth-token')) {
+            console.log(`🍪 Auth cookie set: ${name}`, cookieOptions);
+          }
         } catch (error) {
           console.error('Error setting mobile cookie:', error);
         }
@@ -65,7 +75,10 @@ export const supabase = createBrowserClient(
           if (cookieOptions.domain) cookieString += `; domain=${cookieOptions.domain}`;
           
           document.cookie = cookieString;
-          console.log(`🍪 Mobile cookie removed: ${name}`);
+          // CRITICAL: Reduce logging to prevent console spam
+          if (name.includes('auth-token')) {
+            console.log(`🍪 Auth cookie removed: ${name}`);
+          }
         } catch (error) {
           console.error('Error removing mobile cookie:', error);
         }

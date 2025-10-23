@@ -34,8 +34,11 @@ export default function Header() {
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user?.email ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setEmail(session?.user?.email ?? null);
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // CRITICAL: Only update on actual auth changes, not token refreshes
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        setEmail(session?.user?.email ?? null);
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
