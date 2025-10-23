@@ -16,14 +16,18 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
   const lastRenderedPointsRef = useRef<string>('');
   const [zoomMessage, setZoomMessage] = useState<string | null>(null);
 
   console.log('🗺️ MapViewClient render - onBoundsChange:', !!onBoundsChange);
 
   // Memoize onBoundsChange to prevent unnecessary re-renders
-  const stableOnBoundsChange = useCallback(onBoundsChange || (() => {}), [onBoundsChange]);
+  const stableOnBoundsChange = useCallback((bounds: any) => {
+    if (onBoundsChange) {
+      onBoundsChange(bounds);
+    }
+  }, [onBoundsChange]);
 
   const ensureHeight = (el: HTMLElement) => {
     el.style.minWidth = '0';
