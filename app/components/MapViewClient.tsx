@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type Point = { id: string; lat: number; lng: number; price?: number };
@@ -170,116 +170,117 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         if (!LDraw.Control || typeof LDraw.Control !== 'function') {
           console.log('⚠️ Leaflet-draw Control not available, skipping drawing tools');
         } else {
-        
-        // Create a feature group for drawn items
-        const drawnItems = Lmod.featureGroup();
-        map.addLayer(drawnItems);
-        
-        // Initialize the draw control
-        const drawControl = new LDraw.Control({
-          position: 'topright',
-          draw: {
-            polygon: {
-              allowIntersection: false,
-              showArea: true,
-              drawError: {
-                color: '#e1e100',
-                message: '<strong>Error:</strong> shape edges cannot cross!'
+          console.log('✅ Leaflet-draw Control available, adding drawing tools');
+          
+          // Create a feature group for drawn items
+          const drawnItems = Lmod.featureGroup();
+          map.addLayer(drawnItems);
+          
+          // Initialize the draw control
+          const drawControl = new LDraw.Control({
+            position: 'topright',
+            draw: {
+              polygon: {
+                allowIntersection: false,
+                showArea: true,
+                drawError: {
+                  color: '#e1e100',
+                  message: '<strong>Error:</strong> shape edges cannot cross!'
+                },
+                shapeOptions: {
+                  color: '#3b82f6',
+                  weight: 2,
+                  opacity: 0.8,
+                  fillOpacity: 0.2
+                }
               },
-              shapeOptions: {
-                color: '#3b82f6',
-                weight: 2,
-                opacity: 0.8,
-                fillOpacity: 0.2
-              }
+              polyline: false, // Disable polyline for simpler UX
+              circle: {
+                shapeOptions: {
+                  color: '#10b981',
+                  weight: 2,
+                  opacity: 0.8,
+                  fillOpacity: 0.2
+                }
+              },
+              rectangle: {
+                shapeOptions: {
+                  color: '#f59e0b',
+                  weight: 2,
+                  opacity: 0.8,
+                  fillOpacity: 0.2
+                }
+              },
+              marker: false, // Disable marker for simpler UX
+              circlemarker: false
             },
-            polyline: false, // Disable polyline for simpler UX
-            circle: {
-              shapeOptions: {
-                color: '#10b981',
-                weight: 2,
-                opacity: 0.8,
-                fillOpacity: 0.2
-              }
-            },
-            rectangle: {
-              shapeOptions: {
-                color: '#f59e0b',
-                weight: 2,
-                opacity: 0.8,
-                fillOpacity: 0.2
-              }
-            },
-            marker: false, // Disable marker for simpler UX
-            circlemarker: false
-          },
-          edit: {
-            featureGroup: drawnItems,
-            remove: true
-          }
-        });
-        
-        map.addControl(drawControl);
-        
-        // Handle draw created event - filter properties within drawn shape
-        map.on(Lmod.Draw.Event.CREATED, (e: any) => {
-          const layer = e.layer;
-          drawnItems.addLayer(layer);
-          
-          console.log('🎨 Shape drawn:', e.layerType);
-          
-          // Get bounds of the drawn shape
-          const bounds = layer.getBounds();
-          if (bounds && onBoundsChange) {
-            const boundsObject = {
-              south: bounds.getSouth(),
-              north: bounds.getNorth(),
-              west: bounds.getWest(),
-              east: bounds.getEast()
-            };
-            console.log('🎨 Filtering by drawn shape bounds:', boundsObject);
-            onBoundsChange(boundsObject);
-          }
-        });
-        
-        // Handle draw deleted event - reset to map bounds
-        map.on(Lmod.Draw.Event.DELETED, () => {
-          console.log('🎨 Shapes deleted, resetting to map bounds');
-          if (drawnItems.getLayers().length === 0 && onBoundsChange) {
-            // Reset to current map bounds
-            const bounds = map.getBounds();
-            const boundsObject = {
-              south: bounds.getSouth(),
-              north: bounds.getNorth(),
-              west: bounds.getWest(),
-              east: bounds.getEast()
-            };
-            onBoundsChange(boundsObject);
-          }
-        });
-        
-        // Handle draw edited event
-        map.on(Lmod.Draw.Event.EDITED, (e: any) => {
-          console.log('🎨 Shapes edited');
-          // Get the first edited layer's bounds
-          const layers = e.layers;
-          layers.eachLayer((layer: any) => {
-            if (layer.getBounds) {
-              const bounds = layer.getBounds();
-              if (bounds && onBoundsChange) {
-                const boundsObject = {
-                  south: bounds.getSouth(),
-                  north: bounds.getNorth(),
-                  west: bounds.getWest(),
-                  east: bounds.getEast()
-                };
-                console.log('🎨 Filtering by edited shape bounds:', boundsObject);
-                onBoundsChange(boundsObject);
-              }
+            edit: {
+              featureGroup: drawnItems,
+              remove: true
             }
           });
-        });
-        
+          
+          map.addControl(drawControl);
+          
+          // Handle draw created event - filter properties within drawn shape
+          map.on(Lmod.Draw.Event.CREATED, (e: any) => {
+            const layer = e.layer;
+            drawnItems.addLayer(layer);
+            
+            console.log('🎨 Shape drawn:', e.layerType);
+            
+            // Get bounds of the drawn shape
+            const bounds = layer.getBounds();
+            if (bounds && onBoundsChange) {
+              const boundsObject = {
+                south: bounds.getSouth(),
+                north: bounds.getNorth(),
+                west: bounds.getWest(),
+                east: bounds.getEast()
+              };
+              console.log('🎨 Filtering by drawn shape bounds:', boundsObject);
+              onBoundsChange(boundsObject);
+            }
+          });
+          
+          // Handle draw deleted event - reset to map bounds
+          map.on(Lmod.Draw.Event.DELETED, () => {
+            console.log('🎨 Shapes deleted, resetting to map bounds');
+            if (drawnItems.getLayers().length === 0 && onBoundsChange) {
+              // Reset to current map bounds
+              const bounds = map.getBounds();
+              const boundsObject = {
+                south: bounds.getSouth(),
+                north: bounds.getNorth(),
+                west: bounds.getWest(),
+                east: bounds.getEast()
+              };
+              onBoundsChange(boundsObject);
+            }
+          });
+          
+          // Handle draw edited event
+          map.on(Lmod.Draw.Event.EDITED, (e: any) => {
+            console.log('🎨 Shapes edited');
+            // Get the first edited layer's bounds
+            const layers = e.layers;
+            layers.eachLayer((layer: any) => {
+              if (layer.getBounds) {
+                const bounds = layer.getBounds();
+                if (bounds && onBoundsChange) {
+                  const boundsObject = {
+                    south: bounds.getSouth(),
+                    north: bounds.getNorth(),
+                    west: bounds.getWest(),
+                    east: bounds.getEast()
+                  };
+                  console.log('🎨 Filtering by edited shape bounds:', boundsObject);
+                  onBoundsChange(boundsObject);
+                }
+              }
+            });
+          });
+          
           console.log('✅ Drawing tools added to map with filtering support');
         }
       } catch (err) {
@@ -376,7 +377,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
           console.log('🗺️ Map event debounced and fired');
           emitBounds();
           saveMapPosition();
-        }, 150); // 150ms debounce
+        }, 200); // Increased debounce to 200ms to reduce flickering
       };
 
       map.on('moveend', () => {
@@ -388,9 +389,10 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         debouncedMapEvent();
       });
       
-      // Add debugging for map view changes
+      // Add viewreset event to handle when map view is reset
       map.on('viewreset', () => {
         console.log('🗺️ Map view reset');
+        debouncedMapEvent();
       });
       map.on('zoomstart', () => {
         console.log('🗺️ Map zoom start');
@@ -414,7 +416,7 @@ export default function MapViewClient({ points, onBoundsChange }: Props) {
         setTimeout(() => {
           console.log('🗺️ Emitting initial bounds after map load');
           emitBounds();
-        }, 300); // Reduced delay to prevent flickering
+        }, 500); // Increased delay to ensure map is fully stable
       });
     })();
 
