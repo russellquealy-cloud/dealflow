@@ -181,7 +181,8 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
       const marker = new window.google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         title: point.title || `Property ${index + 1}`,
-        animation: window.google.maps.Animation.DROP,
+        // Remove animation to prevent triple drop effect
+        // animation: window.google.maps.Animation.DROP,
         // Use regular markers instead of Advanced Markers
         optimized: true,
       });
