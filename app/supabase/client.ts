@@ -1,9 +1,16 @@
 'use client';
 import { createBrowserClient } from '@supabase/ssr';
 
+// Debug environment variables
+console.log('🔍 Environment variables check:', {
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing',
+  googleMaps: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? 'present' : 'missing'
+});
+
 export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lwhxmwvvostzlidmnays.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHhtd3Z2b3N0emxpZG1uYXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTg2NDYsImV4cCI6MjA3NDM5NDY0Nn0.YeXIZyYKuxVictEKcWe9GRsgMlVoFQJAPawdsIy8ye8',
   {
     auth: {
       autoRefreshToken: false, // CRITICAL: Disable auto-refresh to prevent rate limiting
@@ -19,9 +26,7 @@ export const supabase = createBrowserClient(
           ?.split('=')[1];
         
         // CRITICAL: Reduce logging to prevent console spam
-        if (name.includes('auth-token')) {
-          console.log(`🍪 Auth cookie get: ${name} = ${value ? 'exists' : 'missing'}`);
-        }
+        // Removed excessive auth cookie logging
         return value;
       },
       set(name: string, value: string, options: Record<string, unknown> = {}) {
@@ -53,9 +58,7 @@ export const supabase = createBrowserClient(
           
           document.cookie = cookieString;
           // CRITICAL: Reduce logging to prevent console spam
-          if (name.includes('auth-token')) {
-            console.log(`🍪 Auth cookie set: ${name}`, cookieOptions);
-          }
+          // Removed excessive auth cookie logging
         } catch (error) {
           console.error('Error setting mobile cookie:', error);
         }
@@ -76,9 +79,7 @@ export const supabase = createBrowserClient(
           
           document.cookie = cookieString;
           // CRITICAL: Reduce logging to prevent console spam
-          if (name.includes('auth-token')) {
-            console.log(`🍪 Auth cookie removed: ${name}`);
-          }
+          // Removed excessive auth cookie logging
         } catch (error) {
           console.error('Error removing mobile cookie:', error);
         }

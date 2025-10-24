@@ -1,61 +1,43 @@
 // app/map/page.tsx
 'use client'
 
-import { useEffect, useRef } from 'react'
-import maplibregl, { StyleSpecification } from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
+import dynamic from 'next/dynamic'
+
+const GoogleMapWrapper = dynamic(() => import('@/components/GoogleMapWrapper'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p className="text-gray-600">Loading Google Maps...</p>
+      </div>
+    </div>
+  )
+})
 
 export default function MapTest() {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<maplibregl.Map | null>(null)
+  // Sample points for testing
+  const samplePoints = [
+    { id: '1', lat: 32.2226, lng: -110.9747, price: 250000, title: 'Sample Property 1' },
+    { id: '2', lat: 32.2326, lng: -110.9847, price: 450000, title: 'Sample Property 2' },
+    { id: '3', lat: 32.2426, lng: -110.9947, price: 350000, title: 'Sample Property 3' }
+  ]
 
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
+  const handleBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+    console.log('Map bounds changed:', bounds)
+  }
 
-    // sanity log: should print "pk_…" if the env was loaded
-    console.log(
-      'NEXT_PUBLIC_MAPTILER_KEY:',
-      (process.env.NEXT_PUBLIC_MAPTILER_KEY || '').slice(0, 10) +
-        (process.env.NEXT_PUBLIC_MAPTILER_KEY ? '…' : ' (undefined)')
-    )
-
-    const key = process.env.NEXT_PUBLIC_MAPTILER_KEY
-    const style: string | StyleSpecification =
-      key && key.length > 0
-        ? `https://api.maptiler.com/maps/streets/style.json?key=${key}`
-        : {
-            version: 8,
-            sources: {
-              osm: {
-                type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                tileSize: 256,
-                attribution: '© OpenStreetMap contributors'
-              }
-            },
-            layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
-          }
-
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style,
-      center: [-110.9265, 32.2217], // Tucson/Vail
-      zoom: 10
-    })
-
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
-    map.on('error', (e) => console.error('MapLibre error:', e?.error || e))
-
-    mapRef.current = map
-    return () => {
-      map.remove()
-      mapRef.current = null
-    }
-  }, [])
+  const handlePolygonComplete = (polygon: google.maps.Polygon) => {
+    console.log('Polygon completed:', polygon)
+  }
 
   return (
     <main style={{ width: '100%', height: '100dvh' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <GoogleMapWrapper 
+        points={samplePoints}
+        onBoundsChange={handleBoundsChange}
+        onPolygonComplete={handlePolygonComplete}
+      />
     </main>
   )
 }

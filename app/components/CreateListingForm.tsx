@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { supabase } from "@/supabase/client";
 
 type FormState = {
@@ -381,9 +382,11 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {images.map((image, index) => (
                   <div key={index} className="relative group">
-                    <img
+                    <Image
                       src={URL.createObjectURL(image)}
                       alt={`Preview ${index + 1}`}
+                      width={128}
+                      height={128}
                       className="w-full h-32 object-cover rounded-lg border border-gray-200"
                     />
                     <button
@@ -402,7 +405,7 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
               Upload up to 20 photos. First photo will be used as the main thumbnail.
             </p>
           </div>
-        </div>
+      </div>
 
         {/* Submit Button */}
         <div className="flex justify-end">
@@ -412,7 +415,7 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
             className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Creating Listing...' : 'Create Listing'}
-          </button>
+      </button>
         </div>
 
         {/* Message */}
@@ -421,7 +424,7 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
             {message}
           </div>
         )}
-      </form>
+    </form>
     </div>
   );
 }

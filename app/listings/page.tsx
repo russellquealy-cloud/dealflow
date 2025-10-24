@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient, { type MapPoint, type ListItem } from '@/components/ListingsSplitClient';
 import { supabase } from '@/supabase/client';
 
-const GoogleMapViewClient = dynamic(() => import('@/components/GoogleMapViewClient'), { ssr: false });
+const GoogleMapWrapper = dynamic(() => import('@/components/GoogleMapWrapper'), { ssr: false });
 
 type Row = {
   id: string;
@@ -81,20 +81,14 @@ export default function ListingsPage() {
     let cancelled = false;
 
     const load = async () => {
-      console.log('=== LOADING LISTINGS FROM DATABASE ===');
-      setLoading(true);
+      // Only set loading if we haven't loaded yet
+      if (!hasLoaded) {
+        setLoading(true);
+      }
       
       try {
-        console.log('🔍 Supabase client:', !!supabase);
-        console.log('🔍 Environment check:', {
-          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-          hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        });
-        
         // Start with a simple query to test connection
-        console.log('🔍 Testing basic connection...');
-        const { data: testData, error: testError } = await supabase.from('listings').select('id').limit(1);
-        console.log('🔍 Test query result:', { testData, testError });
+        const { error: testError } = await supabase.from('listings').select('id').limit(1);
         
         if (testError) {
           console.error('❌ Basic connection failed:', testError);
@@ -107,33 +101,8 @@ export default function ListingsPage() {
           .from('listings')
           .select('*, latitude, longitude');
         
-       // Apply map bounds filtering if available
-       if (mapBounds && 
-           typeof mapBounds.south === 'number' && 
-           typeof mapBounds.north === 'number' && 
-           typeof mapBounds.west === 'number' && 
-           typeof mapBounds.east === 'number' &&
-           !isNaN(mapBounds.south) && 
-           !isNaN(mapBounds.north) && 
-           !isNaN(mapBounds.west) && 
-           !isNaN(mapBounds.east)) {
-         const latRange = Math.abs(mapBounds.north - mapBounds.south);
-         const lngRange = Math.abs(mapBounds.east - mapBounds.west);
-         const boundsSize = latRange + lngRange;
-         
-         if (boundsSize <= 10 && boundsSize >= 0.01) {
-           console.log('🗺️ Applying map bounds filtering to initial load:', mapBounds, 'Bounds size:', boundsSize);
-           query = query
-             .gte('latitude', mapBounds.south)
-             .lte('latitude', mapBounds.north)
-             .gte('longitude', mapBounds.west)
-             .lte('longitude', mapBounds.east);
-         } else {
-           console.log('Map bounds too large or too small for initial load, not filtering. Bounds size:', boundsSize, mapBounds);
-         }
-       } else if (mapBounds) {
-         console.log('Invalid map bounds for initial load, skipping filtering:', mapBounds);
-       }
+       // Don't apply map bounds filtering on initial load - let the map emit bounds first
+       // This prevents filtering out all listings when the map hasn't properly initialized
         
         // Apply filters
         if (filters.minPrice) {
@@ -181,24 +150,20 @@ export default function ListingsPage() {
         }
 
         const { data, error } = await query;
-        console.log('Database query result:', { data, error, count: data?.length });
         
         if (error) {
           console.error('❌ Database error:', error);
-          console.error('❌ Error details:', JSON.stringify(error, null, 2));
           setLoading(false);
           return;
         }
         if (!data || cancelled) {
-          console.log('No data or cancelled');
-          setLoading(false);
+          if (!hasLoaded) {
+            setLoading(false);
+          }
           return;
         }
 
-        console.log('✅ Database query successful, got', data.length, 'listings');
-
       const rows = data as unknown as Row[];
-        console.log('Raw rows:', rows.length);
 
       const items: ListItem[] = rows.map((r) => {
         const price = toNum(r.price);
@@ -241,20 +206,10 @@ export default function ListingsPage() {
           const lat = r.latitude ?? r.lat;
           const lng = r.longitude ?? r.lng ?? r.lon;
           
-          console.log(`🔍 Point data for listing ${r.id}:`, { lat, lng, hasLatitude: !!r.latitude, hasLat: !!r.lat, hasLongitude: !!r.longitude, hasLng: !!r.lng, hasLon: !!r.lon });
-          
           if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
             pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
-            console.log(`✅ Added point for listing ${r.id}:`, { lat, lng });
-          } else {
-            console.log(`⚠️ Skipped listing ${r.id} - invalid coordinates:`, { lat, lng });
           }
         }
-
-        console.log('✅ Processed data:', { items: items.length, points: pts.length });
-        console.log('📋 Sample item:', items[0]);
-        console.log('📍 Sample point:', pts[0]);
-        console.log('📍 All points:', pts);
         
         if (!cancelled) {
           // If no data found, create some test data
@@ -325,27 +280,26 @@ export default function ListingsPage() {
             
             setAllListings(testListings);
             setAllPoints(testPoints);
-            console.log('🧪 Test data created:', { listings: testListings.length, points: testPoints.length });
           } else {
             setAllListings(items);
             setAllPoints(pts);
             
             // If no points found, create some test points for debugging
             if (pts.length === 0 && items.length > 0) {
-              console.log('⚠️ No points found, creating test points for debugging');
               const testPoints: MapPoint[] = items.slice(0, 3).map((item, index) => ({
                 id: item.id,
                 lat: 32.2226 + (index * 0.01), // Tucson area with slight offset
                 lng: -110.9747 + (index * 0.01),
                 price: toNum(item.price)
               }));
-              console.log('🧪 Test points created:', testPoints);
               setAllPoints(testPoints);
             }
           }
           
-          setLoading(false);
-          setHasLoaded(true);
+          if (!hasLoaded) {
+            setLoading(false);
+            setHasLoaded(true);
+          }
         }
       } catch (err) {
         console.error('Error loading listings:', err);
@@ -355,7 +309,7 @@ export default function ListingsPage() {
 
     load();
     return () => { cancelled = true; };
-      }, [filters, searchQuery, mapBounds]); // Re-added dependencies for filtering
+      }, [filters, searchQuery, mapBounds, hasLoaded]); // Re-added dependencies for filtering
 
   // No need for manual filtering - spatial function handles it
   const filteredListings = allListings;
@@ -404,8 +358,6 @@ export default function ListingsPage() {
   };
 
   const handleMapBoundsChange = useCallback(async (bounds: unknown) => {
-    console.log('Map bounds changed:', bounds);
-    
     // Validate bounds to prevent undefined values
     if (!bounds || 
         typeof bounds !== 'object' ||
@@ -422,7 +374,6 @@ export default function ListingsPage() {
         isNaN((bounds as Record<string, unknown>).north as number) || 
         isNaN((bounds as Record<string, unknown>).west as number) || 
         isNaN((bounds as Record<string, unknown>).east as number)) {
-      console.log('Invalid bounds received, skipping filtering:', bounds);
       return;
     }
     
@@ -437,17 +388,13 @@ export default function ListingsPage() {
     
     // More intelligent filtering based on bounds size
     // Allow city-level viewing (boundsSize ~2-5 degrees)
-    // Prevent country-level viewing (boundsSize > 10 degrees)
-    // Prevent point-level viewing (boundsSize < 0.01 degrees)
-    if (boundsSize > 10) {
-      console.log('Map bounds too large (country-level), not filtering listings. Bounds size:', boundsSize);
+    // Prevent country-level viewing (boundsSize > 25 degrees)
+    // Prevent point-level viewing (boundsSize < 0.005 degrees)
+    if (boundsSize > 25) {
       return;
-    } else if (boundsSize < 0.01) {
-      console.log('Map bounds too small (point-level), not filtering listings. Bounds size:', boundsSize);
+    } else if (boundsSize < 0.005) {
       return;
     }
-    
-    console.log('🗺️ Filtering listings for bounds size:', boundsSize, 'degrees');
     
     // Filter listings by map bounds - query the database with spatial constraints
     try {
@@ -492,15 +439,6 @@ export default function ListingsPage() {
         console.error('Bounded query error:', boundedError);
         return;
       }
-      
-      console.log('🗺️ ===MAP BOUNDS FILTERING RESULTS===');
-      console.log('🗺️ Query returned:', boundedData?.length, 'listings');
-      console.log('🗺️ Bounds used:', typedBounds);
-      console.log('🗺️ Sample listing coords:', boundedData?.[0] ? { 
-        id: boundedData[0].id,
-        lat: (boundedData[0] as Row).latitude,
-        lng: (boundedData[0] as Row).longitude 
-      } : 'none');
       
       if (boundedData) {
         const rows = boundedData as unknown as Row[];
@@ -550,20 +488,22 @@ export default function ListingsPage() {
           }
         }
         
-        console.log('🗺️ Updating state with filtered data:',{
-          itemsCount: items.length,
-          pointsCount: pts.length
-        });
-        
         setAllListings(items);
         setAllPoints(pts);
-        
-        console.log('🗺️ State updated successfully');
       }
     } catch (error) {
       console.error('❌ Error fetching bounded data:', error);
     }
   }, [filters, searchQuery]); // Add dependencies for useCallback
+
+  // Memoize map component to prevent re-renders
+  const MapComponent = useMemo(() => {
+    const MapComponent = (props: { points: MapPoint[]; onBoundsChange?: (bounds: unknown) => void }) => {
+      return <GoogleMapWrapper {...props} />;
+    };
+    MapComponent.displayName = 'MapComponent';
+    return MapComponent;
+  }, []);
 
   // Only show loading on initial load, not when navigating back
   if (loading && !hasLoaded) {
@@ -574,13 +514,15 @@ export default function ListingsPage() {
     );
   }
 
-  // Debug: Show what we have
-  console.log('=== RENDER DEBUG ===');
-  console.log('Loading:', loading);
-  console.log('Has loaded:', hasLoaded);
-  console.log('All listings:', allListings.length);
-  console.log('All points:', allPoints.length);
-  console.log('Filtered listings:', filteredListings.length);
+  // Debug: Show what we have (only in development) - reduced frequency
+  if (process.env.NODE_ENV === 'development' && hasLoaded) {
+    console.log('=== RENDER DEBUG ===');
+    console.log('Loading:', loading);
+    console.log('Has loaded:', hasLoaded);
+    console.log('All listings:', allListings.length);
+    console.log('All points:', allPoints.length);
+    console.log('Filtered listings:', filteredListings.length);
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative' }}>
@@ -619,16 +561,12 @@ export default function ListingsPage() {
       </div>
 
       {/* the split fills the rest of the viewport - NO SCROLL */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ListingsSplitClient 
           points={allPoints} 
           listings={filteredListings}
           onBoundsChange={handleMapBoundsChange}
-          MapComponent={(props) => {
-            console.log('🗺️ Passing points to GoogleMapViewClient:', props.points);
-            console.log('🗺️ Points length:', props.points?.length || 0);
-            return <GoogleMapViewClient {...props} />;
-          }} 
+          MapComponent={MapComponent} 
         />
       </div>
     </div>
