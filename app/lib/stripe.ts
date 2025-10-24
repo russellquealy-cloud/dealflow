@@ -1,13 +1,12 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
-}
-
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
-  typescript: true,
-});
+// Initialize Stripe only if the secret key is available
+export const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-09-30.clover',
+      typescript: true,
+    })
+  : null;
 
 export const STRIPE_PLANS = {
   FREE: {
@@ -63,4 +62,8 @@ export const STRIPE_PLANS = {
 } as const;
 
 export type SubscriptionTier = keyof typeof STRIPE_PLANS;
-export type PlanLimits = typeof STRIPE_PLANS.FREE.limits;
+export type PlanLimits = {
+  readonly listings: number;
+  readonly contacts: number;
+  readonly ai_analyses: number;
+};

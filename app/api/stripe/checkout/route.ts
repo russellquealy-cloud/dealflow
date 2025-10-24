@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+
+// Stripe configuration will be checked at runtime
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
+  }
+  
   try {
     const { priceId, successUrl, cancelUrl } = await request.json();
 
