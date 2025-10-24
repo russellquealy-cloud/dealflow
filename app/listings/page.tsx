@@ -6,7 +6,7 @@ import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient, { type MapPoint, type ListItem } from '@/components/ListingsSplitClient';
 import { supabase } from '@/supabase/client';
 
-const MapViewClient = dynamic(() => import('@/components/MapViewClient'), { ssr: false });
+const GoogleMapViewClient = dynamic(() => import('@/components/GoogleMapViewClient'), { ssr: false });
 
 type Row = {
   id: string;
@@ -625,9 +625,9 @@ export default function ListingsPage() {
           listings={filteredListings}
           onBoundsChange={handleMapBoundsChange}
           MapComponent={(props) => {
-            console.log('🗺️ Passing points to MapViewClient:', props.points);
+            console.log('🗺️ Passing points to GoogleMapViewClient:', props.points);
             console.log('🗺️ Points length:', props.points?.length || 0);
-            return <MapViewClient {...props} />;
+            return <GoogleMapViewClient {...props} />;
           }} 
         />
       </div>
