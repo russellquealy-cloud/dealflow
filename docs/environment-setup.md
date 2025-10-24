@@ -1,4 +1,4 @@
-# Environment Variables Setup Guide
+# Off Axis Deals - Environment Variables Setup Guide
 
 ## 🚀 Quick Setup Checklist
 

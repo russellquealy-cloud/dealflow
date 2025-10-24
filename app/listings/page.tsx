@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient, { type MapPoint, type ListItem } from '@/components/ListingsSplitClient';
@@ -357,7 +357,17 @@ export default function ListingsPage() {
     setLoading(true);
   };
 
+  // Debounce bounds changes to prevent excessive API calls
+  const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const handleMapBoundsChange = useCallback(async (bounds: unknown) => {
+    // Clear any existing timeout
+    if (boundsChangeTimeoutRef.current) {
+      clearTimeout(boundsChangeTimeoutRef.current);
+    }
+    
+    // Debounce the bounds change by 500ms
+    boundsChangeTimeoutRef.current = setTimeout(async () => {
     // Validate bounds to prevent undefined values
     if (!bounds || 
         typeof bounds !== 'object' ||
@@ -379,6 +389,7 @@ export default function ListingsPage() {
     
     const typedBounds = bounds as { south: number; north: number; west: number; east: number };
     
+    // Always update map bounds for UI state
     setMapBounds(typedBounds);
     
     // Calculate bounds size for better filtering logic
@@ -389,12 +400,14 @@ export default function ListingsPage() {
     // More intelligent filtering based on bounds size
     // Allow city-level viewing (boundsSize ~2-5 degrees)
     // Prevent country-level viewing (boundsSize > 25 degrees)
-    // Prevent point-level viewing (boundsSize < 0.005 degrees)
+    // Allow point-level viewing for detailed inspection (boundsSize < 0.005 degrees)
     if (boundsSize > 25) {
-      return;
-    } else if (boundsSize < 0.005) {
+      // For very large bounds, don't filter - show all listings
       return;
     }
+    
+    // For very small bounds, still filter but with a buffer
+    // const buffer = boundsSize < 0.01 ? 0.01 : 0; // Add buffer for small bounds
     
     // Filter listings by map bounds - query the database with spatial constraints
     try {
@@ -494,6 +507,7 @@ export default function ListingsPage() {
     } catch (error) {
       console.error('❌ Error fetching bounded data:', error);
     }
+    }, 500); // Close setTimeout with 500ms delay
   }, [filters, searchQuery]); // Add dependencies for useCallback
 
   // Memoize map component to prevent re-renders

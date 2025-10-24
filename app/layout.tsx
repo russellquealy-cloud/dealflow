@@ -5,12 +5,12 @@ import Header from "@/components/Header";
 import MobileLayout from "@/components/MobileLayout";
 
 export const metadata: Metadata = {
-  title: "DealFlow",
-  description: "Find deals fast",
+  title: "Off Axis Deals",
+  description: "Find real estate investment deals fast",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "DealFlow"
+    title: "Off Axis Deals"
   },
   formatDetection: {
     telephone: false
@@ -36,7 +36,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="DealFlow" />
+        <meta name="apple-mobile-web-app-title" content="Off Axis Deals" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
       </head>

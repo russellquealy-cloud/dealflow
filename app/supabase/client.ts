@@ -13,8 +13,10 @@ export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHhtd3Z2b3N0emxpZG1uYXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTg2NDYsImV4cCI6MjA3NDM5NDY0Nn0.YeXIZyYKuxVictEKcWe9GRsgMlVoFQJAPawdsIy8ye8',
   {
     auth: {
-      autoRefreshToken: false, // CRITICAL: Disable auto-refresh to prevent rate limiting
-      detectSessionInUrl: false // CRITICAL: Prevent URL-based session detection
+      autoRefreshToken: true, // Enable auto-refresh but with better rate limiting
+      detectSessionInUrl: false, // CRITICAL: Prevent URL-based session detection
+      persistSession: true, // Persist session to reduce auth calls
+      flowType: 'pkce' // Use PKCE flow for better security
     },
     cookies: {
       get(name: string) {

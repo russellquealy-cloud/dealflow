@@ -1,4 +1,4 @@
-# Deal Flow - Real Estate Investment Platform
+# Off Axis Deals - Real Estate Investment Platform
 
 A comprehensive platform for real estate investors and wholesalers to discover, analyze, and connect on investment opportunities.
 

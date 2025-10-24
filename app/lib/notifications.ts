@@ -16,7 +16,7 @@ export interface NotificationData {
 // Email Templates - Temporarily disabled for build
 export const EMAIL_TEMPLATES = {
   new_message: {
-    subject: 'New Message on Deal Flow',
+    subject: 'New Message on Off Axis Deals',
     html: '<div>New message received</div>',
     text: 'New message received'
   },
@@ -40,7 +40,7 @@ export const EMAIL_TEMPLATES = {
   },
   
   daily_digest: {
-    subject: 'Daily Deal Flow Digest',
+    subject: 'Daily Off Axis Deals Digest',
     html: '<div>Daily digest</div>',
     text: 'Daily digest'
   }

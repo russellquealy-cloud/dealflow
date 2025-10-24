@@ -49,7 +49,7 @@ export default function HeaderClient() {
       }}
     >
       <Link href="/listings" style={{ fontWeight: 900, textDecoration: "none", color: "#111" }}>
-        Deal Flow
+        Off Axis Deals
       </Link>
 
       <nav style={{ display: "flex", gap: 10, alignItems: "center" }}>
