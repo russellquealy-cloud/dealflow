@@ -27,105 +27,156 @@ export default function PricingPage() {
 
   const tiers = [
     {
-      name: 'Free / Starter',
+      name: 'Investor Free',
       price: '$0',
       period: '/month',
-      description: 'Get started with wholesale real estate',
+      description: 'Teaser to force upgrade',
       color: '#6b7280',
       features: [
-        { text: 'View map + all listings', included: true },
+        { text: 'View up to 10 listings/month', included: true },
         { text: 'Basic filters', included: true },
-        { text: 'No contact data access', included: false },
-        { text: 'No posting allowed', included: false },
         { text: 'Perfect for browsing deals', included: true },
+        { text: 'No contact data access', included: false },
+        { text: 'No AI analyzer', included: false },
+        { text: 'No save/favorite', included: false },
+        { text: 'No draw tools', included: false },
+        { text: 'No satellite view', included: false },
       ],
       cta: 'Get Started',
-      popular: false
+      popular: false,
+      type: 'investor'
+    },
+    {
+      name: 'Wholesaler Free',
+      price: '$0',
+      period: '/month',
+      description: 'Basic listing capabilities',
+      color: '#6b7280',
+      features: [
+        { text: '1 listing per month', included: true },
+        { text: 'Basic listing form (address, price, images)', included: true },
+        { text: 'No analytics (views, interest)', included: false },
+        { text: 'No featured placement', included: false },
+        { text: 'No buyer contact data', included: false },
+        { text: 'No AI tools', included: false },
+        { text: 'No investor chat', included: false },
+      ],
+      cta: 'Get Started',
+      popular: false,
+      type: 'wholesaler'
     },
     {
       name: 'Investor Basic',
-      price: '$25',
+      price: '$29',
       period: '/month',
-      description: 'For active investors seeking deals',
+      description: 'Essential tools for active investors',
       color: '#10b981',
       features: [
-        { text: 'Unlimited viewing', included: true, bold: true },
-        { text: 'Unlimited contact info', included: true, bold: true },
-        { text: 'Full property details', included: true },
-        { text: 'Comps preview', included: true },
-        { text: 'Save/favorite searches', included: true },
-        { text: 'Message wholesalers directly', included: true },
-        { text: 'Cannot post deals (buyers only)', included: false },
+        { text: '30 listings/month', included: true, bold: true },
+        { text: '30 contacts/month', included: true, bold: true },
+        { text: '10 AI Analyzer runs/month', included: true },
+        { text: 'Saved searches and favorites', included: true },
+        { text: 'Alerts', included: true },
+        { text: 'Cannot post deals', included: false },
+        { text: 'Limited AI usage', included: false },
+        { text: 'No exportable reports', included: false },
       ],
       cta: 'Upgrade to Investor Basic',
-      popular: false
+      popular: false,
+      type: 'investor'
     },
     {
       name: 'Investor Pro',
-      price: '$49',
+      price: '$59',
       period: '/month',
-      description: 'For serious investors who want the edge',
+      description: 'Unlimited access for serious investors',
       color: '#3b82f6',
       features: [
-        { text: 'Everything in Investor Basic', included: true },
-        { text: 'AI analyzer (ARV, repair, MAO)', included: true, bold: true },
-        { text: 'Saved comps', included: true },
-        { text: 'Downloadable reports (PDF)', included: true },
+        { text: 'Unlimited viewing and contact', included: true, bold: true },
+        { text: 'AI Analyzer unlimited', included: true, bold: true },
+        { text: 'Exportable deal reports', included: true },
+        { text: 'Property watchlists', included: true },
+        { text: 'Custom alerts', included: true },
         { text: 'Priority support', included: true },
-        { text: 'Cannot post deals (buyers only)', included: false },
+        { text: 'Cannot post deals', included: false },
       ],
       cta: 'Upgrade to Investor Pro',
-      popular: true
+      popular: true,
+      type: 'investor'
+    },
+    {
+      name: 'Investor Elite',
+      price: '$99',
+      period: '/month',
+      description: 'Premium features for elite investors',
+      color: '#8b5cf6',
+      features: [
+        { text: 'Everything in Investor Pro', included: true },
+        { text: 'Neighborhood analytics', included: true, bold: true },
+        { text: 'Rent comps', included: true, bold: true },
+        { text: 'Off-market data feeds', included: true },
+        { text: 'Early access to new listings', included: true },
+        { text: 'Cannot post deals', included: false },
+      ],
+      cta: 'Upgrade to Investor Elite',
+      popular: false,
+      type: 'investor'
     },
     {
       name: 'Wholesaler Basic',
       price: '$25',
       period: '/month',
-      description: 'For wholesalers who want to post deals',
+      description: 'Essential tools for wholesalers',
       color: '#f59e0b',
       features: [
-        { text: '5 listings / month', included: true, bold: true },
-        { text: 'Create up to 5 active deals', included: true },
-        { text: 'Basic analytics (views, interest)', included: true },
-        { text: 'No buyer contact data', included: false },
+        { text: 'Up to 10 listings/month', included: true, bold: true },
+        { text: 'Basic analytics (views, saves)', included: true },
+        { text: 'No AI repair estimator', included: false },
+        { text: 'No featured placement', included: false },
+        { text: 'No investor chat', included: false },
       ],
       cta: 'Upgrade to Wholesaler Basic',
-      popular: false
+      popular: false,
+      type: 'wholesaler'
     },
     {
       name: 'Wholesaler Pro',
-      price: '$49',
+      price: '$59',
       period: '/month',
-      description: 'For active wholesalers posting many deals',
-      color: '#8b5cf6',
+      description: 'Advanced tools for active wholesalers',
+      color: '#dc2626',
       features: [
-        { text: '20 listings / month', included: true, bold: true },
+        { text: 'Up to 30 listings/month', included: true, bold: true },
         { text: 'AI repair estimator', included: true, bold: true },
-        { text: 'Investor demand analytics by ZIP', included: true },
+        { text: 'Investor demand heatmaps', included: true },
         { text: 'Featured placement', included: true },
         { text: 'Verified badge', included: true },
-        { text: 'Investor chat unlocked', included: true },
+        { text: 'Investor chat', included: true },
+        { text: 'No team seats', included: false },
+        { text: 'No CRM export', included: false },
       ],
       cta: 'Upgrade to Wholesaler Pro',
-      popular: true
+      popular: true,
+      type: 'wholesaler'
     },
     {
-      name: 'Enterprise / Team',
-      price: '$99+',
-      period: '',
-      description: 'For teams and large operations',
+      name: 'Enterprise',
+      price: '$99',
+      period: '/month',
+      description: 'Complete solution for teams and large operations',
       color: '#1f2937',
       features: [
         { text: 'Unlimited listings', included: true, bold: true },
-        { text: 'Team seats', included: true, bold: true },
-        { text: 'Multi-user management', included: true },
+        { text: 'Team seats (multi-user management)', included: true, bold: true },
         { text: 'CRM export', included: true },
-        { text: 'Off-market data feed', included: true },
-        { text: 'Bulk investor lists', included: true },
-        { text: 'Custom branding / white-label', included: true },
+        { text: 'Off-market lead data feed', included: true },
+        { text: 'White-label branding', included: true },
+        { text: 'Dedicated support', included: true },
+        { text: 'Custom integrations', included: true },
       ],
       cta: 'Contact Sales',
-      popular: false
+      popular: false,
+      type: 'both'
     }
   ];
 
@@ -133,8 +184,8 @@ export default function PricingPage() {
   const displayedTiers = userType === 'all' 
     ? tiers 
     : tiers.filter(tier => 
-        (userType === 'investor' && (tier.name.includes('Investor') || tier.name.includes('Free') || tier.name.includes('Enterprise'))) ||
-        (userType === 'wholesaler' && (tier.name.includes('Wholesaler') || tier.name.includes('Free') || tier.name.includes('Enterprise')))
+        (userType === 'investor' && (tier.type === 'investor' || tier.type === 'both')) ||
+        (userType === 'wholesaler' && (tier.type === 'wholesaler' || tier.type === 'both'))
       );
 
   return (
@@ -308,7 +359,7 @@ export default function PricingPage() {
                 >
                   {tier.cta}
                 </Link>
-              ) : tier.name === 'Free / Starter' ? (
+              ) : (tier.name === 'Investor Free' || tier.name === 'Wholesaler Free') ? (
                 <Link 
                   href={isLoggedIn ? '/account' : '/login'}
                   style={{ 

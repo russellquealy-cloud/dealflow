@@ -13,23 +13,55 @@ export default function AccountPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login?next=/account');
-        return;
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setLoading(false);
+          return;
+        }
+        
+        if (!session) {
+          router.push('/login?next=/account');
+          return;
+        }
+        
+        setUser(session.user);
+        
+        // Load user profile with error handling
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profileError) {
+          console.error('Profile error:', profileError);
+          // Create a basic profile if none exists
+          if (profileError.code === 'PGRST116') {
+            console.log('No profile found, creating basic profile...');
+            const { data: newProfile } = await supabase
+              .from('profiles')
+              .insert({
+                id: session.user.id,
+                role: 'investor',
+                membership_tier: 'investor_free',
+                verified: false
+              })
+              .select()
+              .single();
+            setProfile(newProfile);
+          }
+        } else {
+          setProfile(profileData);
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Account loading error:', err);
+        setLoading(false);
       }
-      
-      setUser(session.user);
-      
-      // Load user profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-      
-      setProfile(profileData);
-      setLoading(false);
     };
 
     checkAuth();
