@@ -90,7 +90,7 @@ async function sendViaResend(to: string, subject: string, html: string, text: st
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Deal Flow <noreply@dealflow.com>',
+      from: 'Off Axis Deals <noreply@offaxisdeals.com>',
       to: [to],
       subject,
       html,
@@ -110,7 +110,7 @@ async function sendViaPostmark(to: string, subject: string, html: string, text: 
       'X-Postmark-Server-Token': process.env.POSTMARK_API_TOKEN!,
     },
     body: JSON.stringify({
-      From: 'noreply@dealflow.com',
+      From: 'noreply@offaxisdeals.com',
       To: to,
       Subject: subject,
       HtmlBody: html,
@@ -130,7 +130,7 @@ async function sendViaSendGrid(to: string, subject: string, html: string, text: 
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: 'noreply@dealflow.com', name: 'Deal Flow' },
+      from: { email: 'noreply@offaxisdeals.com', name: 'Off Axis Deals' },
       subject,
       content: [
         { type: 'text/plain', value: text },

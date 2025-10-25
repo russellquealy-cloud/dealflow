@@ -337,8 +337,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: Check the `/docs` folder
 - **Issues**: GitHub Issues
 - **Discussions**: GitHub Discussions
-- **Email**: support@dealflow.com
+- **Email**: customerservice@offaxisdeals.com
 
 ---
 
-**Deal Flow** - Connecting real estate investors with opportunities.
+**Off Axis Deals** - Connecting real estate investors with opportunities.

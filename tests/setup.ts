@@ -16,7 +16,7 @@ export const testSupabase = createClient(
 
 // Test data
 export const TEST_USER = {
-  email: 'test@dealflow.com',
+  email: 'test@offaxisdeals.com',
   password: 'testpassword123',
   id: 'test-user-id'
 };

@@ -116,13 +116,13 @@ WHERE schemaname = 'public';
 #### 4.1 System Health Check
 ```bash
 # Check application status
-curl -f https://dealflow-chi.vercel.app/api/health || echo "Health check failed"
+curl -f https://offaxisdeals.com/api/health || echo "Health check failed"
 
 # Check database connectivity
-curl -f https://dealflow-chi.vercel.app/api/test-db-connection || echo "DB check failed"
+curl -f https://offaxisdeals.com/api/test-db-connection || echo "DB check failed"
 
 # Check external services
-curl -f https://dealflow-chi.vercel.app/api/stripe/health || echo "Stripe check failed"
+curl -f https://offaxisdeals.com/api/stripe/health || echo "Stripe check failed"
 ```
 
 #### 4.2 User-Facing Verification
@@ -137,7 +137,7 @@ curl -f https://dealflow-chi.vercel.app/api/stripe/health || echo "Stripe check 
 #### 4.3 Payment System Verification
 ```bash
 # Test Stripe webhook endpoint
-curl -X POST https://dealflow-chi.vercel.app/api/stripe/webhook \
+curl -X POST https://offaxisdeals.com/api/stripe/webhook \
   -H "Content-Type: application/json" \
   -d '{"type": "test", "data": {"object": {"id": "test"}}}'
 ```
