@@ -123,6 +123,7 @@ export default function ListingsPage() {
           query = query.gte('beds', filters.minBeds);
         }
         if (filters.maxBeds) {
+          console.log('🔍 Applying maxBeds filter:', filters.maxBeds);
           query = query.lte('beds', filters.maxBeds);
         }
         if (filters.minBaths) {
@@ -169,6 +170,16 @@ export default function ListingsPage() {
             setLoading(false);
           }
           return;
+        }
+
+        // Debug: Log bedroom values to check data types
+        if (filters.maxBeds && data) {
+          console.log('🔍 Bedroom values in results:', data.map(item => ({ 
+            id: item.id, 
+            beds: item.beds, 
+            bedsType: typeof item.beds,
+            address: item.address 
+          })));
         }
 
       const rows = data as unknown as Row[];
@@ -446,7 +457,10 @@ export default function ListingsPage() {
       if (filters.minPrice) query = query.gte('price', filters.minPrice);
       if (filters.maxPrice) query = query.lte('price', filters.maxPrice);
       if (filters.minBeds) query = query.gte('beds', filters.minBeds);
-      if (filters.maxBeds) query = query.lte('beds', filters.maxBeds);
+      if (filters.maxBeds) {
+        console.log('🔍 Map bounds: Applying maxBeds filter:', filters.maxBeds);
+        query = query.lte('beds', filters.maxBeds);
+      }
       if (filters.minBaths) query = query.gte('baths', filters.minBaths);
       if (filters.maxBaths) query = query.lte('baths', filters.maxBaths);
       if (filters.minSqft) query = query.gte('sqft', filters.minSqft);
