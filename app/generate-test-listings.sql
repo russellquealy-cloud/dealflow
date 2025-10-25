@@ -1,4 +1,4 @@
--- Generate test listings for DealFlow with proper coordinates
+-- Generate test listings for Off Axis Deals with proper coordinates
 -- Run this in Supabase SQL Editor to populate your database with sample data
 -- 
 -- IMPORTANT: Replace 'YOUR_USER_ID_HERE' with your actual user ID from auth.users

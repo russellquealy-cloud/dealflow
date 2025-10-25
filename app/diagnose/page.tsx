@@ -86,7 +86,7 @@ export default function DiagnosePage() {
 
   return (
     <div style={{ padding: 20, maxWidth: 1000, margin: '0 auto' }}>
-      <h1>🔍 DealFlow Diagnosis</h1>
+      <h1>🔍 Off Axis Deals Diagnosis</h1>
       
       <div style={{ marginBottom: 20 }}>
         <h3>Diagnostic Logs:</h3>

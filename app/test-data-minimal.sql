@@ -1,4 +1,4 @@
--- Minimal Test Data SQL Script for DealFlow
+-- Minimal Test Data SQL Script for Off Axis Deals
 -- This script uses only the most basic columns that should exist in your listings table
 
 -- Insert test listings with real addresses and coordinates

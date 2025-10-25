@@ -1,4 +1,4 @@
--- Test Data SQL Script for DealFlow (Fixed for existing schema)
+-- Test Data SQL Script for Off Axis Deals (Fixed for existing schema)
 -- This script creates real listings with real addresses and coordinates across multiple states
 
 -- First, let's add the missing columns to your existing table

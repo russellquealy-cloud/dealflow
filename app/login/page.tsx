@@ -115,7 +115,7 @@ function LoginInner() {
             color: '#6b7280',
             fontSize: '16px'
           }}>
-            Sign in to your DealFlow account
+            Sign in to your Off Axis Deals account
           </p>
         </div>
         

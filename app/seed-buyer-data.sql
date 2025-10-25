@@ -1,4 +1,4 @@
--- Seed buyer data for Deal Flow
+-- Seed buyer data for Off Axis Deals
 -- Run this in your Supabase SQL Editor
 
 -- Create buyers table if it doesn't exist

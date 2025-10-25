@@ -1,4 +1,4 @@
--- Test Data SQL Script for DealFlow
+-- Test Data SQL Script for Off Axis Deals
 -- This script creates real listings with real addresses and coordinates across multiple states
 
 -- First, let's ensure the listings table has all necessary columns
