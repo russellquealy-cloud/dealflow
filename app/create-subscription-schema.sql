@@ -86,19 +86,24 @@ DROP POLICY IF EXISTS "Users can view their own subscription" ON subscriptions;
 CREATE POLICY "Users can view their own subscription" ON subscriptions 
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own subscription" ON subscriptions;
 CREATE POLICY "Users can insert their own subscription" ON subscriptions 
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own subscription" ON subscriptions;
 CREATE POLICY "Users can update their own subscription" ON subscriptions 
   FOR UPDATE USING (auth.uid() = user_id);
 
 -- Create RLS policies for subscription usage
+DROP POLICY IF EXISTS "Users can view their own usage" ON subscription_usage;
 CREATE POLICY "Users can view their own usage" ON subscription_usage 
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own usage" ON subscription_usage;
 CREATE POLICY "Users can insert their own usage" ON subscription_usage 
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own usage" ON subscription_usage;
 CREATE POLICY "Users can update their own usage" ON subscription_usage 
   FOR UPDATE USING (auth.uid() = user_id);
 

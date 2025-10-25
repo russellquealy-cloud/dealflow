@@ -3,15 +3,17 @@
 ## 📋 **Complete List of SQL Scripts to Run in Supabase**
 
 ### 1. **Main Subscription Schema** ⭐ **REQUIRED**
-**File:** `app/create-subscription-schema.sql`
+**📁 File:** `app/create-subscription-schema.sql`
+**🔗 Click to open:** [create-subscription-schema.sql](app/create-subscription-schema.sql)
 - Creates subscription system tables
 - Adds featured listing fields to listings table
 - Sets up RLS policies
 - Inserts subscription plans
-- **Status:** ✅ Fixed (removed duplicate policy error)
+- **Status:** ✅ Fixed (all duplicate policy errors resolved)
 
 ### 2. **Admin Profile System** ⭐ **REQUIRED**
-**File:** `app/create-admin-profile-schema.sql`
+**📁 File:** `app/create-admin-profile-schema.sql`
+**🔗 Click to open:** [create-admin-profile-schema.sql](app/create-admin-profile-schema.sql)
 - Updates profiles table with comprehensive fields
 - Creates admin analytics and metrics tables
 - Sets up admin-only RLS policies
@@ -19,17 +21,20 @@
 - **Status:** ✅ New file created
 
 ### 3. **Promote Your Account to Admin** ⭐ **REQUIRED**
-**File:** `app/promote-admin.sql`
+**📁 File:** `app/promote-admin.sql`
+**🔗 Click to open:** [promote-admin.sql](app/promote-admin.sql)
 - Contains SQL to promote your account to admin
 - Replace email with your actual email address
 - **Status:** ✅ Ready to use
 
 ### 4. **Existing Scripts (if not already run)**
-**File:** `app/fix-profiles-table.sql`
+**📁 File:** `app/fix-profiles-table.sql`
+**🔗 Click to open:** [fix-profiles-table.sql](app/fix-profiles-table.sql)
 - Fixes profiles table structure
 - **Status:** ✅ May already be applied
 
-**File:** `app/seed-buyer-data.sql`
+**📁 File:** `app/seed-buyer-data.sql`
+**🔗 Click to open:** [seed-buyer-data.sql](app/seed-buyer-data.sql)
 - Seeds test data
 - **Status:** ✅ Optional
 
