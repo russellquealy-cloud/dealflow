@@ -82,6 +82,7 @@ ALTER TABLE contact_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_analysis_logs ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for subscriptions
+DROP POLICY IF EXISTS "Users can view their own subscription" ON subscriptions;
 CREATE POLICY "Users can view their own subscription" ON subscriptions 
   FOR SELECT USING (auth.uid() = user_id);
 
