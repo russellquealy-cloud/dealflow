@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 export default function PricingPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userType, setUserType] = useState<'all' | 'investor' | 'wholesaler'>('all');
+  const [userType, setUserType] = useState<'investor' | 'wholesaler'>('investor');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -160,8 +160,8 @@ export default function PricingPage() {
       type: 'wholesaler'
     },
     {
-      name: 'Enterprise',
-      price: '$99',
+      name: 'Enterprise / Team',
+      price: '$99+',
       period: '/month',
       description: 'Complete solution for teams and large operations',
       color: '#1f2937',
@@ -181,12 +181,10 @@ export default function PricingPage() {
   ];
 
   // Filter tiers based on user type selection
-  const displayedTiers = userType === 'all' 
-    ? tiers 
-    : tiers.filter(tier => 
-        (userType === 'investor' && (tier.type === 'investor' || tier.type === 'both')) ||
-        (userType === 'wholesaler' && (tier.type === 'wholesaler' || tier.type === 'both'))
-      );
+  const displayedTiers = tiers.filter(tier => 
+    (userType === 'investor' && (tier.type === 'investor' || tier.type === 'both')) ||
+    (userType === 'wholesaler' && (tier.type === 'wholesaler' || tier.type === 'both'))
+  );
 
   return (
     <main style={{ padding: '40px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh' }}>
@@ -208,22 +206,6 @@ export default function PricingPage() {
             borderRadius: 12,
             backdropFilter: 'blur(10px)'
           }}>
-            <button
-              onClick={() => setUserType('all')}
-              style={{
-                padding: '12px 24px',
-                borderRadius: 8,
-                border: 'none',
-                background: userType === 'all' ? '#fff' : 'transparent',
-                color: userType === 'all' ? '#667eea' : '#fff',
-                cursor: 'pointer',
-                fontSize: 15,
-                fontWeight: 700,
-                transition: 'all 0.2s ease'
-              }}
-            >
-              All Plans
-            </button>
             <button
               onClick={() => setUserType('investor')}
               style={{
