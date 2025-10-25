@@ -4,6 +4,7 @@ export type PlanId =
   | 'wholesaler_free' 
   | 'investor_basic' 
   | 'investor_pro' 
+  | 'investor_elite'
   | 'wholesaler_basic' 
   | 'wholesaler_pro' 
   | 'enterprise';
@@ -42,21 +43,22 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Investor Free',
     role: 'investor',
     price: { monthly: 0, yearly: 0 },
-    description: 'Entry tier for investors to explore listings only',
+    description: 'Teaser to force upgrade',
     features: [
-      'View map and all listings',
+      'View up to 10 listings/month',
       'Basic filters',
       'Perfect for browsing deals'
     ],
     limitations: [
       'No contact data access',
-      'No posting allowed',
-      'No saved searches or comps',
-      'No AI analysis'
+      'No AI analyzer',
+      'No save/favorite',
+      'No draw tools',
+      'No satellite view'
     ],
-    purpose: 'Entry tier for investors to explore listings only',
-    max_listings_per_month: 0,
-    max_active_listings: 0,
+    purpose: 'Teaser to force upgrade',
+    max_listings_per_month: 10,
+    max_active_listings: 10,
     has_contact_access: false,
     has_ai_tools: false,
     ai_analysis_limit: 0,
@@ -101,29 +103,27 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'investor_basic',
     name: 'Investor Basic',
     role: 'investor',
-    price: { monthly: 25, yearly: 300 },
-    description: 'Entry-level investor plan enabling communication',
+    price: { monthly: 29, yearly: 313 },
+    description: 'Core conversion tier for casual investors',
     features: [
-      'Unlimited viewing',
-      'Unlimited contact info access',
-      'Full property details',
-      'Comps preview',
-      'Save/favorite searches',
-      'Message wholesalers directly'
+      '30 listings/month',
+      '30 contacts/month',
+      '10 AI Analyzer runs/month',
+      'Saved searches and favorites',
+      'Alerts'
     ],
     limitations: [
       'Cannot post deals',
-      'No AI analyzer',
-      'No downloadable reports',
-      'Standard support only'
+      'Limited AI usage',
+      'No exportable reports'
     ],
-    purpose: 'Entry-level investor plan enabling communication but limited analytics',
-    max_listings_per_month: 0,
-    max_active_listings: 0,
+    purpose: 'Core conversion tier for casual investors',
+    max_listings_per_month: 30,
+    max_active_listings: 30,
     has_contact_access: true,
-    has_ai_tools: false,
-    ai_analysis_limit: 0,
-    has_analytics: false,
+    has_ai_tools: true,
+    ai_analysis_limit: 10,
+    has_analytics: true,
     has_chat: true,
     featured: false,
     has_team: false,
@@ -134,20 +134,51 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'investor_pro',
     name: 'Investor Pro',
     role: 'investor',
-    price: { monthly: 49, yearly: 588 },
-    description: 'Full investor toolset for active buyers',
+    price: { monthly: 59, yearly: 637 },
+    description: 'Full analytics suite for active investors',
     features: [
-      'Everything in Investor Basic',
-      'AI analyzer (ARV, repair, MAO)',
-      'Saved comps and downloadable reports (PDF)',
+      'Unlimited viewing and contact',
+      'AI Analyzer unlimited',
+      'Exportable deal reports',
+      'Property watchlists',
+      'Custom alerts',
       'Priority support'
     ],
     limitations: [
       'Cannot post deals'
     ],
-    purpose: 'Full investor toolset for active buyers and data-driven analysis',
-    max_listings_per_month: 0,
-    max_active_listings: 0,
+    purpose: 'Full analytics suite for active investors',
+    max_listings_per_month: -1, // unlimited
+    max_active_listings: -1, // unlimited
+    has_contact_access: true,
+    has_ai_tools: true,
+    ai_analysis_limit: -1, // unlimited
+    has_analytics: true,
+    has_chat: true,
+    featured: false,
+    has_team: false,
+    has_branding: false
+  },
+
+  investor_elite: {
+    id: 'investor_elite',
+    name: 'Investor Elite',
+    role: 'investor',
+    price: { monthly: 99, yearly: 1069 },
+    description: 'Expansion once data integrations mature',
+    features: [
+      'Everything in Investor Pro',
+      'Neighborhood analytics',
+      'Rent comps',
+      'Off-market data feeds',
+      'Early access to new listings'
+    ],
+    limitations: [
+      'Cannot post deals'
+    ],
+    purpose: 'Expansion once data integrations mature',
+    max_listings_per_month: -1, // unlimited
+    max_active_listings: -1, // unlimited
     has_contact_access: true,
     has_ai_tools: true,
     ai_analysis_limit: -1, // unlimited
@@ -162,22 +193,20 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'wholesaler_basic',
     name: 'Wholesaler Basic',
     role: 'wholesaler',
-    price: { monthly: 25, yearly: 300 },
-    description: 'Starter plan for active wholesalers',
+    price: { monthly: 25, yearly: 270 },
+    description: 'Entry tier to establish legitimacy and pipeline',
     features: [
-      '5 listings per month',
-      'Up to 5 active deals at once',
-      'Basic analytics (views, interest)'
+      'Up to 10 listings/month',
+      'Basic analytics (views, saves)'
     ],
     limitations: [
-      'No buyer contact data',
-      'No AI tools',
+      'No AI repair estimator',
       'No featured placement',
-      'No chat access'
+      'No investor chat'
     ],
-    purpose: 'Starter plan for active wholesalers posting limited deals',
-    max_listings_per_month: 5,
-    max_active_listings: 5,
+    purpose: 'Entry tier to establish legitimacy and pipeline',
+    max_listings_per_month: 10,
+    max_active_listings: 10,
     has_contact_access: false,
     has_ai_tools: false,
     ai_analysis_limit: 0,
@@ -192,23 +221,23 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'wholesaler_pro',
     name: 'Wholesaler Pro',
     role: 'wholesaler',
-    price: { monthly: 49, yearly: 588 },
-    description: 'Professional wholesaler plan for regular high-volume posting',
+    price: { monthly: 59, yearly: 637 },
+    description: 'Maximum exposure and tools to close deals',
     features: [
-      '20 listings per month',
+      'Up to 30 listings/month',
       'AI repair estimator',
-      'Investor demand analytics by ZIP',
+      'Investor demand heatmaps',
       'Featured placement',
       'Verified badge',
-      'Investor chat unlocked'
+      'Investor chat'
     ],
     limitations: [
       'No team seats',
-      'No CRM or bulk investor lists'
+      'No CRM export'
     ],
-    purpose: 'Professional wholesaler plan for regular high-volume posting',
-    max_listings_per_month: 20,
-    max_active_listings: 20,
+    purpose: 'Maximum exposure and tools to close deals',
+    max_listings_per_month: 30,
+    max_active_listings: 30,
     has_contact_access: true,
     has_ai_tools: true,
     ai_analysis_limit: -1, // unlimited
@@ -223,19 +252,17 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'enterprise',
     name: 'Enterprise',
     role: 'team',
-    price: { monthly: 99, yearly: 1188 },
-    description: 'For brokerages or large wholesaler teams',
+    price: { monthly: 99, yearly: 1069 },
+    description: 'For larger wholesale groups and agencies',
     features: [
       'Unlimited listings',
       'Team seats (multi-user management)',
       'CRM export',
-      'Off-market data feed',
-      'Bulk investor lists',
-      'Custom branding / white-label',
-      'Priority 1 support'
+      'Off-market lead data feed',
+      'White-label branding'
     ],
     limitations: [],
-    purpose: 'For brokerages or large wholesaler teams requiring branding and data export',
+    purpose: 'For larger wholesale groups and agencies',
     max_listings_per_month: -1, // unlimited
     max_active_listings: -1, // unlimited
     has_contact_access: true,
@@ -277,3 +304,39 @@ export function getMaxActiveListingsForPlan(planId: PlanId): number {
   const plan = getPlanById(planId);
   return plan.max_active_listings;
 }
+
+// Add-on pricing
+export interface AddOn {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  availableFor: PlanRole[];
+}
+
+export const ADD_ONS: AddOn[] = [
+  {
+    id: 'featured_listing',
+    name: 'Featured Listing',
+    price: 10,
+    description: 'Per listing per week (Wholesaler)',
+    availableFor: ['wholesaler']
+  },
+  {
+    id: 'ai_repair_report',
+    name: 'AI Repair Report',
+    price: 5,
+    description: 'Per report (Investor and Wholesaler)',
+    availableFor: ['investor', 'wholesaler']
+  },
+  {
+    id: 'off_market_data',
+    name: 'Off-Market Data Feed',
+    price: 20,
+    description: 'Per month (Pro and Enterprise)',
+    availableFor: ['team']
+  }
+];
+
+// Annual billing discount
+export const ANNUAL_DISCOUNT_PERCENTAGE = 10;
