@@ -456,8 +456,8 @@ export default function ListingsPage() {
     // Prevent country-level viewing (boundsSize > 25 degrees)
     // Allow point-level viewing for detailed inspection (boundsSize < 0.005 degrees)
     if (boundsSize > 25) {
-      console.log('Large bounds detected, showing all listings (no effective map filtering).');
-      setActiveMapBounds(false); // No effective map filter, allow main useEffect to load all
+      console.log('Large bounds detected, applying filter bar only (no map bounds filtering).');
+      setActiveMapBounds(false); // Let main useEffect handle filtering with filter bar
       setMapBounds(null); // Clear mapBounds state
       return;
     }
