@@ -228,7 +228,14 @@ export default function ListingsPage() {
           const lng = r.longitude ?? r.lng ?? r.lon;
           
           if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
-            pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
+            pts.push({ 
+              id: String(r.id), 
+              lat, 
+              lng, 
+              price: toNum(r.price),
+              featured: r.featured,
+              featured_until: r.featured_until
+            });
           }
         }
         
@@ -539,7 +546,14 @@ export default function ListingsPage() {
           const lng = r.longitude ?? r.lng ?? r.lon;
           
           if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
-            pts.push({ id: String(r.id), lat, lng, price: toNum(r.price) });
+            pts.push({ 
+              id: String(r.id), 
+              lat, 
+              lng, 
+              price: toNum(r.price),
+              featured: r.featured,
+              featured_until: r.featured_until
+            });
           }
         }
         

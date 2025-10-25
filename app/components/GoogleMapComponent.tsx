@@ -11,6 +11,8 @@ export type Point = {
   price?: number;
   title?: string;
   address?: string;
+  featured?: boolean;
+  featured_until?: string;
 };
 
 type Props = { 
@@ -179,6 +181,9 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     const newMarkers: google.maps.Marker[] = [];
 
     points.forEach((point, index) => {
+      // Check if listing is currently featured
+      const isFeatured = point.featured && (!point.featured_until || new Date(point.featured_until) > new Date());
+      
       const marker = new window.google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         title: point.title || `Property ${index + 1}`,
@@ -186,6 +191,17 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
         // animation: window.google.maps.Animation.DROP,
         // Use regular markers instead of Advanced Markers
         optimized: true,
+        // Use different icon for featured listings
+        icon: isFeatured ? {
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="20" cy="20" r="18" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
+              <text x="20" y="26" text-anchor="middle" fill="white" font-size="16" font-weight="bold">⭐</text>
+            </svg>
+          `),
+          scaledSize: new window.google.maps.Size(40, 40),
+          anchor: new window.google.maps.Point(20, 20)
+        } : undefined
       });
 
       marker.addListener('click', () => {

@@ -31,6 +31,8 @@ export type ListingLike = {
   repairs?: number;
   spread?: number;
   roi?: number;
+  featured?: boolean;
+  featured_until?: string;
 };
 
 function toNum(v: unknown): number | undefined {
@@ -102,6 +104,8 @@ export default function MyListingsPage() {
         repairs: toNum(row.repairs ?? row.repair_costs),
         spread: toNum(row.spread),
         roi: toNum(row.roi),
+        featured: row.featured as boolean | undefined,
+        featured_until: row.featured_until as string | undefined,
       };
       });
 
@@ -217,6 +221,44 @@ export default function MyListingsPage() {
     } catch (err) {
       console.error('Error deleting listing:', err);
       alert('Failed to delete listing');
+    }
+  };
+
+  const handleToggleFeatured = async (listingId: string, currentFeatured: boolean) => {
+    try {
+      const updateData: any = { featured: !currentFeatured };
+      
+      // If making it featured, set featured_until to 1 week from now
+      if (!currentFeatured) {
+        const oneWeekFromNow = new Date();
+        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+        updateData.featured_until = oneWeekFromNow.toISOString();
+      } else {
+        // If removing featured status, clear the featured_until date
+        updateData.featured_until = null;
+      }
+
+      const { error } = await supabase
+        .from('listings')
+        .update(updateData)
+        .eq('id', listingId);
+
+      if (error) {
+        console.error('Error updating featured status:', error);
+        alert('Failed to update featured status');
+        return;
+      }
+
+      // Reload listings
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        loadListings(session.user.id);
+      }
+
+      alert(currentFeatured ? 'Listing removed from featured' : 'Listing is now featured!');
+    } catch (err) {
+      console.error('Error updating featured status:', err);
+      alert('Failed to update featured status');
     }
   };
 
@@ -493,12 +535,25 @@ export default function MyListingsPage() {
               // Display Mode
               <div>
                 <ListingCard listing={listing} />
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   <button
                     onClick={() => handleEdit(listing)}
                     style={{ padding: '6px 12px', border: '1px solid #0ea5e9', borderRadius: 6, background: '#fff', color: '#0ea5e9', fontSize: 14 }}
                   >
                     Edit
+                  </button>
+                  <button
+                    onClick={() => handleToggleFeatured(String(listing.id), listing.featured || false)}
+                    style={{ 
+                      padding: '6px 12px', 
+                      border: listing.featured ? '1px solid #f59e0b' : '1px solid #f59e0b', 
+                      borderRadius: 6, 
+                      background: listing.featured ? '#f59e0b' : '#fff', 
+                      color: listing.featured ? '#fff' : '#f59e0b', 
+                      fontSize: 14 
+                    }}
+                  >
+                    {listing.featured ? '⭐ Featured' : '⭐ Make Featured'}
                   </button>
                   <button
                     onClick={() => handleDelete(String(listing.id))}

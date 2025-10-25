@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import ListingCard from './ListingCard';
 
-export type MapPoint = { id: string; lat: number; lng: number; price?: number };
+export type MapPoint = { id: string; lat: number; lng: number; price?: number; featured?: boolean; featured_until?: string };
 export type ListItem = { id: string } & Record<string, unknown>;
 
 type Props = {

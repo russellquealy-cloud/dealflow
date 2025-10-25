@@ -223,6 +223,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Add featured listing fields to listings table
+ALTER TABLE listings 
+ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS featured_until TIMESTAMP WITH TIME ZONE;
+
 -- Insert subscription plans
 INSERT INTO subscription_plans (id, name, price_monthly, price_yearly, stripe_price_id_monthly, stripe_price_id_yearly, features, limitations, max_listings_per_month, max_active_listings, has_contact_access, has_ai_tools, ai_analysis_limit, has_analytics, has_chat, featured, has_team, has_branding) VALUES
 ('investor_free', 'Investor Free', 0, 0, NULL, NULL, 

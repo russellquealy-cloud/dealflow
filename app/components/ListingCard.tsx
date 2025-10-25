@@ -29,6 +29,8 @@ export type ListingLike = {
   repairs?: number | string;
   spread?: number | string;
   roi?: number | string; // percent
+  featured?: boolean;
+  featured_until?: string;
 };
 
 type Props = { listing: ListingLike };
@@ -93,14 +95,45 @@ export default function ListingCard({ listing }: Props) {
   const spread = toNum(listing.spread);
   const roi = toNum(listing.roi);
 
+  // Check if listing is currently featured
+  const isFeatured = listing.featured && (!listing.featured_until || new Date(listing.featured_until) > new Date());
+
   return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 8, background: '#fff' }}>
+    <div style={{ 
+      border: isFeatured ? '2px solid #f59e0b' : '1px solid #e5e7eb', 
+      borderRadius: 12, 
+      padding: 8, 
+      background: isFeatured ? '#fffbeb' : '#fff',
+      position: 'relative'
+    }}>
+      {/* Featured Banner */}
+      {isFeatured && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+          color: 'white',
+          padding: '4px 8px',
+          fontSize: '12px',
+          fontWeight: '600',
+          textAlign: 'center',
+          borderRadius: '12px 12px 0 0',
+          zIndex: 10,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          ⭐ FEATURED LISTING
+        </div>
+      )}
+      
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '120px 1fr',
           gap: 12,
           alignItems: 'center',
+          marginTop: isFeatured ? '20px' : '0'
         }}
       >
         <Link href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
