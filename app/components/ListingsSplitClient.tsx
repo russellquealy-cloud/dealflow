@@ -17,7 +17,7 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
   
   return (
-    <div className="h-[calc(100vh-80px)] p-3 flex flex-col overflow-hidden">
+    <div className="h-full p-3 flex flex-col overflow-hidden">
       {/* Mobile View Toggle - Only visible on mobile */}
       <div className="lg:hidden flex gap-2 mb-4 z-30 relative bg-white flex-shrink-0">
         <button

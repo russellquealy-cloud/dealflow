@@ -7,9 +7,10 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ListingPage({ params }: { params: { id: string } }) {
+export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
-  const { data, error } = await supabase.from('listings').select('*').eq('id', params.id).maybeSingle();
+  const { data, error } = await supabase.from('listings').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return <div style={{ padding: 24 }}>Listing not found.</div>;
 
@@ -18,7 +19,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
   
   // Debug image loading
   console.log('Listing page image debug:', {
-    id: params.id,
+    id: id,
     rawData: data,
     coverImageUrl: data.cover_image_url,
     imageUrl: data.image_url,
