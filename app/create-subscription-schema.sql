@@ -108,16 +108,20 @@ CREATE POLICY "Users can update their own usage" ON subscription_usage
   FOR UPDATE USING (auth.uid() = user_id);
 
 -- Create RLS policies for contact logs
+DROP POLICY IF EXISTS "Users can view their own contact logs" ON contact_logs;
 CREATE POLICY "Users can view their own contact logs" ON contact_logs 
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own contact logs" ON contact_logs;
 CREATE POLICY "Users can insert their own contact logs" ON contact_logs 
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Create RLS policies for AI analysis logs
+DROP POLICY IF EXISTS "Users can view their own AI analysis logs" ON ai_analysis_logs;
 CREATE POLICY "Users can view their own AI analysis logs" ON ai_analysis_logs 
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own AI analysis logs" ON ai_analysis_logs;
 CREATE POLICY "Users can insert their own AI analysis logs" ON ai_analysis_logs 
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
