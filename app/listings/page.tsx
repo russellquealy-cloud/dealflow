@@ -89,10 +89,8 @@ export default function ListingsPage() {
         return;
       }
       
-      // Only set loading if we haven't loaded yet
-      if (!hasLoaded) {
-        setLoading(true);
-      }
+      // Set loading state
+      setLoading(true);
       
       try {
         // Start with a simple query to test connection
@@ -324,10 +322,8 @@ export default function ListingsPage() {
             }
           }
           
-          if (!hasLoaded) {
-            setLoading(false);
-            setHasLoaded(true);
-          }
+          setLoading(false);
+          setHasLoaded(true);
         }
       } catch (err) {
         console.error('Error loading listings:', err);
@@ -337,7 +333,7 @@ export default function ListingsPage() {
 
     load();
     return () => { cancelled = true; };
-      }, [filters, searchQuery, hasLoaded, activeMapBounds]); // Re-added dependencies for filtering
+      }, [filters, searchQuery, activeMapBounds]); // Removed hasLoaded to prevent infinite loop
 
   // No need for manual filtering - spatial function handles it
   const filteredListings = allListings;
