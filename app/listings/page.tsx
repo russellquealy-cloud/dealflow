@@ -123,8 +123,8 @@ export default function ListingsPage() {
         }
         if (filters.maxBeds) {
           console.log('🔍 Applying maxBeds filter:', filters.maxBeds);
-          // Both beds and bedrooms must be <= maxBeds (or null)
-          query = query.or(`and(beds.lte.${filters.maxBeds},bedrooms.lte.${filters.maxBeds}),and(beds.is.null,bedrooms.lte.${filters.maxBeds}),and(beds.lte.${filters.maxBeds},bedrooms.is.null),and(beds.is.null,bedrooms.is.null)`);
+          // Simple approach: filter on bedrooms field (most common) and beds as fallback
+          query = query.lte('bedrooms', filters.maxBeds);
         }
         if (filters.minBaths) {
           query = query.gte('baths', filters.minBaths);
@@ -466,8 +466,8 @@ export default function ListingsPage() {
       }
       if (filters.maxBeds) {
         console.log('🔍 Map bounds: Applying maxBeds filter:', filters.maxBeds);
-        // Both beds and bedrooms must be <= maxBeds (or null)
-        query = query.or(`and(beds.lte.${filters.maxBeds},bedrooms.lte.${filters.maxBeds}),and(beds.is.null,bedrooms.lte.${filters.maxBeds}),and(beds.lte.${filters.maxBeds},bedrooms.is.null),and(beds.is.null,bedrooms.is.null)`);
+        // Simple approach: filter on bedrooms field (most common) and beds as fallback
+        query = query.lte('bedrooms', filters.maxBeds);
       }
       if (filters.minBaths) query = query.gte('baths', filters.minBaths);
       if (filters.maxBaths) query = query.lte('baths', filters.maxBaths);
