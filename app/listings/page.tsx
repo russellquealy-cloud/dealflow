@@ -61,13 +61,13 @@ const toNum = (v: unknown): number | undefined => {
 };
 
 export default function ListingsPage() {
-  const [filters, setFilters] = useState<Filters>({
+  const [filters, setFilters] = useState<Filters>(() => ({
     minBeds: null, maxBeds: null,
     minBaths: null, maxBaths: null,
     minPrice: null, maxPrice: null,
     minSqft: null, maxSqft: null,
     sortBy: 'newest',
-  });
+  }));
 
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
@@ -82,6 +82,12 @@ export default function ListingsPage() {
     let cancelled = false;
 
     const load = async () => {
+      console.log('🔄 Main useEffect triggered', { 
+        activeMapBounds, 
+        filtersCount: Object.keys(filters).length,
+        searchQuery: searchQuery?.length || 0
+      });
+      
       // If map bounds are currently active, this useEffect should not interfere.
       // The map bounds handler is responsible for setting listings in that case.
       if (activeMapBounds) {
@@ -91,6 +97,7 @@ export default function ListingsPage() {
       
       // Set loading state
       setLoading(true);
+      console.log('🔍 Starting to load listings...');
       
       try {
         // Start with a simple query to test connection
@@ -101,6 +108,20 @@ export default function ListingsPage() {
           setLoading(false);
           return;
         }
+        
+        console.log('✅ Database connection successful');
+        
+        // Add a simple test to see if we have any data at all
+        const { data: simpleTest, error: simpleError } = await supabase
+          .from('listings')
+          .select('id, title, city')
+          .limit(5);
+          
+        console.log('📊 Simple test query result:', { 
+          count: simpleTest?.length || 0, 
+          error: simpleError,
+          sample: simpleTest?.[0] 
+        });
         
         // Build the query directly from the listings table
         let query = supabase
