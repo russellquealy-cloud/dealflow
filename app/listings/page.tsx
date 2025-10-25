@@ -120,13 +120,13 @@ export default function ListingsPage() {
           query = query.lte('price', filters.maxPrice);
         }
         if (filters.minBeds) {
-          // Use beds field if available, otherwise use bedrooms
-          query = query.or(`beds.gte.${filters.minBeds},and(beds.is.null,bedrooms.gte.${filters.minBeds})`);
+          // Check both beds and bedrooms fields
+          query = query.or(`beds.gte.${filters.minBeds},bedrooms.gte.${filters.minBeds}`);
         }
         if (filters.maxBeds) {
           console.log('🔍 Applying maxBeds filter:', filters.maxBeds);
-          // Use beds field if available, otherwise use bedrooms
-          query = query.or(`beds.lte.${filters.maxBeds},and(beds.is.null,bedrooms.lte.${filters.maxBeds})`);
+          // Check both beds and bedrooms fields - BOTH must be <= maxBeds
+          query = query.and(`or(beds.lte.${filters.maxBeds},beds.is.null),or(bedrooms.lte.${filters.maxBeds},bedrooms.is.null)`);
         }
         if (filters.minBaths) {
           query = query.gte('baths', filters.minBaths);
@@ -459,11 +459,11 @@ export default function ListingsPage() {
       if (filters.minPrice) query = query.gte('price', filters.minPrice);
       if (filters.maxPrice) query = query.lte('price', filters.maxPrice);
       if (filters.minBeds) {
-        query = query.or(`beds.gte.${filters.minBeds},and(beds.is.null,bedrooms.gte.${filters.minBeds})`);
+        query = query.or(`beds.gte.${filters.minBeds},bedrooms.gte.${filters.minBeds}`);
       }
       if (filters.maxBeds) {
         console.log('🔍 Map bounds: Applying maxBeds filter:', filters.maxBeds);
-        query = query.or(`beds.lte.${filters.maxBeds},and(beds.is.null,bedrooms.lte.${filters.maxBeds})`);
+        query = query.and(`or(beds.lte.${filters.maxBeds},beds.is.null),or(bedrooms.lte.${filters.maxBeds},bedrooms.is.null)`);
       }
       if (filters.minBaths) query = query.gte('baths', filters.minBaths);
       if (filters.maxBaths) query = query.lte('baths', filters.maxBaths);
@@ -591,7 +591,6 @@ export default function ListingsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative' }}>
-      <div style={{ flex: 1, minHeight: 0 }}>
       {/* header + search */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
         <h2 className="text-2xl lg:text-3xl font-bold m-0">Find Deals</h2>
@@ -634,7 +633,6 @@ export default function ListingsPage() {
           onBoundsChange={handleMapBoundsChange}
           MapComponent={MapComponent} 
         />
-      </div>
       </div>
     </div>
   );

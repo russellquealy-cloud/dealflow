@@ -52,6 +52,29 @@ CREATE TABLE IF NOT EXISTS ai_analysis_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create subscription plans table
+CREATE TABLE IF NOT EXISTS subscription_plans (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  price_monthly INTEGER NOT NULL,
+  price_yearly INTEGER NOT NULL,
+  stripe_price_id_monthly TEXT,
+  stripe_price_id_yearly TEXT,
+  features JSONB NOT NULL DEFAULT '[]',
+  limitations JSONB NOT NULL DEFAULT '[]',
+  max_listings_per_month INTEGER NOT NULL DEFAULT 0,
+  max_active_listings INTEGER NOT NULL DEFAULT 0,
+  has_contact_access BOOLEAN DEFAULT FALSE,
+  has_ai_tools BOOLEAN DEFAULT FALSE,
+  ai_analysis_limit INTEGER DEFAULT 0,
+  has_analytics BOOLEAN DEFAULT FALSE,
+  has_chat BOOLEAN DEFAULT FALSE,
+  featured BOOLEAN DEFAULT FALSE,
+  has_team BOOLEAN DEFAULT FALSE,
+  has_branding BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable RLS on all tables
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_usage ENABLE ROW LEVEL SECURITY;
@@ -199,3 +222,40 @@ BEGIN
     updated_at = NOW();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Insert subscription plans
+INSERT INTO subscription_plans (id, name, price_monthly, price_yearly, stripe_price_id_monthly, stripe_price_id_yearly, features, limitations, max_listings_per_month, max_active_listings, has_contact_access, has_ai_tools, ai_analysis_limit, has_analytics, has_chat, featured, has_team, has_branding) VALUES
+('investor_free', 'Investor Free', 0, 0, NULL, NULL, 
+ '["View map and all listings", "Basic filters", "Perfect for browsing deals"]',
+ '["No contact data access", "No posting allowed", "No saved searches or comps", "No AI analysis"]',
+ 0, 0, false, false, 0, false, false, false, false, false),
+
+('wholesaler_free', 'Wholesaler Free', 0, 0, NULL, NULL,
+ '["1 listing per month", "Basic listing form (address, price, images)"]',
+ '["No analytics (views, interest)", "No featured placement", "No buyer contact data", "No AI tools", "No investor chat"]',
+ 1, 1, false, false, 0, false, false, false, false, false),
+
+('investor_basic', 'Investor Basic', 25, 300, 'price_investor_basic_monthly', 'price_investor_basic_yearly',
+ '["Unlimited viewing", "Unlimited contact info access", "Full property details", "Comps preview", "Save/favorite searches", "Message wholesalers directly"]',
+ '["Cannot post deals", "No AI analyzer", "No downloadable reports", "Standard support only"]',
+ 0, 0, true, false, 0, false, true, false, false, false),
+
+('investor_pro', 'Investor Pro', 49, 588, 'price_investor_pro_monthly', 'price_investor_pro_yearly',
+ '["Everything in Investor Basic", "AI analyzer (ARV, repair, MAO)", "Saved comps and downloadable reports (PDF)", "Priority support"]',
+ '["Cannot post deals"]',
+ 0, 0, true, true, -1, true, true, false, false, false),
+
+('wholesaler_basic', 'Wholesaler Basic', 25, 300, 'price_wholesaler_basic_monthly', 'price_wholesaler_basic_yearly',
+ '["5 listings per month", "Up to 5 active deals at once", "Basic analytics (views, interest)"]',
+ '["No buyer contact data", "No AI tools", "No featured placement", "No chat access"]',
+ 5, 5, false, false, 0, true, false, false, false, false),
+
+('wholesaler_pro', 'Wholesaler Pro', 49, 588, 'price_wholesaler_pro_monthly', 'price_wholesaler_pro_yearly',
+ '["20 listings per month", "AI repair estimator", "Investor demand analytics by ZIP", "Featured placement", "Verified badge", "Investor chat unlocked"]',
+ '["No team seats", "No CRM or bulk investor lists"]',
+ 20, 20, true, true, -1, true, true, true, false, false),
+
+('enterprise', 'Enterprise', 99, 1188, 'price_enterprise_monthly', 'price_enterprise_yearly',
+ '["Unlimited listings", "Team seats (multi-user management)", "CRM export", "Off-market data feed", "Bulk investor lists", "Custom branding / white-label", "Priority 1 support"]',
+ '[]',
+ -1, -1, true, true, -1, true, true, true, true, true);
