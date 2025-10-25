@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { GoogleMap, useJsApiLoader, DrawingManager, Polygon, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Polygon, InfoWindow } from '@react-google-maps/api';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 
 export type Point = { 
@@ -51,6 +51,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
   const [polygons, setPolygons] = useState<google.maps.Polygon[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
   const clustererRef = useRef<MarkerClusterer | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -215,6 +216,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
   // Handle drawing completion
   const onDrawingComplete = useCallback((polygon: google.maps.Polygon) => {
     setPolygons(prev => [...prev, polygon]);
+    setIsDrawing(false); // Stop drawing mode
     
     if (onPolygonComplete) {
       onPolygonComplete(polygon);
@@ -239,51 +241,53 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     }
   }, [onBoundsChange, onPolygonComplete]);
 
-  const drawingManagerOptions = useMemo(() => {
-    if (!isLoaded || !window.google?.maps) {
-      return null;
-    }
+  // Toggle drawing mode
+  const toggleDrawing = useCallback(() => {
+    if (!map || !window.google?.maps) return;
     
-    return {
-      drawingMode: null,
-      drawingControl: true,
-      drawingControlOptions: {
-        position: window.google.maps.ControlPosition.TOP_CENTER,
-        drawingModes: [
-          window.google.maps.drawing.OverlayType.POLYGON,
-          window.google.maps.drawing.OverlayType.CIRCLE,
-          window.google.maps.drawing.OverlayType.RECTANGLE
-        ],
-      },
-      polygonOptions: {
-        fillColor: '#3b82f6',
-        strokeColor: '#1d4ed8',
-        fillOpacity: 0.3,
-        strokeWeight: 3,
-        clickable: true,
-        editable: true,
-        zIndex: 1,
-      },
-      circleOptions: {
-        fillColor: '#10b981',
-        strokeColor: '#059669',
-        fillOpacity: 0.3,
-        strokeWeight: 3,
-        clickable: true,
-        editable: true,
-        zIndex: 1,
-      },
-      rectangleOptions: {
-        fillColor: '#f59e0b',
-        strokeColor: '#d97706',
-        fillOpacity: 0.3,
-        strokeWeight: 3,
-        clickable: true,
-        editable: true,
-        zIndex: 1,
-      },
-    };
-  }, [isLoaded]);
+    setIsDrawing(!isDrawing);
+    
+    if (!isDrawing) {
+      // Start drawing mode
+      const drawingManager = new window.google.maps.drawing.DrawingManager({
+        drawingMode: window.google.maps.drawing.OverlayType.POLYGON,
+        drawingControl: false,
+        polygonOptions: {
+          fillColor: '#3b82f6',
+          strokeColor: '#1d4ed8',
+          fillOpacity: 0.3,
+          strokeWeight: 3,
+          clickable: true,
+          editable: true,
+          zIndex: 1,
+        },
+      });
+      
+      drawingManager.setMap(map);
+      
+      // Listen for polygon completion
+      const listener = drawingManager.addListener('polygoncomplete', (polygon: google.maps.Polygon) => {
+        onDrawingComplete(polygon);
+        drawingManager.setDrawingMode(null);
+        drawingManager.setMap(null);
+      });
+      
+      // Store reference for cleanup
+      (map as unknown as { drawingManager?: google.maps.drawing.DrawingManager; drawingListener?: google.maps.MapsEventListener }).drawingManager = drawingManager;
+      (map as unknown as { drawingManager?: google.maps.drawing.DrawingManager; drawingListener?: google.maps.MapsEventListener }).drawingListener = listener;
+    } else {
+      // Stop drawing mode
+      const mapWithDrawing = map as unknown as { drawingManager?: google.maps.drawing.DrawingManager; drawingListener?: google.maps.MapsEventListener };
+      if (mapWithDrawing.drawingManager) {
+        mapWithDrawing.drawingManager.setMap(null);
+        if (mapWithDrawing.drawingListener) {
+          window.google.maps.event.removeListener(mapWithDrawing.drawingListener);
+        }
+      }
+    }
+  }, [map, isDrawing, onDrawingComplete]);
+
+  // Drawing manager options removed - using custom button instead
 
   if (loadError) {
     console.error('Google Maps load error:', loadError);
@@ -329,46 +333,35 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
         onUnmount={onUnmount}
         options={mapOptions}
       >
-        {drawingManagerOptions && (
-          <DrawingManager
-            options={drawingManagerOptions}
-            onOverlayComplete={(event) => {
-              if (event.type === window.google.maps.drawing.OverlayType.POLYGON) {
-                onDrawingComplete(event.overlay as google.maps.Polygon);
-              } else if (event.type === window.google.maps.drawing.OverlayType.CIRCLE) {
-                const circle = event.overlay as google.maps.Circle;
-                
-                if (onBoundsChange && window.google?.maps) {
-                  const bounds = circle.getBounds();
-                  if (bounds) {
-                    const boundsObject = {
-                      south: bounds.getSouthWest().lat(),
-                      north: bounds.getNorthEast().lat(),
-                      west: bounds.getSouthWest().lng(),
-                      east: bounds.getNorthEast().lng()
-                    };
-                    onBoundsChange(boundsObject);
-                  }
-                }
-              } else if (event.type === window.google.maps.drawing.OverlayType.RECTANGLE) {
-                const rectangle = event.overlay as google.maps.Rectangle;
-                
-                if (onBoundsChange && window.google?.maps) {
-                  const bounds = rectangle.getBounds();
-                  if (bounds) {
-                    const boundsObject = {
-                      south: bounds.getSouthWest().lat(),
-                      north: bounds.getNorthEast().lat(),
-                      west: bounds.getSouthWest().lng(),
-                      east: bounds.getNorthEast().lng()
-                    };
-                    onBoundsChange(boundsObject);
-                  }
-                }
-              }
+        {/* Custom Draw Button */}
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          zIndex: 1000,
+        }}>
+          <button
+            onClick={toggleDrawing}
+            style={{
+              backgroundColor: isDrawing ? '#dc2626' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              minWidth: '120px',
+              justifyContent: 'center',
             }}
-          />
-        )}
+          >
+            {isDrawing ? 'Stop Drawing' : 'Draw Area'}
+          </button>
+        </div>
         
         {polygons.map((polygon, index) => (
           <Polygon

@@ -402,9 +402,13 @@ export default function ListingsPage() {
     // Prevent country-level viewing (boundsSize > 25 degrees)
     // Allow point-level viewing for detailed inspection (boundsSize < 0.005 degrees)
     if (boundsSize > 25) {
-      // For very large bounds, don't filter - show all listings
+      // For very large bounds, show all listings (no filtering)
+      console.log('Large bounds detected, showing all listings');
       return;
     }
+    
+    // For any reasonable bounds, apply spatial filtering
+    console.log('Applying spatial filter for bounds:', typedBounds);
     
     // For very small bounds, still filter but with a buffer
     // const buffer = boundsSize < 0.01 ? 0.01 : 0; // Add buffer for small bounds
@@ -455,6 +459,7 @@ export default function ListingsPage() {
       
       if (boundedData) {
         const rows = boundedData as unknown as Row[];
+        console.log(`Found ${rows.length} listings within bounds`);
         
         const items: ListItem[] = rows.map((r) => {
           const price = toNum(r.price);
@@ -503,6 +508,13 @@ export default function ListingsPage() {
         
         setAllListings(items);
         setAllPoints(pts);
+        
+        // If no results found within bounds, show a message
+        if (items.length === 0) {
+          console.log('No listings found within the drawn area');
+        }
+      } else {
+        console.log('No bounded data received');
       }
     } catch (error) {
       console.error('❌ Error fetching bounded data:', error);
