@@ -94,12 +94,12 @@ export default function ListingCard({ listing }: Props) {
   const roi = toNum(listing.roi);
 
   return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, background: '#fff' }}>
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 8, background: '#fff' }}>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '160px 1fr',
-          gap: 14,
+          gridTemplateColumns: '120px 1fr',
+          gap: 12,
           alignItems: 'center',
         }}
       >
@@ -136,15 +136,15 @@ export default function ListingCard({ listing }: Props) {
 
         <div style={{ minWidth: 0 }}>
           <Link href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ fontWeight: 800, fontSize: 18 }}>{money(price)}</div>
-            <div style={{ color: '#374151', fontSize: 13, marginTop: 4, lineHeight: 1.2 }}>{address || '—'}</div>
-            <div style={{ color: '#111', fontSize: 13, marginTop: 8 }}>
+            <div style={{ fontWeight: 800, fontSize: 16 }}>{money(price)}</div>
+            <div style={{ color: '#374151', fontSize: 12, marginTop: 2, lineHeight: 1.2 }}>{address || '—'}</div>
+            <div style={{ color: '#111', fontSize: 12, marginTop: 4 }}>
               {beds !== undefined ? `${beds} bd` : '—'} • {baths !== undefined ? `${baths} ba` : '—'} •{' '}
               {sqft !== undefined ? `${sqft.toLocaleString()} sqft` : '—'}
             </div>
             
             {/* Additional details */}
-            <div style={{ color: '#6b7280', fontSize: 12, marginTop: 6 }}>
+            <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>
               {lotSize && `Lot: ${lotSize.toLocaleString()} sqft`}
               {garage !== undefined && ` • Garage: ${garage ? 'Yes' : 'No'}`}
               {yearBuilt && ` • Built: ${yearBuilt}`}

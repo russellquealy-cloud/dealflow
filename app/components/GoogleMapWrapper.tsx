@@ -19,7 +19,7 @@ const GoogleMapComponent = dynamic(() => import('./GoogleMapComponent'), {
 
 type Props = {
   points: Point[];
-  onBoundsChange?: (bounds: { south: number; north: number; west: number; east: number }) => void;
+  onBoundsChange?: (bounds: { south: number; north: number; west: number; east: number } | null) => void;
   onPolygonComplete?: (polygon: google.maps.Polygon) => void;
 };
 

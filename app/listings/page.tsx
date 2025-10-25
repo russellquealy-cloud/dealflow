@@ -74,6 +74,7 @@ export default function ListingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeMapBounds, setActiveMapBounds] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Load all listings from database with filtering
@@ -81,6 +82,13 @@ export default function ListingsPage() {
     let cancelled = false;
 
     const load = async () => {
+      // If map bounds are currently active, this useEffect should not interfere.
+      // The map bounds handler is responsible for setting listings in that case.
+      if (activeMapBounds) {
+        console.log('Main load skipped: Map bounds are active.');
+        return;
+      }
+      
       // Only set loading if we haven't loaded yet
       if (!hasLoaded) {
         setLoading(true);
@@ -309,7 +317,7 @@ export default function ListingsPage() {
 
     load();
     return () => { cancelled = true; };
-      }, [filters, searchQuery, mapBounds, hasLoaded]); // Re-added dependencies for filtering
+      }, [filters, searchQuery, hasLoaded, activeMapBounds]); // Re-added dependencies for filtering
 
   // No need for manual filtering - spatial function handles it
   const filteredListings = allListings;
@@ -368,6 +376,14 @@ export default function ListingsPage() {
     
     // Debounce the bounds change by 500ms
     boundsChangeTimeoutRef.current = setTimeout(async () => {
+    // Handle bounds clearing (null)
+    if (bounds === null) {
+      console.log('Map drawing cleared. Resetting activeMapBounds.');
+      setActiveMapBounds(false);
+      setMapBounds(null);
+      return;
+    }
+    
     // Validate bounds to prevent undefined values
     if (!bounds || 
         typeof bounds !== 'object' ||
@@ -384,6 +400,7 @@ export default function ListingsPage() {
         isNaN((bounds as Record<string, unknown>).north as number) || 
         isNaN((bounds as Record<string, unknown>).west as number) || 
         isNaN((bounds as Record<string, unknown>).east as number)) {
+      console.warn('Invalid bounds received, skipping map filter.');
       return;
     }
     
@@ -402,13 +419,15 @@ export default function ListingsPage() {
     // Prevent country-level viewing (boundsSize > 25 degrees)
     // Allow point-level viewing for detailed inspection (boundsSize < 0.005 degrees)
     if (boundsSize > 25) {
-      // For very large bounds, show all listings (no filtering)
-      console.log('Large bounds detected, showing all listings');
+      console.log('Large bounds detected, showing all listings (no effective map filtering).');
+      setActiveMapBounds(false); // No effective map filter, allow main useEffect to load all
+      setMapBounds(null); // Clear mapBounds state
       return;
     }
     
     // For any reasonable bounds, apply spatial filtering
     console.log('Applying spatial filter for bounds:', typedBounds);
+    setActiveMapBounds(true); // Prevent main useEffect from running
     
     // For very small bounds, still filter but with a buffer
     // const buffer = boundsSize < 0.01 ? 0.01 : 0; // Add buffer for small bounds
@@ -518,6 +537,8 @@ export default function ListingsPage() {
       }
     } catch (error) {
       console.error('❌ Error fetching bounded data:', error);
+    } finally {
+      // No need to reset isFiltering, activeMapBounds handles the overall state
     }
     }, 500); // Close setTimeout with 500ms delay
   }, [filters, searchQuery]); // Add dependencies for useCallback

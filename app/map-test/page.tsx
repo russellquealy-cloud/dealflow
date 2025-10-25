@@ -26,7 +26,7 @@ export default function MapTestPage() {
     { id: '3', lat: 32.2426, lng: -110.9947, price: 350000, title: 'Sample Property 3' }
   ];
 
-  const handleBoundsChange = (bounds: { south: number; north: number; west: number; east: number }) => {
+  const handleBoundsChange = (bounds: { south: number; north: number; west: number; east: number } | null) => {
     console.log('Map bounds changed:', bounds);
     setDebugInfo(prev => ({ ...prev, bounds }));
   };

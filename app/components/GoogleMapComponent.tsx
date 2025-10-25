@@ -15,7 +15,7 @@ export type Point = {
 
 type Props = { 
   points: Point[]; 
-  onBoundsChange?: (bounds: { south: number; north: number; west: number; east: number }) => void;
+  onBoundsChange?: (bounds: { south: number; north: number; west: number; east: number } | null) => void;
   onPolygonComplete?: (polygon: google.maps.Polygon) => void;
 };
 
@@ -284,8 +284,17 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
           window.google.maps.event.removeListener(mapWithDrawing.drawingListener);
         }
       }
+      
+      // Clear any existing polygons and reset bounds
+      polygons.forEach(polygon => polygon.setMap(null));
+      setPolygons([]);
+      
+      // Notify parent that bounds are cleared
+      if (onBoundsChange) {
+        onBoundsChange(null);
+      }
     }
-  }, [map, isDrawing, onDrawingComplete]);
+  }, [map, isDrawing, onDrawingComplete, onBoundsChange, polygons]);
 
   // Drawing manager options removed - using custom button instead
 
