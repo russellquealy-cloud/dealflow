@@ -1,4 +1,4 @@
-import { supabase } from '@/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { formatCurrency } from '@/lib/format';
 import ContactButtons from '@/components/ContactButtons';
 import { coverUrlFromListing, galleryFromListing } from '@/lib/images';
@@ -8,6 +8,7 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 
 export default async function ListingPage({ params }: { params: { id: string } }) {
+  const supabase = await createClient();
   const { data, error } = await supabase.from('listings').select('*').eq('id', params.id).maybeSingle();
   if (error) throw error;
   if (!data) return <div style={{ padding: 24 }}>Listing not found.</div>;
