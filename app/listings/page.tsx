@@ -125,8 +125,8 @@ export default function ListingsPage() {
         }
         if (filters.maxBeds) {
           console.log('🔍 Applying maxBeds filter:', filters.maxBeds);
-          // Check both beds and bedrooms fields - BOTH must be <= maxBeds
-          query = query.and(`or(beds.lte.${filters.maxBeds},beds.is.null),or(bedrooms.lte.${filters.maxBeds},bedrooms.is.null)`);
+          // Check both beds and bedrooms fields - either can be <= maxBeds
+          query = query.or(`beds.lte.${filters.maxBeds},bedrooms.lte.${filters.maxBeds}`);
         }
         if (filters.minBaths) {
           query = query.gte('baths', filters.minBaths);
@@ -470,7 +470,7 @@ export default function ListingsPage() {
       }
       if (filters.maxBeds) {
         console.log('🔍 Map bounds: Applying maxBeds filter:', filters.maxBeds);
-        query = query.and(`or(beds.lte.${filters.maxBeds},beds.is.null),or(bedrooms.lte.${filters.maxBeds},bedrooms.is.null)`);
+        query = query.or(`beds.lte.${filters.maxBeds},bedrooms.lte.${filters.maxBeds}`);
       }
       if (filters.minBaths) query = query.gte('baths', filters.minBaths);
       if (filters.maxBaths) query = query.lte('baths', filters.maxBaths);
