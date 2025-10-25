@@ -31,13 +31,44 @@ const link: React.CSSProperties = { textDecoration: "none", color: "#111", fontW
 export default function Header() {
   const router = useRouter();
   const [email, setEmail] = React.useState<string | null>(null);
+  const [userRole, setUserRole] = React.useState<string>('');
 
   React.useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user?.email ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    const loadUserData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setEmail(session.user.email);
+        // Load user role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.role);
+        }
+      }
+    };
+
+    loadUserData();
+    
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       // CRITICAL: Only update on actual auth changes, not token refreshes
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         setEmail(session?.user?.email ?? null);
+        if (session) {
+          // Load user role
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          if (profile) {
+            setUserRole(profile.role);
+          }
+        } else {
+          setUserRole('');
+        }
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -68,6 +99,9 @@ export default function Header() {
       <div style={right}>
         <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
         <Link href="/pricing" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Pricing</Link>
+        {userRole === 'admin' && (
+          <Link href="/admin" style={{ textDecoration: "none", color: "#dc2626", fontWeight: 600 }}>🔒 Admin</Link>
+        )}
         <PostDealButton />
                {email ? (
                  <>
