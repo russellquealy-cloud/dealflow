@@ -1,6 +1,11 @@
 -- Create comprehensive admin profile system
 -- Run this in your Supabase SQL Editor after the main subscription schema
 
+-- Add featured listing fields to listings table (if not already added)
+ALTER TABLE listings 
+ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS featured_until TIMESTAMP WITH TIME ZONE;
+
 -- Update profiles table with comprehensive fields
 ALTER TABLE profiles 
 ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'investor' CHECK (role IN ('wholesaler', 'investor', 'admin')),
