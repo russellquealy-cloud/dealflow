@@ -190,6 +190,10 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
 
       marker.addListener('click', () => {
         setSelectedMarker(point);
+        // Navigate to listing page
+        if (point.id) {
+          window.location.href = `/listing/${point.id}`;
+        }
       });
 
       newMarkers.push(marker);
