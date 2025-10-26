@@ -257,58 +257,68 @@ export default function ListingsPage() {
 
   // Debounce bounds changes to prevent excessive API calls
   const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isProcessingBoundsRef = useRef(false);
   
   // Helper function to handle map bounds changes with specific filters
   const handleMapBoundsChangeWithFilters = useCallback(async (bounds: unknown, filtersToUse: Filters) => {
+    // If we're already processing bounds, ignore this call to prevent loops
+    if (isProcessingBoundsRef.current) {
+      console.log('Already processing bounds, ignoring duplicate call');
+      return;
+    }
+    
     // Clear any existing timeout
     if (boundsChangeTimeoutRef.current) {
       clearTimeout(boundsChangeTimeoutRef.current);
     }
     
-    // Debounce the bounds change by 500ms
+    // Debounce the bounds change by 1000ms (increased from 500ms)
     boundsChangeTimeoutRef.current = setTimeout(async () => {
-      // Handle bounds clearing (null)
-      if (bounds === null) {
-        console.log('Map drawing cleared. Maintaining current map view bounds.');
-        return;
-      }
+      // Set processing flag
+      isProcessingBoundsRef.current = true;
       
-      // Validate bounds
-      if (!bounds || 
-          typeof bounds !== 'object' ||
-          !('south' in bounds) ||
-          !('north' in bounds) ||
-          !('west' in bounds) ||
-          !('east' in bounds) ||
-          typeof (bounds as Record<string, unknown>).south !== 'number' || 
-          typeof (bounds as Record<string, unknown>).north !== 'number' || 
-          typeof (bounds as Record<string, unknown>).west !== 'number' || 
-          typeof (bounds as Record<string, unknown>).east !== 'number' ||
-          isNaN((bounds as Record<string, unknown>).south as number) || 
-          isNaN((bounds as Record<string, unknown>).north as number) || 
-          isNaN((bounds as Record<string, unknown>).west as number) || 
-          isNaN((bounds as Record<string, unknown>).east as number)) {
-        console.log('Invalid bounds received, skipping spatial filter');
-        return;
-      }
+      try {
+        // Handle bounds clearing (null)
+        if (bounds === null) {
+          console.log('Map drawing cleared. Maintaining current map view bounds.');
+          return;
+        }
+        
+        // Validate bounds
+        if (!bounds || 
+            typeof bounds !== 'object' ||
+            !('south' in bounds) ||
+            !('north' in bounds) ||
+            !('west' in bounds) ||
+            !('east' in bounds) ||
+            typeof (bounds as Record<string, unknown>).south !== 'number' || 
+            typeof (bounds as Record<string, unknown>).north !== 'number' || 
+            typeof (bounds as Record<string, unknown>).west !== 'number' || 
+            typeof (bounds as Record<string, unknown>).east !== 'number' ||
+            isNaN((bounds as Record<string, unknown>).south as number) || 
+            isNaN((bounds as Record<string, unknown>).north as number) || 
+            isNaN((bounds as Record<string, unknown>).west as number) || 
+            isNaN((bounds as Record<string, unknown>).east as number)) {
+          console.log('Invalid bounds received, skipping spatial filter');
+          return;
+        }
 
-       const typedBounds = bounds as { south: number; north: number; west: number; east: number };
-       
-       // Only update state if bounds actually changed to prevent infinite loops
-       // Use a larger threshold to prevent tiny changes from triggering updates
-       const threshold = 0.001; // About 100 meters
-       if (!mapBounds || 
-           Math.abs(mapBounds.south - typedBounds.south) > threshold ||
-           Math.abs(mapBounds.north - typedBounds.north) > threshold ||
-           Math.abs(mapBounds.west - typedBounds.west) > threshold ||
-           Math.abs(mapBounds.east - typedBounds.east) > threshold) {
-         setMapBounds(typedBounds);
-         setActiveMapBounds(true);
-         console.log('Applying spatial filter for bounds:', typedBounds);
-       } else {
-         console.log('Bounds unchanged, skipping update to prevent flicker');
-         return;
-       }
+        const typedBounds = bounds as { south: number; north: number; west: number; east: number };
+        
+        // Only update state if bounds actually changed to prevent infinite loops
+        // Use a much larger threshold to prevent any tiny changes from triggering updates
+        const threshold = 0.01; // About 1 kilometer - much more aggressive
+        if (!mapBounds || 
+            Math.abs(mapBounds.south - typedBounds.south) > threshold ||
+            Math.abs(mapBounds.north - typedBounds.north) > threshold ||
+            Math.abs(mapBounds.west - typedBounds.west) > threshold ||
+            Math.abs(mapBounds.east - typedBounds.east) > threshold) {
+          
+          console.log('Bounds changed significantly, applying spatial filter for bounds:', typedBounds);
+          
+          // Update bounds state without triggering re-renders during processing
+          setMapBounds(typedBounds);
+          setActiveMapBounds(true);
 
       try {
         let query = supabase
@@ -432,11 +442,16 @@ export default function ListingsPage() {
             }
           }
           setAllPoints(pts);
+        } else {
+          console.log('Bounds unchanged (within threshold), skipping update to prevent flicker');
         }
       } catch (err) {
         console.error('Error in spatial filtering:', err);
+      } finally {
+        // Always reset the processing flag
+        isProcessingBoundsRef.current = false;
       }
-    }, 500);
+    }, 1000); // Increased debounce to 1000ms
   }, [searchQuery]);
   
   const handleMapBoundsChange = useCallback(async (bounds: unknown) => {
