@@ -9,7 +9,13 @@ export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<{ type: string; company_name?: string } | null>(null);
+  const [profile, setProfile] = useState<{ 
+    role?: string; 
+    membership_tier?: string; 
+    company_name?: string;
+    full_name?: string;
+    verified?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
