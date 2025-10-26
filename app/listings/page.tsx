@@ -77,7 +77,7 @@ export default function ListingsPage() {
       clearTimeout(boundsChangeTimeoutRef.current);
     }
 
-    // Debounce the bounds change by 1000ms
+    // Debounce the bounds change by 2000ms - much more aggressive
     boundsChangeTimeoutRef.current = setTimeout(async () => {
       // Set processing flag
       isProcessingBoundsRef.current = true;
@@ -111,7 +111,7 @@ export default function ListingsPage() {
         const typedBounds = bounds as { south: number; north: number; west: number; east: number };
         
         // Only update state if bounds actually changed to prevent infinite loops
-        const threshold = 0.01; // About 1 kilometer
+        const threshold = 0.05; // About 5 kilometers - much more aggressive
         if (!mapBounds || 
             Math.abs(mapBounds.south - typedBounds.south) > threshold ||
             Math.abs(mapBounds.north - typedBounds.north) > threshold ||
@@ -241,7 +241,7 @@ export default function ListingsPage() {
         // Always reset the processing flag
         isProcessingBoundsRef.current = false;
       }
-    }, 1000);
+    }, 2000);
   }, [searchQuery, mapBounds]);
 
   const handleMapBoundsChange = useCallback(async (bounds: unknown) => {
