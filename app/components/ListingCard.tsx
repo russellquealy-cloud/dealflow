@@ -100,24 +100,24 @@ export default function ListingCard({ listing }: Props) {
   const isFeatured = listing.featured && (!listing.featured_until || new Date(listing.featured_until) > new Date());
 
   return (
-    <div style={{ 
-      border: isFeatured ? '2px solid #f59e0b' : '1px solid #e5e7eb', 
-      borderRadius: 8, 
-      overflow: 'hidden',
-      background: isFeatured ? '#fffbeb' : '#fff',
-      position: 'relative',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      transition: 'box-shadow 0.2s ease',
-      cursor: 'pointer'
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-    }}
-    >
-      <Link href={href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+    <Link href={href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+      <div style={{ 
+        border: isFeatured ? '2px solid #f59e0b' : '1px solid #e5e7eb', 
+        borderRadius: 8, 
+        overflow: 'hidden',
+        background: isFeatured ? '#fffbeb' : '#fff',
+        position: 'relative',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        transition: 'box-shadow 0.2s ease',
+        cursor: 'pointer'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+      }}
+      >
         {/* Image Section */}
         <div style={{ position: 'relative', width: '100%', height: '200px', overflow: 'hidden', background: '#f3f4f6' }}>
           {img ? (
@@ -197,6 +197,43 @@ export default function ListingCard({ listing }: Props) {
             {address || '—'}
           </div>
 
+          {/* Investment Metrics - HIGHLIGHTED for investors */}
+          {(arv !== undefined || repairs !== undefined) && (
+            <div style={{ 
+              background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', 
+              border: '1px solid #0ea5e9', 
+              borderRadius: 6, 
+              padding: '8px', 
+              marginBottom: '8px' 
+            }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#0369a1', marginBottom: '4px' }}>
+                💰 Investment Opportunity
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {arv !== undefined && (
+                  <div style={{ fontSize: '11px', color: '#0c4a6e' }}>
+                    <strong>ARV:</strong> {money(arv)}
+                  </div>
+                )}
+                {repairs !== undefined && (
+                  <div style={{ fontSize: '11px', color: '#0c4a6e' }}>
+                    <strong>Repairs:</strong> {money(repairs)}
+                  </div>
+                )}
+                {spread !== undefined && spread > 0 && (
+                  <div style={{ fontSize: '11px', color: '#0c4a6e' }}>
+                    <strong>Spread:</strong> {money(spread)}
+                  </div>
+                )}
+                {roi !== undefined && roi > 0 && (
+                  <div style={{ fontSize: '11px', color: '#0c4a6e' }}>
+                    <strong>ROI:</strong> {roi}%
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Description preview */}
           {description && (
             <div style={{ color: '#6b7280', fontSize: '12px', lineHeight: 1.4, marginBottom: '8px', maxHeight: '2.8em', overflow: 'hidden' }}>
@@ -204,67 +241,12 @@ export default function ListingCard({ listing }: Props) {
             </div>
           )}
 
-          {/* Investment Tags - Only show key ones */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '8px' }}>
-            {arv !== undefined && (
-              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: 12, background: '#E6FBF7', color: '#0f766e' }}>
-                ARV {money(arv)}
-              </span>
-            )}
-            {spread !== undefined && spread > 0 && (
-              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: 12, background: '#E6FBF7', color: '#0f766e' }}>
-                Spread {money(spread)}
-              </span>
-            )}
-            {roi !== undefined && roi > 0 && (
-              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: 12, background: '#E6FBF7', color: '#0f766e' }}>
-                ROI {roi}%
-              </span>
-            )}
-          </div>
-
           {/* View Details Link */}
           <div style={{ color: '#3b82f6', fontSize: '12px', fontWeight: '600' }}>
             View Details →
           </div>
         </div>
-      </Link>
-
-      {/* Contact buttons - OUTSIDE the Link to avoid nested <a> tags */}
-      {(ownerPhone || ownerEmail) && (
-        <div style={{ padding: '0 12px 12px 12px' }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {ownerPhone && (
-              <a href={`tel:${ownerPhone}`} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 4, background: '#10b981', color: 'white', textDecoration: 'none', flex: 1, textAlign: 'center' }}>
-                📞 Call
-              </a>
-            )}
-            {ownerPhone && (
-              <a href={`sms:${ownerPhone}`} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 4, background: '#3b82f6', color: 'white', textDecoration: 'none', flex: 1, textAlign: 'center' }}>
-                💬 Text
-              </a>
-            )}
-            {ownerEmail && (
-              <a href={`mailto:${ownerEmail}`} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 4, background: '#8b5cf6', color: 'white', textDecoration: 'none', flex: 1, textAlign: 'center' }}>
-                ✉️ Email
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Message Form */}
-      {ownerEmail && (
-        <div style={{ padding: '0 12px 12px 12px' }}>
-          <MessageForm
-            listingId={String(listing.id)}
-            ownerEmail={ownerEmail}
-            ownerPhone={ownerPhone}
-            ownerName={listing.owner_name}
-            listingTitle={listing.title}
-          />
-        </div>
-      )}
-    </div>
+      </div>
+    </Link>
   );
 }

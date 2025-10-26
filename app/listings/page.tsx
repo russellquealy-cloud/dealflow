@@ -111,7 +111,7 @@ export default function ListingsPage() {
         const typedBounds = bounds as { south: number; north: number; west: number; east: number };
         
         // Only update state if bounds actually changed to prevent infinite loops
-        const threshold = 0.05; // About 5 kilometers - much more aggressive
+        const threshold = 0.1; // About 10 kilometers - even more aggressive anti-flicker
         if (!mapBounds || 
             Math.abs(mapBounds.south - typedBounds.south) > threshold ||
             Math.abs(mapBounds.north - typedBounds.north) > threshold ||

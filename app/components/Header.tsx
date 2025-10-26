@@ -55,7 +55,7 @@ export default function Header() {
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       // CRITICAL: Only update on actual auth changes, not token refreshes
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        setEmail(session?.user?.email ?? null);
+        setEmail(session?.user?.email || null);
         if (session) {
           // Load user role
           const { data: profile } = await supabase
@@ -99,10 +99,11 @@ export default function Header() {
         href="/listings" 
         style={link}
         onClick={(e) => {
-          // If already on listings page, force a full page reload to reset state
+          // If already on listings page, just prevent the default and let the page stay
           if (typeof window !== 'undefined' && window.location.pathname === '/listings') {
             e.preventDefault();
-            window.location.href = '/listings';
+            // Just scroll to top instead of reloading
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         }}
       >
