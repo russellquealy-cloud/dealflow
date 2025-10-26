@@ -62,12 +62,18 @@ export default function DebugFiltersPage() {
   const applyFilter = () => {
     console.log('🔍 Applying filter with maxBeds:', maxBeds);
     
-    // Test different filter approaches
+    // Test different filter approaches with the clean data
     const filtered1 = rawData.filter(item => {
       const beds = item.beds;
       const bedrooms = item.bedrooms;
-      console.log(`Item ${item.id}: beds=${beds}, bedrooms=${bedrooms}`);
-      return (beds == null || beds <= maxBeds) && (bedrooms == null || bedrooms <= maxBeds);
+      console.log(`Item ${item.id}: beds=${beds}, bedrooms=${bedrooms}, title="${item.title}"`);
+      
+      // Since we cleaned the data, beds should equal bedrooms
+      if (beds !== bedrooms) {
+        console.warn(`⚠️ Data inconsistency found: ${item.title} has beds=${beds}, bedrooms=${bedrooms}`);
+      }
+      
+      return beds <= maxBeds && bedrooms <= maxBeds;
     });
 
     const filtered2 = rawData.filter(item => {
@@ -82,9 +88,16 @@ export default function DebugFiltersPage() {
     
     console.log('📊 Filter Results:');
     console.log('- Raw data count:', rawData.length);
-    console.log('- Filtered1 (beds AND bedrooms):', filtered1.length);
+    console.log('- Filtered1 (beds AND bedrooms <= max):', filtered1.length);
     console.log('- Filtered2 (bedrooms only):', filtered2.length);
     console.log('- Filtered3 (beds only):', filtered3.length);
+    
+    // Show which items were filtered out
+    const filteredOut = rawData.filter(item => item.beds > maxBeds || item.bedrooms > maxBeds);
+    console.log('- Items filtered out:', filteredOut.length);
+    filteredOut.forEach(item => {
+      console.log(`  ❌ Filtered: ${item.title} (beds: ${item.beds}, bedrooms: ${item.bedrooms})`);
+    });
   };
 
   const testSupabaseFilter = async () => {

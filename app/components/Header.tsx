@@ -95,7 +95,19 @@ export default function Header() {
 
   return (
     <header style={wrap}>
-      <Link href="/listings" style={link}>Off Axis Deals</Link>
+      <Link 
+        href="/listings" 
+        style={link}
+        onClick={(e) => {
+          // If already on listings page, force a full page reload to reset state
+          if (typeof window !== 'undefined' && window.location.pathname === '/listings') {
+            e.preventDefault();
+            window.location.href = '/listings';
+          }
+        }}
+      >
+        Off Axis Deals
+      </Link>
       <div style={right}>
         <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
         <Link href="/pricing" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Pricing</Link>

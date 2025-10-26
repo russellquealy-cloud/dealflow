@@ -368,6 +368,8 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
           top: '10px',
           right: '10px',
           zIndex: 1000,
+          display: 'flex',
+          gap: '8px'
         }}>
           <button
             onClick={toggleDrawing}
@@ -390,6 +392,38 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
           >
             {isDrawing ? 'Stop Drawing' : 'Draw Area'}
           </button>
+          
+          {polygons.length > 0 && (
+            <button
+              onClick={() => {
+                // Clear all polygons
+                polygons.forEach(polygon => polygon.setMap(null));
+                setPolygons([]);
+                // Reset bounds to show all listings
+                if (onBoundsChange) {
+                  onBoundsChange(null);
+                }
+              }}
+              style={{
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                minWidth: '100px',
+                justifyContent: 'center',
+              }}
+            >
+              Clear Area
+            </button>
+          )}
         </div>
         
         {polygons.map((polygon, index) => (

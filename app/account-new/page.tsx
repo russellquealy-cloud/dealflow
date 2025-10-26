@@ -295,22 +295,129 @@ export default function AccountPage() {
           }
         </p>
 
-        {/* Role Switch Button */}
-        <button
-          onClick={handleRoleSwitch}
-          style={{ 
-            padding: '10px 20px', 
-            border: '1px solid #6b7280', 
-            borderRadius: 8,
-            background: '#fff',
-            color: '#6b7280',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: 14
-          }}
-        >
-          Switch to {profile?.role === 'wholesaler' ? 'Investor' : 'Wholesaler'} Account
-        </button>
+        {/* Role Switch Button - ADMIN ONLY */}
+        {profile?.role === 'admin' ? (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ 
+              padding: '12px 16px', 
+              background: '#dc2626', 
+              color: '#fff', 
+              borderRadius: 8,
+              marginBottom: 12,
+              fontSize: 14,
+              fontWeight: 600
+            }}>
+              🔒 ADMIN ONLY: Test Different Account Types
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={async () => {
+                  if (!user?.id) return;
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ 
+                      role: 'investor',
+                      membership_tier: 'investor_free'
+                    })
+                    .eq('id', user.id);
+                    
+                  if (!error) {
+                    setProfile(prev => prev ? { ...prev, role: 'investor', membership_tier: 'investor_free' } : null);
+                    alert('Switched to Investor Free for testing');
+                  }
+                }}
+                style={{ 
+                  padding: '8px 16px', 
+                  border: '1px solid #3b82f6', 
+                  borderRadius: 6,
+                  background: profile?.role === 'investor' ? '#3b82f6' : '#fff',
+                  color: profile?.role === 'investor' ? '#fff' : '#3b82f6',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: 12
+                }}
+              >
+                💼 Test Investor
+              </button>
+              
+              <button
+                onClick={async () => {
+                  if (!user?.id) return;
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ 
+                      role: 'wholesaler',
+                      membership_tier: 'wholesaler_free'
+                    })
+                    .eq('id', user.id);
+                    
+                  if (!error) {
+                    setProfile(prev => prev ? { ...prev, role: 'wholesaler', membership_tier: 'wholesaler_free' } : null);
+                    alert('Switched to Wholesaler Free for testing');
+                  }
+                }}
+                style={{ 
+                  padding: '8px 16px', 
+                  border: '1px solid #f59e0b', 
+                  borderRadius: 6,
+                  background: profile?.role === 'wholesaler' ? '#f59e0b' : '#fff',
+                  color: profile?.role === 'wholesaler' ? '#fff' : '#f59e0b',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: 12
+                }}
+              >
+                🏡 Test Wholesaler
+              </button>
+              
+              <button
+                onClick={async () => {
+                  if (!user?.id) return;
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ 
+                      role: 'admin',
+                      membership_tier: 'enterprise'
+                    })
+                    .eq('id', user.id);
+                    
+                  if (!error) {
+                    setProfile(prev => prev ? { ...prev, role: 'admin', membership_tier: 'enterprise' } : null);
+                    alert('Restored Admin/Enterprise access');
+                  }
+                }}
+                style={{ 
+                  padding: '8px 16px', 
+                  border: '1px solid #dc2626', 
+                  borderRadius: 6,
+                  background: profile?.role === 'admin' ? '#dc2626' : '#fff',
+                  color: profile?.role === 'admin' ? '#fff' : '#dc2626',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: 12
+                }}
+              >
+                🔒 Restore Admin
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={handleRoleSwitch}
+            style={{ 
+              padding: '10px 20px', 
+              border: '1px solid #6b7280', 
+              borderRadius: 8,
+              background: '#fff',
+              color: '#6b7280',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: 14
+            }}
+          >
+            Switch to {profile?.role === 'wholesaler' ? 'Investor' : 'Wholesaler'} Account
+          </button>
+        )}
       </div>
 
       {/* Analytics */}

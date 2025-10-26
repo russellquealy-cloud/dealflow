@@ -395,9 +395,9 @@ export default function ListingsPage() {
     boundsChangeTimeoutRef.current = setTimeout(async () => {
     // Handle bounds clearing (null)
     if (bounds === null) {
-      console.log('Map drawing cleared. Resetting activeMapBounds.');
-      setActiveMapBounds(false);
-      setMapBounds(null);
+      console.log('Map drawing cleared. Maintaining current map view bounds.');
+      // DON'T reset activeMapBounds - keep the current map view
+      // This prevents reverting to ALL listings when clearing the drawing
       return;
     }
     
@@ -594,7 +594,7 @@ export default function ListingsPage() {
   // Removed debug logs to improve performance
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden', position: 'relative' }}>
       {/* header + search */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
         <h2 className="text-2xl lg:text-3xl font-bold m-0">Find Deals</h2>
