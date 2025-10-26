@@ -96,16 +96,8 @@ export default function Header() {
   return (
     <header style={wrap}>
       <Link 
-        href="/listings" 
+        href="/welcome" 
         style={link}
-        onClick={(e) => {
-          // If already on listings page, just prevent the default and let the page stay
-          if (typeof window !== 'undefined' && window.location.pathname === '/listings') {
-            e.preventDefault();
-            // Just scroll to top instead of reloading
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-        }}
       >
         Off Axis Deals
       </Link>
