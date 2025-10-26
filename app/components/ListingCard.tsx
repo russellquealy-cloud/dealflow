@@ -52,6 +52,17 @@ export default function ListingCard({ listing }: Props) {
   const beds = listing.bedrooms;
   const baths = listing.bathrooms;
   const sqft = listing.home_sqft;
+  
+  // Debug logging for data issues
+  console.log('ListingCard data debug:', {
+    id: listing.id,
+    bedrooms: listing.bedrooms,
+    bathrooms: listing.bathrooms,
+    home_sqft: listing.home_sqft,
+    beds,
+    baths,
+    sqft
+  });
   const lotSize = toNum(listing.lot_size);
   const garage = listing.garage;
   const yearBuilt = listing.year_built;
@@ -71,7 +82,15 @@ export default function ListingCard({ listing }: Props) {
 
   const img = listing.cover_image_url ?? (listing.images && listing.images[0]) ?? null;
   
-  // Removed debug logging to improve performance
+  // Debug logging for image issues
+  if (img) {
+    console.log('ListingCard image debug:', {
+      id: listing.id,
+      cover_image_url: listing.cover_image_url,
+      images: listing.images,
+      finalImg: img
+    });
+  }
   
   const arv = toNum(listing.arv);
   const repairs = toNum(listing.repairs);
