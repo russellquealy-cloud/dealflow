@@ -97,7 +97,11 @@ export default function ListingsPage() {
       // If map bounds are currently active, this useEffect should not interfere.
       // The map bounds handler is responsible for setting listings in that case.
       if (activeMapBounds) {
-        console.log('Main load skipped: Map bounds are active.');
+        console.log('Main load skipped: Map bounds are active. Triggering map bounds refresh to apply new filters.');
+        // Trigger the map bounds handler to re-apply filters with current bounds
+        if (mapBounds) {
+          handleMapBoundsChange(mapBounds);
+        }
         return;
       }
       
