@@ -78,7 +78,20 @@ export default function ListingsPage() {
       sortByChanged: filters.sortBy !== newFilters.sortBy,
       timestamp: new Date().toLocaleTimeString()
     });
-    setFilters(newFilters);
+    
+    // If only sort changed and map bounds are active, force a refresh
+    if (filters.sortBy !== newFilters.sortBy && activeMapBounds && mapBounds) {
+      console.log('🔄 Sort changed with active map bounds, forcing immediate refresh');
+      // Temporarily disable activeMapBounds to allow the main useEffect to run
+      setActiveMapBounds(false);
+      setFilters(newFilters);
+      // Re-enable activeMapBounds after a short delay
+      setTimeout(() => {
+        setActiveMapBounds(true);
+      }, 100);
+    } else {
+      setFilters(newFilters);
+    }
   };
 
   const [allListings, setAllListings] = useState<ListItem[]>([]);
@@ -100,7 +113,8 @@ export default function ListingsPage() {
         console.log('Main load skipped: Map bounds are active. Triggering map bounds refresh to apply new filters.');
         console.log('🔍 Current mapBounds:', mapBounds);
         console.log('🔍 handleMapBoundsChange function:', typeof handleMapBoundsChange);
-        // Trigger the map bounds handler to re-apply filters with current bounds
+        
+        // For sort changes, temporarily reset activeMapBounds to allow main load, then restore it
         if (mapBounds) {
           console.log('✅ Calling handleMapBoundsChange with bounds:', mapBounds);
           handleMapBoundsChange(mapBounds);
