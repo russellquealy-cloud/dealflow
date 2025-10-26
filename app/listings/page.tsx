@@ -69,6 +69,18 @@ export default function ListingsPage() {
     sortBy: 'newest',
   }));
 
+  // Debug filter changes
+  const handleFiltersChange = (newFilters: Filters) => {
+    console.log('🔄 LISTINGS PAGE: Filter change received:', {
+      old: filters,
+      new: newFilters,
+      maxBedsChanged: filters.maxBeds !== newFilters.maxBeds,
+      sortByChanged: filters.sortBy !== newFilters.sortBy,
+      timestamp: new Date().toLocaleTimeString()
+    });
+    setFilters(newFilters);
+  };
+
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -625,7 +637,7 @@ export default function ListingsPage() {
 
       {/* filters */}
       <div className="px-4 lg:px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white z-20 relative shadow-sm">
-        <FiltersBar value={filters} onChange={setFilters} />
+        <FiltersBar value={filters} onChange={handleFiltersChange} />
       </div>
 
       {/* the split fills the rest of the viewport - NO SCROLL */}
