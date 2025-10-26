@@ -82,12 +82,6 @@ export default function ListingsPage() {
     let cancelled = false;
 
     const load = async () => {
-      console.log('🔄 Main useEffect triggered', { 
-        activeMapBounds, 
-        filtersCount: Object.keys(filters).length,
-        searchQuery: searchQuery?.length || 0
-      });
-      
       // If map bounds are currently active, this useEffect should not interfere.
       // The map bounds handler is responsible for setting listings in that case.
       if (activeMapBounds) {
@@ -97,7 +91,6 @@ export default function ListingsPage() {
       
       // Set loading state
       setLoading(true);
-      console.log('🔍 Starting to load listings...');
       
       try {
         // Start with a simple query to test connection
@@ -108,20 +101,6 @@ export default function ListingsPage() {
           setLoading(false);
           return;
         }
-        
-        console.log('✅ Database connection successful');
-        
-        // Add a simple test to see if we have any data at all
-        const { data: simpleTest, error: simpleError } = await supabase
-          .from('listings')
-          .select('id, title, city')
-          .limit(5);
-          
-        console.log('📊 Simple test query result:', { 
-          count: simpleTest?.length || 0, 
-          error: simpleError,
-          sample: simpleTest?.[0] 
-        });
         
         // Build the query directly from the listings table
         let query = supabase
@@ -354,7 +333,7 @@ export default function ListingsPage() {
 
     load();
     return () => { cancelled = true; };
-      }, [filters, searchQuery, activeMapBounds]); // Removed hasLoaded to prevent infinite loop
+  }, [filters.minPrice, filters.maxPrice, filters.minBeds, filters.maxBeds, filters.minBaths, filters.maxBaths, filters.minSqft, filters.maxSqft, searchQuery, activeMapBounds]); // Use individual filter properties instead of the whole object
 
   // No need for manual filtering - spatial function handles it
   const filteredListings = allListings;
@@ -591,7 +570,7 @@ export default function ListingsPage() {
       // No need to reset isFiltering, activeMapBounds handles the overall state
     }
     }, 500); // Close setTimeout with 500ms delay
-  }, [filters, searchQuery]); // Add dependencies for useCallback
+  }, [filters.minPrice, filters.maxPrice, filters.minBeds, filters.maxBeds, filters.minBaths, filters.maxBaths, filters.minSqft, filters.maxSqft, searchQuery]); // Use individual filter properties
 
   // Memoize map component to prevent re-renders
   const MapComponent = useMemo(() => {
@@ -611,15 +590,7 @@ export default function ListingsPage() {
     );
   }
 
-  // Debug: Show what we have (only in development) - reduced frequency
-  if (process.env.NODE_ENV === 'development' && hasLoaded) {
-    console.log('=== RENDER DEBUG ===');
-    console.log('Loading:', loading);
-    console.log('Has loaded:', hasLoaded);
-    console.log('All listings:', allListings.length);
-    console.log('All points:', allPoints.length);
-    console.log('Filtered listings:', filteredListings.length);
-  }
+  // Removed debug logs to improve performance
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative' }}>
