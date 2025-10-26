@@ -320,7 +320,7 @@ export default function ListingsPage() {
           setMapBounds(typedBounds);
           setActiveMapBounds(true);
 
-      try {
+          try {
         let query = supabase
           .from('listings')
           .select('*, latitude, longitude')
@@ -441,12 +441,15 @@ export default function ListingsPage() {
               });
             }
           }
-          setAllPoints(pts);
+            setAllPoints(pts);
+          } catch (err) {
+            console.error('Error in spatial filtering:', err);
+          }
         } else {
           console.log('Bounds unchanged (within threshold), skipping update to prevent flicker');
         }
       } catch (err) {
-        console.error('Error in spatial filtering:', err);
+        console.error('Error in outer try block:', err);
       } finally {
         // Always reset the processing flag
         isProcessingBoundsRef.current = false;
