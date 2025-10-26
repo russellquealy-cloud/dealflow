@@ -495,15 +495,21 @@ export default function ListingsPage() {
       }
       
       // Apply sorting
+      console.log('🔄 Map bounds: Applying sorting:', filters.sortBy);
       if (filters.sortBy === 'price_asc') {
+        console.log('📊 Sorting by price ascending');
         query = query.order('price', { ascending: true, nullsFirst: false });
       } else if (filters.sortBy === 'price_desc') {
+        console.log('📊 Sorting by price descending');
         query = query.order('price', { ascending: false, nullsFirst: false });
       } else if (filters.sortBy === 'sqft_asc') {
+        console.log('📊 Sorting by sqft ascending');
         query = query.order('sqft', { ascending: true, nullsFirst: false });
       } else if (filters.sortBy === 'sqft_desc') {
+        console.log('📊 Sorting by sqft descending');
         query = query.order('sqft', { ascending: false, nullsFirst: false });
       } else {
+        console.log('📊 Sorting by newest (default)');
         query = query.order('created_at', { ascending: false, nullsFirst: false });
       }
 
@@ -516,6 +522,15 @@ export default function ListingsPage() {
       
       if (boundedData) {
         const rows = boundedData as unknown as Row[];
+        
+        console.log('📊 Query results for sorting debug:', rows.map(item => ({
+          id: item.id,
+          title: item.title,
+          price: item.price,
+          sqft: item.sqft,
+          created_at: item.created_at
+        })));
+        
         console.log(`Found ${rows.length} listings within bounds`);
         
         const items: ListItem[] = rows.map((r) => {
