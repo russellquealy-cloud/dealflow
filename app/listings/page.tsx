@@ -123,9 +123,8 @@ export default function ListingsPage() {
         }
         if (filters.maxBeds) {
           console.log('🔍 Applying maxBeds filter:', filters.maxBeds);
-          // CRITICAL FIX: Both beds AND bedrooms must be <= maxBeds (if they exist)
-          // This ensures that if either field exceeds the limit, the listing is filtered out
-          query = query.and(`or(beds.lte.${filters.maxBeds},beds.is.null),or(bedrooms.lte.${filters.maxBeds},bedrooms.is.null)`);
+          // Since we cleaned the data, beds = bedrooms, so we can use simple filter
+          query = query.lte('bedrooms', filters.maxBeds);
         }
         if (filters.minBaths) {
           query = query.gte('baths', filters.minBaths);
@@ -467,8 +466,8 @@ export default function ListingsPage() {
       }
       if (filters.maxBeds) {
         console.log('🔍 Map bounds: Applying maxBeds filter:', filters.maxBeds);
-        // CRITICAL FIX: Both beds AND bedrooms must be <= maxBeds (if they exist)
-        query = query.and(`or(beds.lte.${filters.maxBeds},beds.is.null),or(bedrooms.lte.${filters.maxBeds},bedrooms.is.null)`);
+        // Since we cleaned the data, beds = bedrooms, so we can use simple filter
+        query = query.lte('bedrooms', filters.maxBeds);
       }
       if (filters.minBaths) query = query.gte('baths', filters.minBaths);
       if (filters.maxBaths) query = query.lte('baths', filters.maxBaths);

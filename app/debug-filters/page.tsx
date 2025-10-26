@@ -153,29 +153,48 @@ export default function DebugFiltersPage() {
 
       console.log('✅ Beds filter result:', bedsData?.length, 'listings');
 
-      // Test 4: Complex filter (both fields)
+      // Test 4: Complex filter (both fields) - Using simpler approach
       console.log('📊 Test 4: Complex filter (both beds AND bedrooms)...');
-      const { data: complexData, error: complexError } = await supabase
+      
+      // Try a simpler approach first - just use bedrooms since data is cleaned
+      const { data: simpleData, error: simpleError } = await supabase
         .from('listings')
         .select('id, title, beds, bedrooms, baths, price, city, state')
-        .and(`or(beds.lte.${maxBeds},beds.is.null),or(bedrooms.lte.${maxBeds},bedrooms.is.null)`)
+        .lte('bedrooms', maxBeds)
         .order('created_at', { ascending: false });
 
-      if (complexError) {
-        console.error('❌ Error with complex filter:', complexError);
-        console.log('📝 Complex filter query was:', `or(beds.lte.${maxBeds},beds.is.null),or(bedrooms.lte.${maxBeds},bedrooms.is.null)`);
-        alert(`Error with complex filter: ${complexError.message}`);
+      if (simpleError) {
+        console.error('❌ Error with simple bedrooms filter:', simpleError);
+        alert(`Error with simple bedrooms filter: ${simpleError.message}`);
         return;
       }
 
-      console.log('✅ Complex filter result:', complexData?.length, 'listings');
+      console.log('✅ Simple bedrooms filter result:', simpleData?.length, 'listings');
+
+      // Test 5: Try the complex OR filter with proper syntax
+      console.log('📊 Test 5: Complex OR filter...');
+      const { data: orData, error: orError } = await supabase
+        .from('listings')
+        .select('id, title, beds, bedrooms, baths, price, city, state')
+        .or(`bedrooms.lte.${maxBeds},beds.lte.${maxBeds}`)
+        .order('created_at', { ascending: false });
+
+      if (orError) {
+        console.error('❌ Error with OR filter:', orError);
+        console.log('📝 OR filter query was:', `bedrooms.lte.${maxBeds},beds.lte.${maxBeds}`);
+        alert(`Error with OR filter: ${orError.message}`);
+        return;
+      }
+
+      console.log('✅ OR filter result:', orData?.length, 'listings');
 
       // Summary
       console.log('📋 SUMMARY:');
       console.log(`- All listings: ${allData?.length || 0}`);
       console.log(`- Bedrooms <= ${maxBeds}: ${bedroomsData?.length || 0}`);
       console.log(`- Beds <= ${maxBeds}: ${bedsData?.length || 0}`);
-      console.log(`- Complex filter: ${complexData?.length || 0}`);
+      console.log(`- Simple bedrooms filter: ${simpleData?.length || 0}`);
+      console.log(`- OR filter: ${orData?.length || 0}`);
 
       // Show which items were filtered out in each test
       if (allData && bedroomsData) {
@@ -188,7 +207,7 @@ export default function DebugFiltersPage() {
         });
       }
 
-      alert(`Supabase filter tests completed! Check console for detailed results.\n\nSummary:\n- All listings: ${allData?.length || 0}\n- Bedrooms <= ${maxBeds}: ${bedroomsData?.length || 0}\n- Beds <= ${maxBeds}: ${bedsData?.length || 0}\n- Complex filter: ${complexData?.length || 0}`);
+      alert(`Supabase filter tests completed! Check console for detailed results.\n\nSummary:\n- All listings: ${allData?.length || 0}\n- Bedrooms <= ${maxBeds}: ${bedroomsData?.length || 0}\n- Beds <= ${maxBeds}: ${bedsData?.length || 0}\n- Simple filter: ${simpleData?.length || 0}\n- OR filter: ${orData?.length || 0}`);
 
     } catch (err) {
       console.error('💥 Unexpected error during Supabase testing:', err);
