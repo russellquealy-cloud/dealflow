@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/supabase/client';
 import FiltersBar, { type Filters } from '@/components/FiltersBar';
-import { ListingsSplitClient } from '@/components/ListingsSplitClient';
-import { GoogleMapWrapper } from '@/components/GoogleMapWrapper';
-import { SearchBarClient } from '@/components/SearchBarClient';
-import { LocationSearch } from '@/components/LocationSearch';
-import { PostDealButton } from '@/components/PostDealButton';
+import ListingsSplitClient from '@/components/ListingsSplitClient';
+import GoogleMapWrapper from '@/components/GoogleMapWrapper';
+import SearchBarClient from '@/components/SearchBarClient';
+import LocationSearch from '@/components/LocationSearch';
+import PostDealButton from '@/components/PostDealButton';
 import { toNum } from '@/lib/format';
 import type { ListItem, MapPoint } from '@/types';
 
