@@ -63,12 +63,20 @@ export default function ListingsPage() {
   // Debounce bounds changes to prevent excessive API calls
   const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingBoundsRef = useRef(false);
+  const lastBoundsUpdateRef = useRef<number>(0);
 
   // Helper function to handle map bounds changes with specific filters
   const handleMapBoundsChangeWithFilters = useCallback(async (bounds: unknown, filtersToUse: Filters) => {
     // If we're already processing bounds, ignore this call to prevent loops
     if (isProcessingBoundsRef.current) {
       console.log('Already processing bounds, ignoring duplicate call');
+      return;
+    }
+
+    // Prevent rapid successive calls (minimum 1 second between updates)
+    const now = Date.now();
+    if (now - lastBoundsUpdateRef.current < 1000) {
+      console.log('Too soon since last bounds update, ignoring call');
       return;
     }
 
@@ -111,7 +119,7 @@ export default function ListingsPage() {
         const typedBounds = bounds as { south: number; north: number; west: number; east: number };
         
         // Only update state if bounds actually changed to prevent infinite loops
-        const threshold = 0.1; // About 10 kilometers - even more aggressive anti-flicker
+        const threshold = 0.2; // About 20 kilometers - extremely aggressive anti-flicker
         if (!mapBounds || 
             Math.abs(mapBounds.south - typedBounds.south) > threshold ||
             Math.abs(mapBounds.north - typedBounds.north) > threshold ||
@@ -228,6 +236,9 @@ export default function ListingsPage() {
               
               setAllListings(items);
               setAllPoints(pts);
+              
+              // Update timestamp to prevent rapid successive calls
+              lastBoundsUpdateRef.current = Date.now();
             }
           } catch (err) {
             console.error('Error in spatial filtering:', err);
@@ -241,7 +252,7 @@ export default function ListingsPage() {
         // Always reset the processing flag
         isProcessingBoundsRef.current = false;
       }
-    }, 2000);
+    }, 3000); // Increased to 3 seconds for maximum stability
   }, [searchQuery, mapBounds]);
 
   const handleMapBoundsChange = useCallback(async (bounds: unknown) => {
