@@ -98,9 +98,14 @@ export default function ListingsPage() {
       // The map bounds handler is responsible for setting listings in that case.
       if (activeMapBounds) {
         console.log('Main load skipped: Map bounds are active. Triggering map bounds refresh to apply new filters.');
+        console.log('🔍 Current mapBounds:', mapBounds);
+        console.log('🔍 handleMapBoundsChange function:', typeof handleMapBoundsChange);
         // Trigger the map bounds handler to re-apply filters with current bounds
         if (mapBounds) {
+          console.log('✅ Calling handleMapBoundsChange with bounds:', mapBounds);
           handleMapBoundsChange(mapBounds);
+        } else {
+          console.log('❌ mapBounds is null, cannot refresh');
         }
         return;
       }
