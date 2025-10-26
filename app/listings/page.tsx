@@ -292,10 +292,21 @@ export default function ListingsPage() {
         return;
       }
 
-      const typedBounds = bounds as { south: number; north: number; west: number; east: number };
-      setMapBounds(typedBounds);
-      setActiveMapBounds(true);
-      console.log('Applying spatial filter for bounds:', typedBounds);
+       const typedBounds = bounds as { south: number; north: number; west: number; east: number };
+       
+       // Only update state if bounds actually changed to prevent infinite loops
+       if (!mapBounds || 
+           Math.abs(mapBounds.south - typedBounds.south) > 0.0001 ||
+           Math.abs(mapBounds.north - typedBounds.north) > 0.0001 ||
+           Math.abs(mapBounds.west - typedBounds.west) > 0.0001 ||
+           Math.abs(mapBounds.east - typedBounds.east) > 0.0001) {
+         setMapBounds(typedBounds);
+         setActiveMapBounds(true);
+         console.log('Applying spatial filter for bounds:', typedBounds);
+       } else {
+         console.log('Bounds unchanged, skipping update to prevent flicker');
+         return;
+       }
 
       try {
         let query = supabase
@@ -468,26 +479,12 @@ export default function ListingsPage() {
   }, [allListings, filters.sortBy]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative' }}>
-      {/* header + search */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
-            Off Axis Deals
-          </h1>
-          <PostDealButton />
-        </div>
-        
-        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center">
-          <div className="flex-1 lg:w-80">
-            <SearchBarClient 
-              value={searchQuery} 
-              onChange={setSearchQuery}
-              placeholder="Search by address, city, or state..."
-            />
-          </div>
-          <LocationSearch />
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden', position: 'relative' }}>
+      {/* header */}
+      <div className="flex items-center justify-center p-4 lg:px-6 lg:py-4 flex-shrink-0 bg-white z-30 relative">
+        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
+          Find Deals
+        </h1>
       </div>
 
       {/* filters */}
