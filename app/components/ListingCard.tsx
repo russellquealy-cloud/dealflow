@@ -102,163 +102,169 @@ export default function ListingCard({ listing }: Props) {
   return (
     <div style={{ 
       border: isFeatured ? '2px solid #f59e0b' : '1px solid #e5e7eb', 
-      borderRadius: 12, 
-      padding: 8, 
+      borderRadius: 8, 
+      overflow: 'hidden',
       background: isFeatured ? '#fffbeb' : '#fff',
-      position: 'relative'
-    }}>
-      {/* Featured Banner */}
-      {isFeatured && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-          color: 'white',
-          padding: '4px 8px',
-          fontSize: '12px',
-          fontWeight: '600',
-          textAlign: 'center',
-          borderRadius: '12px 12px 0 0',
-          zIndex: 10,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          ⭐ FEATURED LISTING
-        </div>
-      )}
-      
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '120px 1fr',
-          gap: 12,
-          alignItems: 'center',
-          marginTop: isFeatured ? '20px' : '0'
-        }}
-      >
-        <Link href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', overflow: 'hidden', borderRadius: 10, background: '#f3f4f6' }}>
-            {img ? (
-              <Image 
-                src={img} 
-                alt="" 
-                fill 
-                style={{ objectFit: 'cover' }} 
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                onError={(e) => {
-                  console.error('Image failed to load:', img, e);
-                  // Try to reload the image after a short delay
-                  setTimeout(() => {
-                    const imgElement = e.target as HTMLImageElement;
-                    if (imgElement) {
-                      imgElement.src = img;
-                    }
-                  }, 1000);
-                }}
-                onLoad={() => {
-                  console.log('Image loaded successfully:', img);
-                }}
-              />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-                No Image
+      position: 'relative',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      transition: 'box-shadow 0.2s ease',
+      cursor: 'pointer'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    }}
+    >
+      <Link href={href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        {/* Image Section */}
+        <div style={{ position: 'relative', width: '100%', height: '200px', overflow: 'hidden', background: '#f3f4f6' }}>
+          {img ? (
+            <Image 
+              src={img} 
+              alt={address || 'Property image'} 
+              fill 
+              style={{ objectFit: 'cover' }} 
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={(e) => {
+                console.error('Image failed to load:', img, e);
+                // Try to reload the image after a short delay
+                setTimeout(() => {
+                  const imgElement = e.target as HTMLImageElement;
+                  if (imgElement) {
+                    imgElement.src = img;
+                  }
+                }, 1000);
+              }}
+              onLoad={() => {
+                console.log('Image loaded successfully:', img);
+              }}
+            />
+          ) : (
+            <div style={{ 
+              width: '100%', 
+              height: '100%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: '#9ca3af',
+              fontSize: '14px',
+              background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🏠</div>
+                <div>No Image Available</div>
               </div>
+            </div>
+          )}
+          
+          {/* Featured Badge - Only overlay we keep */}
+          {isFeatured && (
+            <div style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+              color: 'white',
+              padding: '4px 8px',
+              fontSize: '11px',
+              fontWeight: '600',
+              borderRadius: 4,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              zIndex: 10
+            }}>
+              ⭐ FEATURED
+            </div>
+          )}
+        </div>
+
+        {/* Content Section */}
+        <div style={{ padding: '12px' }}>
+          {/* Price */}
+          <div style={{ fontWeight: '700', fontSize: '18px', color: '#111', marginBottom: '4px' }}>
+            {money(price)}
+          </div>
+          
+          {/* Property Details */}
+          <div style={{ color: '#111', fontSize: '14px', marginBottom: '4px' }}>
+            {beds !== undefined ? `${beds} bd` : '—'} • {baths !== undefined ? `${baths} ba` : '—'} •{' '}
+            {sqft !== undefined ? `${sqft.toLocaleString()} sqft` : '—'}
+          </div>
+          
+          {/* Address */}
+          <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: '8px', lineHeight: 1.3 }}>
+            {address || '—'}
+          </div>
+
+          {/* Description preview */}
+          {description && (
+            <div style={{ color: '#6b7280', fontSize: '12px', lineHeight: 1.4, marginBottom: '8px', maxHeight: '2.8em', overflow: 'hidden' }}>
+              {description.length > 80 ? `${description.substring(0, 80)}...` : description}
+            </div>
+          )}
+
+          {/* Investment Tags - Only show key ones */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '8px' }}>
+            {arv !== undefined && (
+              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: 12, background: '#E6FBF7', color: '#0f766e' }}>
+                ARV {money(arv)}
+              </span>
+            )}
+            {spread !== undefined && spread > 0 && (
+              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: 12, background: '#E6FBF7', color: '#0f766e' }}>
+                Spread {money(spread)}
+              </span>
+            )}
+            {roi !== undefined && roi > 0 && (
+              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: 12, background: '#E6FBF7', color: '#0f766e' }}>
+                ROI {roi}%
+              </span>
             )}
           </div>
-        </Link>
 
-        <div style={{ minWidth: 0 }}>
-          <Link href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ fontWeight: 800, fontSize: 16 }}>{money(price)}</div>
-            <div style={{ color: '#374151', fontSize: 12, marginTop: 2, lineHeight: 1.2 }}>{address || '—'}</div>
-            <div style={{ color: '#111', fontSize: 12, marginTop: 4 }}>
-              {beds !== undefined ? `${beds} bd` : '—'} • {baths !== undefined ? `${baths} ba` : '—'} •{' '}
-              {sqft !== undefined ? `${sqft.toLocaleString()} sqft` : '—'}
-            </div>
-            
-            {/* Additional details */}
-            <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>
-              {lotSize && `Lot: ${lotSize.toLocaleString()} sqft`}
-              {garage !== undefined && ` • Garage: ${garage ? 'Yes' : 'No'}`}
-              {yearBuilt && ` • Built: ${yearBuilt}`}
-            </div>
-
-            {/* Description preview */}
-            {description && (
-              <div style={{ color: '#6b7280', fontSize: 12, marginTop: 6, lineHeight: 1.3, maxHeight: '2.6em', overflow: 'hidden' }}>
-                {description.length > 100 ? `${description.substring(0, 100)}...` : description}
-              </div>
-            )}
-
-            {/* Tags */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-              {arv !== undefined && (
-                <span style={{ fontSize: 12, padding: '4px 8px', borderRadius: 16, background: '#E6FBF7', color: '#0f766e', border: '1px solid #A7F3D0' }}>
-                  ARV {money(arv)}
-                </span>
-              )}
-              {repairs !== undefined && (
-                <span style={{ fontSize: 12, padding: '4px 8px', borderRadius: 16, background: '#E6FBF7', color: '#0f766e', border: '1px solid #A7F3D0' }}>
-                  Repairs {money(repairs)}
-                </span>
-              )}
-              {spread !== undefined && (
-                <span style={{ fontSize: 12, padding: '4px 8px', borderRadius: 16, background: '#E6FBF7', color: '#0f766e', border: '1px solid #A7F3D0' }}>
-                  Spread {money(spread)}
-                </span>
-              )}
-              {roi !== undefined && (
-                <span style={{ fontSize: 12, padding: '4px 8px', borderRadius: 16, background: '#E6FBF7', color: '#0f766e', border: '1px solid #A7F3D0' }}>
-                  ROI {roi}%
-                </span>
-              )}
-              {assignmentFee !== undefined && (
-                <span style={{ fontSize: 12, padding: '4px 8px', borderRadius: 16, background: '#FEF3C7', color: '#92400e', border: '1px solid #FDE68A' }}>
-                  Fee {money(assignmentFee)}
-                </span>
-              )}
-            </div>
-
-            {/* View button */}
-            <div style={{ marginTop: 8 }}>
-              <span style={{ fontSize: 12, color: '#3b82f6', fontWeight: 600 }}>View Details →</span>
-            </div>
-          </Link>
-
-          {/* Contact buttons - OUTSIDE the Link to avoid nested <a> tags */}
-          {(ownerPhone || ownerEmail) && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              {ownerPhone && (
-                <a href={`tel:${ownerPhone}`} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: '#10b981', color: 'white', textDecoration: 'none' }}>
-                  📞 Call
-                </a>
-              )}
-              {ownerPhone && (
-                <a href={`sms:${ownerPhone}`} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: '#3b82f6', color: 'white', textDecoration: 'none' }}>
-                  💬 Text
-                </a>
-              )}
-              {ownerEmail && (
-                <a href={`mailto:${ownerEmail}`} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: '#8b5cf6', color: 'white', textDecoration: 'none' }}>
-                  ✉️ Email
-                </a>
-              )}
-            </div>
-          )}
-
-          {/* Message Form */}
-          {ownerEmail && (
-            <MessageForm
-              listingId={String(listing.id)}
-              ownerEmail={ownerEmail}
-              ownerPhone={ownerPhone}
-              ownerName={listing.owner_name}
-              listingTitle={listing.title}
-            />
-          )}
+          {/* View Details Link */}
+          <div style={{ color: '#3b82f6', fontSize: '12px', fontWeight: '600' }}>
+            View Details →
+          </div>
         </div>
-      </div>
+      </Link>
+
+      {/* Contact buttons - OUTSIDE the Link to avoid nested <a> tags */}
+      {(ownerPhone || ownerEmail) && (
+        <div style={{ padding: '0 12px 12px 12px' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {ownerPhone && (
+              <a href={`tel:${ownerPhone}`} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 4, background: '#10b981', color: 'white', textDecoration: 'none', flex: 1, textAlign: 'center' }}>
+                📞 Call
+              </a>
+            )}
+            {ownerPhone && (
+              <a href={`sms:${ownerPhone}`} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 4, background: '#3b82f6', color: 'white', textDecoration: 'none', flex: 1, textAlign: 'center' }}>
+                💬 Text
+              </a>
+            )}
+            {ownerEmail && (
+              <a href={`mailto:${ownerEmail}`} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 4, background: '#8b5cf6', color: 'white', textDecoration: 'none', flex: 1, textAlign: 'center' }}>
+                ✉️ Email
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Message Form */}
+      {ownerEmail && (
+        <div style={{ padding: '0 12px 12px 12px' }}>
+          <MessageForm
+            listingId={String(listing.id)}
+            ownerEmail={ownerEmail}
+            ownerPhone={ownerPhone}
+            ownerName={listing.owner_name}
+            listingTitle={listing.title}
+          />
+        </div>
+      )}
     </div>
   );
 }

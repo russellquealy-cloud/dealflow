@@ -56,12 +56,12 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
 
         {/* LIST */}
         <div className={`
-          border border-gray-200 rounded-xl bg-white min-w-0 overflow-y-auto p-3
+          border border-gray-200 rounded-xl bg-white min-w-0 overflow-y-auto p-4
           ${mobileView === 'map' ? 'hidden lg:block' : 'block'}
         `}>
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {listings.length === 0 ? (
-              <div className="text-center text-gray-500 py-5">
+              <div className="text-center text-gray-500 py-5 col-span-full">
                 No listings found
               </div>
             ) : (
