@@ -102,23 +102,97 @@ export default function DebugFiltersPage() {
 
   const testSupabaseFilter = async () => {
     console.log('🧪 Testing Supabase filter directly...');
+    console.log('🧪 Using maxBeds value:', maxBeds);
     
     try {
-      const { data, error } = await supabase
+      // Test 1: Simple query without any filter first
+      console.log('📊 Test 1: Getting all listings...');
+      const { data: allData, error: allError } = await supabase
+        .from('listings')
+        .select('id, title, beds, bedrooms, baths, price, city, state')
+        .order('created_at', { ascending: false });
+
+      if (allError) {
+        console.error('❌ Error getting all listings:', allError);
+        alert(`Error getting all listings: ${allError.message}`);
+        return;
+      }
+
+      console.log('✅ All listings query successful:', allData?.length, 'listings');
+      console.log('Sample data:', allData?.slice(0, 3));
+
+      // Test 2: Filter by bedrooms only
+      console.log('📊 Test 2: Filter by bedrooms field only...');
+      const { data: bedroomsData, error: bedroomsError } = await supabase
         .from('listings')
         .select('id, title, beds, bedrooms, baths, price, city, state')
         .lte('bedrooms', maxBeds)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase filter error:', error);
+      if (bedroomsError) {
+        console.error('❌ Error filtering by bedrooms:', bedroomsError);
+        alert(`Error filtering by bedrooms: ${bedroomsError.message}`);
         return;
       }
 
-      console.log('✅ Supabase filter result:', data?.length, 'listings');
-      console.log('Sample results:', data?.slice(0, 3));
+      console.log('✅ Bedrooms filter result:', bedroomsData?.length, 'listings');
+
+      // Test 3: Filter by beds only  
+      console.log('📊 Test 3: Filter by beds field only...');
+      const { data: bedsData, error: bedsError } = await supabase
+        .from('listings')
+        .select('id, title, beds, bedrooms, baths, price, city, state')
+        .lte('beds', maxBeds)
+        .order('created_at', { ascending: false });
+
+      if (bedsError) {
+        console.error('❌ Error filtering by beds:', bedsError);
+        alert(`Error filtering by beds: ${bedsError.message}`);
+        return;
+      }
+
+      console.log('✅ Beds filter result:', bedsData?.length, 'listings');
+
+      // Test 4: Complex filter (both fields)
+      console.log('📊 Test 4: Complex filter (both beds AND bedrooms)...');
+      const { data: complexData, error: complexError } = await supabase
+        .from('listings')
+        .select('id, title, beds, bedrooms, baths, price, city, state')
+        .and(`or(beds.lte.${maxBeds},beds.is.null),or(bedrooms.lte.${maxBeds},bedrooms.is.null)`)
+        .order('created_at', { ascending: false });
+
+      if (complexError) {
+        console.error('❌ Error with complex filter:', complexError);
+        console.log('📝 Complex filter query was:', `or(beds.lte.${maxBeds},beds.is.null),or(bedrooms.lte.${maxBeds},bedrooms.is.null)`);
+        alert(`Error with complex filter: ${complexError.message}`);
+        return;
+      }
+
+      console.log('✅ Complex filter result:', complexData?.length, 'listings');
+
+      // Summary
+      console.log('📋 SUMMARY:');
+      console.log(`- All listings: ${allData?.length || 0}`);
+      console.log(`- Bedrooms <= ${maxBeds}: ${bedroomsData?.length || 0}`);
+      console.log(`- Beds <= ${maxBeds}: ${bedsData?.length || 0}`);
+      console.log(`- Complex filter: ${complexData?.length || 0}`);
+
+      // Show which items were filtered out in each test
+      if (allData && bedroomsData) {
+        const filteredOutBedrooms = allData.filter(item => 
+          !bedroomsData.some(filtered => filtered.id === item.id)
+        );
+        console.log('🔍 Items filtered out by bedrooms filter:');
+        filteredOutBedrooms.forEach(item => {
+          console.log(`  ❌ ${item.title}: beds=${item.beds}, bedrooms=${item.bedrooms}`);
+        });
+      }
+
+      alert(`Supabase filter tests completed! Check console for detailed results.\n\nSummary:\n- All listings: ${allData?.length || 0}\n- Bedrooms <= ${maxBeds}: ${bedroomsData?.length || 0}\n- Beds <= ${maxBeds}: ${bedsData?.length || 0}\n- Complex filter: ${complexData?.length || 0}`);
+
     } catch (err) {
-      console.error('Supabase filter error:', err);
+      console.error('💥 Unexpected error during Supabase testing:', err);
+      alert(`Unexpected error: ${err}`);
     }
   };
 
@@ -152,8 +226,31 @@ export default function DebugFiltersPage() {
             onChange={(e) => setMaxBeds(Number(e.target.value))}
             style={{ padding: 8, marginLeft: 8, marginRight: 16 }}
           />
-          <button onClick={applyFilter} style={{ padding: 8, marginRight: 8 }}>Apply Client Filter</button>
-          <button onClick={testSupabaseFilter} style={{ padding: 8 }}>Test Supabase Filter</button>
+          <button onClick={applyFilter} style={{ 
+            padding: '12px 20px', 
+            marginRight: 12,
+            background: '#10b981', 
+            color: '#fff', 
+            border: 'none', 
+            borderRadius: 6, 
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: 14
+          }}>
+            🔍 Apply Client Filter
+          </button>
+          <button onClick={testSupabaseFilter} style={{ 
+            padding: '12px 20px',
+            background: '#3b82f6', 
+            color: '#fff', 
+            border: 'none', 
+            borderRadius: 6, 
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: 14
+          }}>
+            🧪 Test Supabase Filter
+          </button>
         </div>
         <p><strong>Filtered Results:</strong> {filteredData.length} listings</p>
       </div>
