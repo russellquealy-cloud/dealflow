@@ -61,18 +61,7 @@ export default function ListingCard({ listing }: Props) {
   const ownerEmail = listing.owner_email;
   // const ownerName = listing.owner_name;
   
-  // Debug logging for listing data
-  console.log('ListingCard data debug:', {
-    id: listing.id,
-    price,
-    beds,
-    baths,
-    sqft,
-    lotSize,
-    garage,
-    yearBuilt,
-    rawListing: listing
-  });
+  // Removed debug logging to improve performance
   
   const address =
     listing.address ??
@@ -82,14 +71,8 @@ export default function ListingCard({ listing }: Props) {
 
   const img = listing.cover_image_url ?? (listing.images && listing.images[0]) ?? null;
   
-  // Debug image loading
-  console.log('ListingCard image debug:', {
-    id: listing.id,
-    cover_image_url: listing.cover_image_url,
-    images: listing.images,
-    finalImg: img
-  });
-
+  // Removed debug logging to improve performance
+  
   const arv = toNum(listing.arv);
   const repairs = toNum(listing.repairs);
   const spread = toNum(listing.spread);
