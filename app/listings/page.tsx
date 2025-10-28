@@ -9,7 +9,6 @@ import SearchBarClient from '@/components/SearchBarClient';
 import LocationSearch from '@/components/LocationSearch';
 import PostDealButton from '@/components/PostDealButton';
 import { toNum } from '@/lib/format';
-import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
 
 interface Row {
   id: string;
@@ -40,6 +39,42 @@ interface Row {
   featured_until?: string;
 }
 
+interface ListItem {
+  id: string;
+  title?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  price?: number;
+  arv?: number;
+  repairs?: number;
+  spread?: number;
+  roi?: number;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  year_built?: number;
+  lot_size?: number;
+  property_type?: string;
+  description?: string;
+  images?: string[];
+  latitude?: number;
+  longitude?: number;
+  created_at?: string;
+  updated_at?: string;
+  featured?: boolean;
+  featured_until?: string;
+}
+
+interface MapPoint {
+  id: string;
+  lat: number;
+  lng: number;
+  price?: number;
+  featured?: boolean;
+  featured_until?: string;
+}
 
 export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
@@ -49,21 +84,20 @@ export default function ListingsPage() {
   const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [activeMapBounds, setActiveMapBounds] = useState(false);
   const [filters, setFilters] = useState<Filters>({
-    minPrice: null,
-    maxPrice: null,
-    minBeds: null,
-    maxBeds: null,
-    minBaths: null,
-    maxBaths: null,
-    minSqft: null,
-    maxSqft: null,
+    minPrice: undefined,
+    maxPrice: undefined,
+    minBeds: undefined,
+    maxBeds: undefined,
+    minBaths: undefined,
+    maxBaths: undefined,
+    minSqft: undefined,
+    maxSqft: undefined,
     sortBy: 'newest'
   });
 
   // Debounce bounds changes to prevent excessive API calls
   const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingBoundsRef = useRef(false);
-  const lastBoundsUpdateRef = useRef<number>(0);
 
   // Helper function to handle map bounds changes with specific filters
   const handleMapBoundsChangeWithFilters = useCallback(async (bounds: unknown, filtersToUse: Filters) => {
@@ -73,19 +107,12 @@ export default function ListingsPage() {
       return;
     }
 
-    // Prevent rapid successive calls (minimum 1 second between updates)
-    const now = Date.now();
-    if (now - lastBoundsUpdateRef.current < 1000) {
-      console.log('Too soon since last bounds update, ignoring call');
-      return;
-    }
-
     // Clear any existing timeout
     if (boundsChangeTimeoutRef.current) {
       clearTimeout(boundsChangeTimeoutRef.current);
     }
 
-    // Debounce the bounds change by 2000ms - much more aggressive
+    // Debounce the bounds change by 1000ms
     boundsChangeTimeoutRef.current = setTimeout(async () => {
       // Set processing flag
       isProcessingBoundsRef.current = true;
@@ -119,7 +146,7 @@ export default function ListingsPage() {
         const typedBounds = bounds as { south: number; north: number; west: number; east: number };
         
         // Only update state if bounds actually changed to prevent infinite loops
-        const threshold = 0.2; // About 20 kilometers - extremely aggressive anti-flicker
+        const threshold = 0.01; // About 1 kilometer
         if (!mapBounds || 
             Math.abs(mapBounds.south - typedBounds.south) > threshold ||
             Math.abs(mapBounds.north - typedBounds.north) > threshold ||
@@ -201,9 +228,9 @@ export default function ListingsPage() {
                   repairs,
                   spread,
                   roi,
-                  bedrooms: toNum(r.beds) ?? toNum(r.bedrooms),
-                  bathrooms: toNum(r.baths),
-                  home_sqft: toNum(r.sqft),
+                  beds: toNum(r.beds) ?? toNum(r.bedrooms),
+                  baths: toNum(r.baths),
+                  sqft: toNum(r.sqft),
                   year_built: toNum(r.year_built),
                   lot_size: toNum(r.lot_size),
                   property_type: r.property_type ?? undefined,
@@ -220,13 +247,11 @@ export default function ListingsPage() {
 
               const pts: MapPoint[] = [];
               for (const r of rows) {
-                const lat = toNum(r.latitude);
-                const lng = toNum(r.longitude);
-                if (lat && lng) {
+                if (r.latitude && r.longitude) {
                   pts.push({
                     id: String(r.id),
-                    lat,
-                    lng,
+                    lat: toNum(r.latitude),
+                    lng: toNum(r.longitude),
                     price: toNum(r.price),
                     featured: r.featured,
                     featured_until: r.featured_until
@@ -236,9 +261,6 @@ export default function ListingsPage() {
               
               setAllListings(items);
               setAllPoints(pts);
-              
-              // Update timestamp to prevent rapid successive calls
-              lastBoundsUpdateRef.current = Date.now();
             }
           } catch (err) {
             console.error('Error in spatial filtering:', err);
@@ -252,7 +274,7 @@ export default function ListingsPage() {
         // Always reset the processing flag
         isProcessingBoundsRef.current = false;
       }
-    }, 3000); // Increased to 3 seconds for maximum stability
+    }, 1000);
   }, [searchQuery, mapBounds]);
 
   const handleMapBoundsChange = useCallback(async (bounds: unknown) => {
@@ -295,9 +317,9 @@ export default function ListingsPage() {
               repairs,
               spread,
               roi,
-              bedrooms: toNum(r.beds) ?? toNum(r.bedrooms),
-              bathrooms: toNum(r.baths),
-              home_sqft: toNum(r.sqft),
+              beds: toNum(r.beds) ?? toNum(r.bedrooms),
+              baths: toNum(r.baths),
+              sqft: toNum(r.sqft),
               year_built: toNum(r.year_built),
               lot_size: toNum(r.lot_size),
               property_type: r.property_type ?? undefined,
@@ -314,13 +336,11 @@ export default function ListingsPage() {
 
           const pts: MapPoint[] = [];
           for (const r of rows) {
-            const lat = toNum(r.latitude);
-            const lng = toNum(r.longitude);
-            if (lat && lng) {
+            if (r.latitude && r.longitude) {
               pts.push({
                 id: String(r.id),
-                lat,
-                lng,
+                lat: toNum(r.latitude),
+                lng: toNum(r.longitude),
                 price: toNum(r.price),
                 featured: r.featured,
                 featured_until: r.featured_until
@@ -348,39 +368,35 @@ export default function ListingsPage() {
     // Apply text search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(listing => {
-        const address = (listing as any).address;
-        const city = (listing as any).city;
-        const state = (listing as any).state;
-        const zip = (listing as any).zip;
-        return (address && address.toLowerCase().includes(query)) ||
-               (city && city.toLowerCase().includes(query)) ||
-               (state && state.toLowerCase().includes(query)) ||
-               (zip && zip.toLowerCase().includes(query));
-      });
+      filtered = filtered.filter(listing => 
+        listing.address?.toLowerCase().includes(query) ||
+        listing.city?.toLowerCase().includes(query) ||
+        listing.state?.toLowerCase().includes(query) ||
+        listing.zip?.toLowerCase().includes(query)
+      );
     }
 
     // Apply filters
-    if (filters.minPrice) filtered = filtered.filter(l => ((l as any).price ?? 0) >= filters.minPrice!);
-    if (filters.maxPrice) filtered = filtered.filter(l => ((l as any).price ?? 0) <= filters.maxPrice!);
-    if (filters.minBeds) filtered = filtered.filter(l => ((l as any).bedrooms ?? 0) >= filters.minBeds!);
-    if (filters.maxBeds) filtered = filtered.filter(l => ((l as any).bedrooms ?? 0) <= filters.maxBeds!);
-    if (filters.minBaths) filtered = filtered.filter(l => ((l as any).bathrooms ?? 0) >= filters.minBaths!);
-    if (filters.maxBaths) filtered = filtered.filter(l => ((l as any).bathrooms ?? 0) <= filters.maxBaths!);
-    if (filters.minSqft) filtered = filtered.filter(l => ((l as any).home_sqft ?? 0) >= filters.minSqft!);
-    if (filters.maxSqft) filtered = filtered.filter(l => ((l as any).home_sqft ?? 0) <= filters.maxSqft!);
+    if (filters.minPrice) filtered = filtered.filter(l => (l.price ?? 0) >= filters.minPrice!);
+    if (filters.maxPrice) filtered = filtered.filter(l => (l.price ?? 0) <= filters.maxPrice!);
+    if (filters.minBeds) filtered = filtered.filter(l => (l.beds ?? 0) >= filters.minBeds!);
+    if (filters.maxBeds) filtered = filtered.filter(l => (l.beds ?? 0) <= filters.maxBeds!);
+    if (filters.minBaths) filtered = filtered.filter(l => (l.baths ?? 0) >= filters.minBaths!);
+    if (filters.maxBaths) filtered = filtered.filter(l => (l.baths ?? 0) <= filters.maxBaths!);
+    if (filters.minSqft) filtered = filtered.filter(l => (l.sqft ?? 0) >= filters.minSqft!);
+    if (filters.maxSqft) filtered = filtered.filter(l => (l.sqft ?? 0) <= filters.maxSqft!);
 
     // Apply sorting
     if (filters.sortBy === 'price_asc') {
-      filtered.sort((a, b) => ((a as any).price ?? 0) - ((b as any).price ?? 0));
+      filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
     } else if (filters.sortBy === 'price_desc') {
-      filtered.sort((a, b) => ((b as any).price ?? 0) - ((a as any).price ?? 0));
+      filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
     } else if (filters.sortBy === 'sqft_asc') {
-      filtered.sort((a, b) => ((a as any).home_sqft ?? 0) - ((b as any).home_sqft ?? 0));
+      filtered.sort((a, b) => (a.sqft ?? 0) - (b.sqft ?? 0));
     } else if (filters.sortBy === 'sqft_desc') {
-      filtered.sort((a, b) => ((b as any).home_sqft ?? 0) - ((a as any).home_sqft ?? 0));
+      filtered.sort((a, b) => (b.sqft ?? 0) - (a.sqft ?? 0));
     } else {
-      filtered.sort((a, b) => new Date((b as any).created_at ?? '').getTime() - new Date((a as any).created_at ?? '').getTime());
+      filtered.sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime());
     }
 
     return filtered;
@@ -388,7 +404,6 @@ export default function ListingsPage() {
 
   // Handle filter changes
   const handleFiltersChange = useCallback((newFilters: Filters) => {
-    console.log('🔍 Filter change detected:', newFilters);
     setFilters(newFilters);
     
     // If map bounds are active, trigger a refresh

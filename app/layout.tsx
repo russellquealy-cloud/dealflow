@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import MobileLayout from "@/components/MobileLayout";
 
 export const metadata: Metadata = {
@@ -47,6 +48,7 @@ export default function RootLayout({
             <Header />
             {/* IMPORTANT: this div owns page scrolling/clipping, not the header */}
             <main style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>{children}</main>
+            <Footer />
           </div>
         </MobileLayout>
       </body>

@@ -47,6 +47,7 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
         {/* MAP */}
         <div className={`
           border border-gray-200 rounded-xl bg-white min-w-0 flex overflow-hidden
+          h-[65vh] lg:h-full
           ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}
         `}>
           <div className="flex-1 min-w-0 w-full h-full">
@@ -57,6 +58,7 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
         {/* LIST */}
         <div className={`
           border border-gray-200 rounded-xl bg-white min-w-0 overflow-y-auto p-4
+          h-[35vh] lg:h-full
           ${mobileView === 'map' ? 'hidden lg:block' : 'block'}
         `}>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

@@ -16,7 +16,7 @@ STRIPE_PRICE_WHOLESALER_BASIC=price_YOUR_WHOLESALER_BASIC_PRICE_ID
 STRIPE_PRICE_WHOLESALER_PRO=price_YOUR_WHOLESALER_PRO_PRICE_ID
 
 # Support and Sales
-SUPPORT_EMAIL=support@offaxisdeals.com
+SUPPORT_EMAIL=customersupport@offaxisdeals.com
 SALES_EMAIL=sales@offaxisdeals.com
 
 # Optional

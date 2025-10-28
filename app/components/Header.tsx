@@ -96,7 +96,7 @@ export default function Header() {
   return (
     <header style={wrap}>
       <Link 
-        href="/welcome" 
+        href="/listings" 
         style={link}
       >
         Off Axis Deals

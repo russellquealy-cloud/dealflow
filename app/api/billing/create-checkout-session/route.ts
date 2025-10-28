@@ -5,7 +5,7 @@ import { supabase } from '@/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { segment, tier } = await request.json();
+    const { segment, tier, period = 'monthly' } = await request.json();
 
     if (!segment || !tier) {
       return NextResponse.json(
@@ -23,12 +23,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get price ID
+    // Get price ID based on segment, tier, and period
     let priceId: string;
     if (segment === 'investor') {
-      priceId = tier === 'basic' ? STRIPE_PRICES.INVESTOR_BASIC : STRIPE_PRICES.INVESTOR_PRO;
+      if (tier === 'basic') {
+        priceId = period === 'yearly' ? STRIPE_PRICES.INVESTOR_BASIC_YEARLY : STRIPE_PRICES.INVESTOR_BASIC;
+      } else {
+        priceId = period === 'yearly' ? STRIPE_PRICES.INVESTOR_PRO_YEARLY : STRIPE_PRICES.INVESTOR_PRO;
+      }
     } else {
-      priceId = tier === 'basic' ? STRIPE_PRICES.WHOLESALER_BASIC : STRIPE_PRICES.WHOLESALER_PRO;
+      if (tier === 'basic') {
+        priceId = period === 'yearly' ? STRIPE_PRICES.WHOLESALER_BASIC_YEARLY : STRIPE_PRICES.WHOLESALER_BASIC;
+      } else {
+        priceId = period === 'yearly' ? STRIPE_PRICES.WHOLESALER_PRO_YEARLY : STRIPE_PRICES.WHOLESALER_PRO;
+      }
     }
 
     if (!priceId) {

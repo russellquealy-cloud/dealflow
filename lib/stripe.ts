@@ -17,6 +17,11 @@ export const STRIPE_PRICES = {
   INVESTOR_PRO: process.env.STRIPE_PRICE_INVESTOR_PRO || '',
   WHOLESALER_BASIC: process.env.STRIPE_PRICE_WHOLESALER_BASIC || '',
   WHOLESALER_PRO: process.env.STRIPE_PRICE_WHOLESALER_PRO || '',
+  // Yearly prices
+  INVESTOR_BASIC_YEARLY: process.env.STRIPE_PRICE_INVESTOR_BASIC_YEARLY || '',
+  INVESTOR_PRO_YEARLY: process.env.STRIPE_PRICE_INVESTOR_PRO_YEARLY || '',
+  WHOLESALER_BASIC_YEARLY: process.env.STRIPE_PRICE_WHOLESALER_BASIC_YEARLY || '',
+  WHOLESALER_PRO_YEARLY: process.env.STRIPE_PRICE_WHOLESALER_PRO_YEARLY || '',
 } as const;
 
 // Map price ID to plan details
@@ -26,12 +31,16 @@ export function getPlanFromPriceId(priceId: string): {
 } | null {
   switch (priceId) {
     case STRIPE_PRICES.INVESTOR_BASIC:
+    case STRIPE_PRICES.INVESTOR_BASIC_YEARLY:
       return { segment: 'investor', tier: 'basic' };
     case STRIPE_PRICES.INVESTOR_PRO:
+    case STRIPE_PRICES.INVESTOR_PRO_YEARLY:
       return { segment: 'investor', tier: 'pro' };
     case STRIPE_PRICES.WHOLESALER_BASIC:
+    case STRIPE_PRICES.WHOLESALER_BASIC_YEARLY:
       return { segment: 'wholesaler', tier: 'basic' };
     case STRIPE_PRICES.WHOLESALER_PRO:
+    case STRIPE_PRICES.WHOLESALER_PRO_YEARLY:
       return { segment: 'wholesaler', tier: 'pro' };
     default:
       return null;

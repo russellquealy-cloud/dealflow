@@ -10,6 +10,7 @@ export default function PricingPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState<'investor' | 'wholesaler'>('investor');
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -19,7 +20,7 @@ export default function PricingPage() {
 
   const handleUpgrade = async (segment: 'investor' | 'wholesaler', tier: 'basic' | 'pro') => {
     if (!isLoggedIn) {
-      router.push(`/login?next=/pricing&segment=${segment}&tier=${tier}`);
+      router.push(`/login?next=/pricing&segment=${segment}&tier=${tier}&period=${billingPeriod}`);
       return;
     }
 
@@ -27,7 +28,7 @@ export default function PricingPage() {
       const response = await fetch('/api/billing/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ segment, tier }),
+        body: JSON.stringify({ segment, tier, period: billingPeriod }),
       });
       
       const { url } = await response.json();
@@ -64,8 +65,8 @@ export default function PricingPage() {
     },
     {
       name: 'Investor Basic',
-      price: '$29',
-      period: '/month',
+      price: billingPeriod === 'yearly' ? '$290' : '$29',
+      period: billingPeriod === 'yearly' ? '/year' : '/month',
       description: 'Unlock contact info and AI tools',
       color: '#059669',
       features: [
@@ -79,14 +80,14 @@ export default function PricingPage() {
         { text: 'Priority support', included: false, link: '/support' },
       ],
       cta: 'Upgrade to Basic',
-      popular: true,
+      popular: false,
       type: 'investor' as const,
       tier: 'basic' as const
     },
     {
       name: 'Investor Pro',
-      price: '$59',
-      period: '/month',
+      price: billingPeriod === 'yearly' ? '$590' : '$59',
+      period: billingPeriod === 'yearly' ? '/year' : '/month',
       description: 'Advanced tools for serious investors',
       color: '#3b82f6',
       features: [
@@ -100,7 +101,7 @@ export default function PricingPage() {
         { text: 'Custom integrations', included: false, link: '/integrations' },
       ],
       cta: 'Upgrade to Pro',
-      popular: false,
+      popular: true,
       type: 'investor' as const,
       tier: 'pro' as const
     }
@@ -130,8 +131,8 @@ export default function PricingPage() {
     },
     {
       name: 'Wholesaler Basic',
-      price: '$25',
-      period: '/month',
+      price: billingPeriod === 'yearly' ? '$250' : '$25',
+      period: billingPeriod === 'yearly' ? '/year' : '/month',
       description: 'Grow your wholesale business',
       color: '#059669',
       features: [
@@ -145,14 +146,14 @@ export default function PricingPage() {
         { text: 'No investor chat', included: false, link: '/docs/wholesaler-tools' },
       ],
       cta: 'Upgrade to Basic',
-      popular: true,
+      popular: false,
       type: 'wholesaler' as const,
       tier: 'basic' as const
     },
     {
       name: 'Wholesaler Pro',
-      price: '$59',
-      period: '/month',
+      price: billingPeriod === 'yearly' ? '$590' : '$59',
+      period: billingPeriod === 'yearly' ? '/year' : '/month',
       description: 'Professional wholesale tools',
       color: '#3b82f6',
       features: [
@@ -166,7 +167,7 @@ export default function PricingPage() {
         { text: 'Priority support', included: true, link: '/support' },
       ],
       cta: 'Upgrade to Pro',
-      popular: false,
+      popular: true,
       type: 'wholesaler' as const,
       tier: 'pro' as const
     }
@@ -177,7 +178,7 @@ export default function PricingPage() {
     { text: 'Team seats (multi-user management)', link: '/orgs/create' },
     { text: 'CRM export', link: '/settings/integrations/crm' },
     { text: 'Off-market data feeds', link: '/data-feed' },
-    { text: 'White-label branding', link: '/orgs/[slug]/branding' },
+    { text: 'White-label branding', link: '/contact-sales' },
     { text: 'Dedicated support', link: '/support' },
     { text: 'Custom integrations', link: '/integrations' },
     { text: 'API access', link: '/docs/api' },
@@ -249,6 +250,47 @@ export default function PricingPage() {
               }}
             >
               For Wholesalers
+            </button>
+          </div>
+
+          {/* Billing Period Toggle */}
+          <div style={{
+            display: 'inline-flex',
+            background: '#f1f5f9',
+            borderRadius: '12px',
+            padding: '4px',
+            marginBottom: '32px',
+            marginLeft: '16px'
+          }}>
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: 'none',
+                background: billingPeriod === 'monthly' ? 'white' : 'transparent',
+                color: billingPeriod === 'monthly' ? '#1a1a1a' : '#6b7280',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: billingPeriod === 'monthly' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: 'none',
+                background: billingPeriod === 'yearly' ? 'white' : 'transparent',
+                color: billingPeriod === 'yearly' ? '#1a1a1a' : '#6b7280',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: billingPeriod === 'yearly' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              Yearly <span style={{ color: '#059669', fontSize: '12px' }}>(Save 17%)</span>
             </button>
           </div>
         </div>
