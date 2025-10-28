@@ -1,7 +1,7 @@
 // app/api/billing/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature, getPlanFromPriceId } from '@/lib/stripe';
-import { supabase } from '@/supabase/server';
+import { createServerClient } from '@/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: any) {
+  const supabase = createServerClient();
   const customerId = session.customer;
   const subscriptionId = session.subscription;
   const priceId = session.metadata?.priceId;
@@ -83,6 +84,7 @@ async function handleCheckoutCompleted(session: any) {
   }
 
   // Update user profile
+  // Update user profile
   await supabase
     .from('profiles')
     .update({
@@ -97,6 +99,7 @@ async function handleCheckoutCompleted(session: any) {
 }
 
 async function handleSubscriptionUpdated(subscription: any) {
+  const supabase = createServerClient();
   const customerId = subscription.customer;
   const priceId = subscription.items.data[0]?.price.id;
 
@@ -123,6 +126,7 @@ async function handleSubscriptionUpdated(subscription: any) {
   }
 
   // Update user profile
+  // Update user profile
   await supabase
     .from('profiles')
     .update({
@@ -137,6 +141,7 @@ async function handleSubscriptionUpdated(subscription: any) {
 }
 
 async function handleSubscriptionDeleted(subscription: any) {
+  const supabase = createServerClient();
   const customerId = subscription.customer;
 
   // Get user ID
@@ -150,6 +155,7 @@ async function handleSubscriptionDeleted(subscription: any) {
   }
 
   // Downgrade user to free
+  // Update user profile
   await supabase
     .from('profiles')
     .update({
@@ -163,6 +169,7 @@ async function handleSubscriptionDeleted(subscription: any) {
 }
 
 async function handlePaymentSucceeded(invoice: any) {
+  const supabase = createServerClient();
   const customerId = invoice.customer;
   const subscriptionId = invoice.subscription;
 
@@ -198,6 +205,7 @@ async function handlePaymentSucceeded(invoice: any) {
   }
 
   // Update current period end
+  // Update user profile
   await supabase
     .from('profiles')
     .update({

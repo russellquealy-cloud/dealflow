@@ -1,11 +1,12 @@
 // app/api/billing/portal/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createPortalSession } from '@/lib/stripe';
-import { supabase } from '@/supabase/server';
+import { createServerClient } from '@/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
     // Get user from session
+    const supabase = createServerClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       return NextResponse.json(
