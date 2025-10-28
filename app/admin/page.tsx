@@ -32,7 +32,6 @@ export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [metrics, setMetrics] = useState<AdminMetrics[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -54,7 +53,6 @@ export default function AdminDashboard() {
         return;
       }
 
-      setUserRole(profile.role);
       loadDashboardData();
     };
 
@@ -110,7 +108,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">You don't have admin privileges.</p>
+          <p className="text-gray-600">You don&apos;t have admin privileges.</p>
         </div>
       </div>
     );

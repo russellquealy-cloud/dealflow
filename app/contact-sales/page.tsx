@@ -85,7 +85,7 @@ export default function ContactSalesPage() {
             marginBottom: '32px',
             lineHeight: '1.5'
           }}>
-            We've received your inquiry and will get back to you within 24 hours with a custom quote and next steps.
+            We&apos;ve received your inquiry and will get back to you within 24 hours with a custom quote and next steps.
           </p>
           <div style={{ marginBottom: '24px' }}>
             <a 

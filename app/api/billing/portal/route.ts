@@ -1,9 +1,9 @@
 // app/api/billing/portal/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createPortalSession } from '@/lib/stripe';
 import { createServerClient } from '@/supabase/server';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Get user from session
     const supabase = createServerClient();

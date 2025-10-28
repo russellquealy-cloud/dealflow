@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature, getPlanFromPriceId } from '@/lib/stripe';
 import { createServerClient } from '@/supabase/server';
+import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleCheckoutCompleted(session: any) {
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const supabase = createServerClient();
   const customerId = session.customer;
   const subscriptionId = session.subscription;
@@ -74,7 +75,7 @@ async function handleCheckoutCompleted(session: any) {
   }
 
   // Get user ID from customer metadata
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
   const customer = await stripe.customers.retrieve(customerId);
   const userId = customer.metadata?.supabase_user_id;
 
@@ -98,7 +99,7 @@ async function handleCheckoutCompleted(session: any) {
   console.log(`Updated user ${userId} to ${plan.segment} ${plan.tier}`);
 }
 
-async function handleSubscriptionUpdated(subscription: any) {
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const supabase = createServerClient();
   const customerId = subscription.customer;
   const priceId = subscription.items.data[0]?.price.id;
@@ -116,7 +117,7 @@ async function handleSubscriptionUpdated(subscription: any) {
   }
 
   // Get user ID
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
   const customer = await stripe.customers.retrieve(customerId);
   const userId = customer.metadata?.supabase_user_id;
 
@@ -140,12 +141,12 @@ async function handleSubscriptionUpdated(subscription: any) {
   console.log(`Updated user ${userId} subscription to ${plan.segment} ${plan.tier}`);
 }
 
-async function handleSubscriptionDeleted(subscription: any) {
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const supabase = createServerClient();
   const customerId = subscription.customer;
 
   // Get user ID
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
   const customer = await stripe.customers.retrieve(customerId);
   const userId = customer.metadata?.supabase_user_id;
 
@@ -168,7 +169,7 @@ async function handleSubscriptionDeleted(subscription: any) {
   console.log(`Downgraded user ${userId} to free plan`);
 }
 
-async function handlePaymentSucceeded(invoice: any) {
+async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   const supabase = createServerClient();
   const customerId = invoice.customer;
   const subscriptionId = invoice.subscription;
@@ -179,7 +180,7 @@ async function handlePaymentSucceeded(invoice: any) {
   }
 
   // Get subscription details
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items.data[0]?.price.id;
 
@@ -216,11 +217,11 @@ async function handlePaymentSucceeded(invoice: any) {
   console.log(`Updated user ${userId} payment period`);
 }
 
-async function handlePaymentFailed(invoice: any) {
+async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const customerId = invoice.customer;
 
   // Get user ID
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
   const customer = await stripe.customers.retrieve(customerId);
   const userId = customer.metadata?.supabase_user_id;
 

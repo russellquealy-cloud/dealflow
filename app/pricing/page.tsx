@@ -302,7 +302,7 @@ export default function PricingPage() {
           gap: '24px',
           marginBottom: '48px'
         }}>
-          {currentTiers.map((tier, index) => (
+          {currentTiers.map((tier) => (
             <div key={tier.name} style={{
               background: 'white',
               borderRadius: '16px',

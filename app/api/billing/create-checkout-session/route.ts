@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       customerId = profile.stripe_customer_id;
     } else {
       // Create Stripe customer
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
       const customer = await stripe.customers.create({
         email: session.user.email,
         metadata: {

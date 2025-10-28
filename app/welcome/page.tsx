@@ -106,7 +106,7 @@ export default function WelcomePage() {
               </h3>
               <p style={{ fontSize: '16px', color: '#718096', lineHeight: '1.6' }}>
                 Every property is verified by our team. No more wasting time on fake listings 
-                or properties that don't exist. Trust and transparency built-in.
+                or properties that don&apos;t exist. Trust and transparency built-in.
               </p>
             </div>
             
