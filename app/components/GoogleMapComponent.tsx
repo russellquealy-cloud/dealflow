@@ -56,6 +56,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
   const [isDrawing, setIsDrawing] = useState(false);
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const isProcessingBoundsRef = useRef<boolean>(false);
+  const lastBoundsUpdateRef = useRef<number>(0);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -115,7 +116,15 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     // Set up bounds change listener
     const emitBounds = () => {
       if (mapInstance && onBoundsChange && !isProcessingBoundsRef.current) {
+        const now = Date.now();
+        // Prevent bounds updates more frequent than every 500ms
+        if (now - lastBoundsUpdateRef.current < 500) {
+          return;
+        }
+        
         isProcessingBoundsRef.current = true;
+        lastBoundsUpdateRef.current = now;
+        
         const bounds = mapInstance.getBounds();
         if (bounds) {
           const boundsObject = {
@@ -129,7 +138,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
         // Reset the flag after a short delay
         setTimeout(() => {
           isProcessingBoundsRef.current = false;
-        }, 100);
+        }, 200);
       }
     };
 
@@ -137,13 +146,11 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     let boundsTimeout: NodeJS.Timeout;
     const debouncedEmitBounds = () => {
       clearTimeout(boundsTimeout);
-      boundsTimeout = setTimeout(emitBounds, 500); // Increased from 200ms to 500ms
+      boundsTimeout = setTimeout(emitBounds, 1000); // Increased to 1000ms to reduce flickering
     };
 
-    // Add event listeners
+    // Add event listeners - only use 'idle' to reduce flickering
     mapInstance.addListener('idle', debouncedEmitBounds);
-    mapInstance.addListener('zoom_changed', debouncedEmitBounds);
-    mapInstance.addListener('center_changed', debouncedEmitBounds);
 
     // Emit initial bounds
     setTimeout(emitBounds, 500);
