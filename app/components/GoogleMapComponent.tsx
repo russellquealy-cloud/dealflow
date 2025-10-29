@@ -55,6 +55,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
   const [isMapReady, setIsMapReady] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const clustererRef = useRef<MarkerClusterer | null>(null);
+  const isProcessingBoundsRef = useRef<boolean>(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -113,7 +114,8 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
 
     // Set up bounds change listener
     const emitBounds = () => {
-      if (mapInstance && onBoundsChange) {
+      if (mapInstance && onBoundsChange && !isProcessingBoundsRef.current) {
+        isProcessingBoundsRef.current = true;
         const bounds = mapInstance.getBounds();
         if (bounds) {
           const boundsObject = {
@@ -124,14 +126,18 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
           };
           onBoundsChange(boundsObject);
         }
+        // Reset the flag after a short delay
+        setTimeout(() => {
+          isProcessingBoundsRef.current = false;
+        }, 100);
       }
     };
 
-    // Debounced bounds emission
+    // Debounced bounds emission with longer delay to reduce flickering
     let boundsTimeout: NodeJS.Timeout;
     const debouncedEmitBounds = () => {
       clearTimeout(boundsTimeout);
-      boundsTimeout = setTimeout(emitBounds, 200);
+      boundsTimeout = setTimeout(emitBounds, 500); // Increased from 200ms to 500ms
     };
 
     // Add event listeners

@@ -35,7 +35,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const roi = price > 0 ? Math.round((spread / price) * 100) : 0;
 
   const lotSqft: number | null =
-    data.lot_sqft ?? (typeof data.lot_acres === 'number' ? Math.round(data.lot_acres * 43560) : null);
+    data.lot_size ?? data.lot_sqft ?? (typeof data.lot_acres === 'number' ? Math.round(data.lot_acres * 43560) : null);
 
   return (
     <main style={{ padding: 24 }}>
@@ -70,9 +70,9 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       />
 
       <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12 }}>
-        <Info label="Beds" value={data.bedrooms ?? '—'} />
-        <Info label="Baths" value={data.bathrooms ?? '—'} />
-        <Info label="Sq Ft" value={data.sqft ?? '—'} />
+        <Info label="Beds" value={data.beds ?? data.bedrooms ?? '—'} />
+        <Info label="Baths" value={data.baths ?? data.bathrooms ?? '—'} />
+        <Info label="Sq Ft" value={data.sqft ?? data.home_sqft ?? '—'} />
         <Info
           label="Lot"
           value={
