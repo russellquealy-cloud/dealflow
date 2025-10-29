@@ -95,9 +95,9 @@ export default function ListingsPage() {
     // If we're already processing bounds, ignore this call to prevent loops
     if (isProcessingBoundsRef.current) {
       console.log('Already processing bounds, ignoring duplicate call');
-      return;
-    }
-
+          return;
+        }
+        
     // Clear any existing timeout
     if (boundsChangeTimeoutRef.current) {
       clearTimeout(boundsChangeTimeoutRef.current);
@@ -116,26 +116,26 @@ export default function ListingsPage() {
         }
 
         // Validate bounds
-        if (!bounds || 
-            typeof bounds !== 'object' || 
-            !('south' in bounds) || 
-            !('north' in bounds) || 
-            !('west' in bounds) || 
-            !('east' in bounds) ||
-            typeof (bounds as Record<string, unknown>).south !== 'number' ||
-            typeof (bounds as Record<string, unknown>).north !== 'number' ||
-            typeof (bounds as Record<string, unknown>).west !== 'number' ||
-            typeof (bounds as Record<string, unknown>).east !== 'number' ||
-            isNaN((bounds as Record<string, unknown>).south as number) ||
-            isNaN((bounds as Record<string, unknown>).north as number) ||
-            isNaN((bounds as Record<string, unknown>).west as number) || 
-            isNaN((bounds as Record<string, unknown>).east as number)) {
+    if (!bounds || 
+        typeof bounds !== 'object' ||
+        !('south' in bounds) ||
+        !('north' in bounds) ||
+        !('west' in bounds) ||
+        !('east' in bounds) ||
+        typeof (bounds as Record<string, unknown>).south !== 'number' || 
+        typeof (bounds as Record<string, unknown>).north !== 'number' || 
+        typeof (bounds as Record<string, unknown>).west !== 'number' || 
+        typeof (bounds as Record<string, unknown>).east !== 'number' ||
+        isNaN((bounds as Record<string, unknown>).south as number) || 
+        isNaN((bounds as Record<string, unknown>).north as number) || 
+        isNaN((bounds as Record<string, unknown>).west as number) || 
+        isNaN((bounds as Record<string, unknown>).east as number)) {
           console.log('Invalid bounds received, skipping spatial filter');
-          return;
-        }
-
-        const typedBounds = bounds as { south: number; north: number; west: number; east: number };
-        
+      return;
+    }
+    
+    const typedBounds = bounds as { south: number; north: number; west: number; east: number };
+    
         // Only update state if bounds actually changed to prevent infinite loops
         const threshold = 0.01; // About 1 kilometer
         if (!mapBounds || 
@@ -150,15 +150,15 @@ export default function ListingsPage() {
           setMapBounds(typedBounds);
           setActiveMapBounds(true);
 
-          try {
-            let query = supabase
-              .from('listings')
-              .select('*, latitude, longitude')
-              .gte('latitude', typedBounds.south)
-              .lte('latitude', typedBounds.north)
-              .gte('longitude', typedBounds.west)
-              .lte('longitude', typedBounds.east);
-            
+    try {
+      let query = supabase
+        .from('listings')
+        .select('*, latitude, longitude')
+        .gte('latitude', typedBounds.south)
+        .lte('latitude', typedBounds.north)
+        .gte('longitude', typedBounds.west)
+        .lte('longitude', typedBounds.east);
+      
             // Apply filters
             if (filtersToUse.minPrice) query = query.gte('price', filtersToUse.minPrice);
             if (filtersToUse.maxPrice) query = query.lte('price', filtersToUse.maxPrice);
@@ -172,53 +172,53 @@ export default function ListingsPage() {
             if (filtersToUse.maxBaths) query = query.lte('baths', filtersToUse.maxBaths);
             if (filtersToUse.minSqft) query = query.gte('sqft', filtersToUse.minSqft);
             if (filtersToUse.maxSqft) query = query.lte('sqft', filtersToUse.maxSqft);
-            
-            if (searchQuery.trim()) {
-              query = query.or(`address.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%,zip.ilike.%${searchQuery}%`);
-            }
-            
-            // Apply sorting
+      
+      if (searchQuery.trim()) {
+        query = query.or(`address.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%,zip.ilike.%${searchQuery}%`);
+      }
+      
+      // Apply sorting
             if (filtersToUse.sortBy === 'price_asc') {
-              query = query.order('price', { ascending: true, nullsFirst: false });
+        query = query.order('price', { ascending: true, nullsFirst: false });
             } else if (filtersToUse.sortBy === 'price_desc') {
-              query = query.order('price', { ascending: false, nullsFirst: false });
+        query = query.order('price', { ascending: false, nullsFirst: false });
             } else if (filtersToUse.sortBy === 'sqft_asc') {
-              query = query.order('sqft', { ascending: true, nullsFirst: false });
+        query = query.order('sqft', { ascending: true, nullsFirst: false });
             } else if (filtersToUse.sortBy === 'sqft_desc') {
-              query = query.order('sqft', { ascending: false, nullsFirst: false });
-            } else {
-              query = query.order('created_at', { ascending: false, nullsFirst: false });
-            }
+        query = query.order('sqft', { ascending: false, nullsFirst: false });
+      } else {
+        query = query.order('created_at', { ascending: false, nullsFirst: false });
+      }
 
-            const { data: boundedData, error: boundedError } = await query;
-            
-            if (boundedError) {
-              console.error('Bounded query error:', boundedError);
-              return;
-            }
-            
-            if (boundedData) {
-              const rows = boundedData as unknown as Row[];
-              
+      const { data: boundedData, error: boundedError } = await query;
+      
+      if (boundedError) {
+        console.error('Bounded query error:', boundedError);
+        return;
+      }
+      
+      if (boundedData) {
+        const rows = boundedData as unknown as Row[];
+        
               const items = rows.map((r) => {
-                const price = toNum(r.price);
-                const arv = toNum(r.arv);
-                const repairs = toNum(r.repairs ?? r.repair_costs);
+          const price = toNum(r.price);
+          const arv = toNum(r.arv);
+          const repairs = toNum(r.repairs ?? r.repair_costs);
                 const spread = arv && price ? arv - price - (toNum(r.assignment_fee) || 0) : undefined;
                 const roi = arv && price ? ((arv - price) / price) * 100 : undefined;
 
-                return {
-                  id: String(r.id),
-                  title: r.title ?? undefined,
-                  address: r.address ?? undefined,
-                  city: r.city ?? undefined,
-                  state: r.state ?? undefined,
-                  zip: r.zip ?? undefined,
-                  price,
-                  arv,
-                  repairs,
-                  spread,
-                  roi,
+          return {
+            id: String(r.id),
+            title: r.title ?? undefined,
+            address: r.address ?? undefined,
+            city: r.city ?? undefined,
+            state: r.state ?? undefined,
+            zip: r.zip ?? undefined,
+            price,
+            arv,
+            repairs,
+            spread,
+            roi,
                   beds: toNum(r.beds) ?? toNum(r.bedrooms),
                   baths: toNum(r.baths),
                   sqft: toNum(r.sqft),
@@ -233,11 +233,11 @@ export default function ListingsPage() {
                   updated_at: r.updated_at ?? undefined,
                   featured: r.featured,
                   featured_until: r.featured_until
-                };
-              });
-
-              const pts: MapPoint[] = [];
-              for (const r of rows) {
+          };
+        });
+        
+        const pts: MapPoint[] = [];
+        for (const r of rows) {
                 if (r.latitude && r.longitude) {
                   pts.push({
                     id: String(r.id),
@@ -340,7 +340,7 @@ export default function ListingsPage() {
           }
 
           setAllListings(items as ListItem[]);
-          setAllPoints(pts);
+        setAllPoints(pts);
         }
       } catch (err) {
         console.error('Error loading listings:', err);
@@ -441,7 +441,7 @@ export default function ListingsPage() {
         <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center">
           <div className="flex-1 lg:w-80">
             <SearchBarClient
-              value={searchQuery}
+            value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search by address, city, or state..."
             />
@@ -456,8 +456,8 @@ export default function ListingsPage() {
 
       {/* the split fills the rest of the viewport - NO SCROLL */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ListingsSplitClient
-          points={allPoints}
+        <ListingsSplitClient 
+          points={allPoints} 
           listings={filteredListings as ListItem[]}
           onBoundsChange={handleMapBoundsChange}
           MapComponent={MapComponent}

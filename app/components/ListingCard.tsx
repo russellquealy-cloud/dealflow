@@ -62,14 +62,6 @@ export default function ListingCard({ listing }: Props) {
 
   const img = listing.cover_image_url ?? (listing.images && listing.images[0]) ?? null;
   
-  // Debug logging for image issues
-  console.log('ListingCard image debug:', {
-    id: listing.id,
-    cover_image_url: listing.cover_image_url,
-    images: listing.images,
-    finalImg: img,
-    hasImage: !!img
-  });
   
   const arv = toNum(listing.arv);
   const repairs = toNum(listing.repairs);

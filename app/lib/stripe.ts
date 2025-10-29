@@ -3,13 +3,20 @@
 
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
-}
+// Lazy initialization to avoid build-time errors
+let stripeInstance: Stripe | null = null;
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-09-30.clover',
-});
+export function getStripe(): Stripe {
+  if (!stripeInstance) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-09-30.clover',
+    });
+  }
+  return stripeInstance;
+}
 
 // Price IDs from environment variables
 export const STRIPE_PRICES = {
@@ -59,6 +66,7 @@ export async function createCheckoutSession({
   successUrl: string;
   cancelUrl: string;
 }): Promise<Stripe.Checkout.Session> {
+  const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     payment_method_types: ['card'],
@@ -87,6 +95,7 @@ export async function createPortalSession({
   customerId: string;
   returnUrl: string;
 }): Promise<Stripe.BillingPortal.Session> {
+  const stripe = getStripe();
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
@@ -98,6 +107,7 @@ export async function createPortalSession({
 // Get subscription details
 export async function getSubscription(subscriptionId: string): Promise<Stripe.Subscription | null> {
   try {
+    const stripe = getStripe();
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     return subscription;
   } catch (error) {
@@ -109,6 +119,7 @@ export async function getSubscription(subscriptionId: string): Promise<Stripe.Su
 // Cancel subscription
 export async function cancelSubscription(subscriptionId: string): Promise<boolean> {
   try {
+    const stripe = getStripe();
     await stripe.subscriptions.cancel(subscriptionId);
     return true;
   } catch (error) {
@@ -126,6 +137,7 @@ export async function updateSubscription({
   priceId: string;
 }): Promise<boolean> {
   try {
+    const stripe = getStripe();
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     
     await stripe.subscriptions.update(subscriptionId, {
@@ -151,6 +163,7 @@ export function verifyWebhookSignature(
   signature: string,
   secret: string
 ): Stripe.Event {
+  const stripe = getStripe();
   return stripe.webhooks.constructEvent(payload, signature, secret);
 }
 
