@@ -75,9 +75,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   // Get user ID from customer metadata
-  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
-  const customer = await stripe.customers.retrieve(customerId);
-  const userId = customer.metadata?.supabase_user_id;
+  const Stripe = (await import('stripe')).default;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const customer = await stripe.customers.retrieve(customerId as string);
+  const userId = (customer as Stripe.Customer).metadata?.supabase_user_id;
 
   if (!userId) {
     console.error('No user ID found in customer metadata');
@@ -117,9 +118,10 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   }
 
   // Get user ID
-  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
-  const customer = await stripe.customers.retrieve(customerId);
-  const userId = customer.metadata?.supabase_user_id;
+  const Stripe = (await import('stripe')).default;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const customer = await stripe.customers.retrieve(customerId as string);
+  const userId = (customer as Stripe.Customer).metadata?.supabase_user_id;
 
   if (!userId) {
     console.error('No user ID found in customer metadata');
@@ -134,7 +136,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       tier: plan.tier,
       segment: plan.segment,
       active_price_id: priceId,
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
     })
     .eq('id', userId);
 
@@ -146,9 +149,10 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const customerId = subscription.customer;
 
   // Get user ID
-  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
-  const customer = await stripe.customers.retrieve(customerId);
-  const userId = customer.metadata?.supabase_user_id;
+  const Stripe = (await import('stripe')).default;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const customer = await stripe.customers.retrieve(customerId as string);
+  const userId = (customer as Stripe.Customer).metadata?.supabase_user_id;
 
   if (!userId) {
     console.error('No user ID found in customer metadata');
@@ -172,7 +176,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   const supabase = createServerClient();
   const customerId = invoice.customer;
-  const subscriptionId = invoice.subscription;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const subscriptionId = (invoice as any).subscription;
 
   if (!customerId || !subscriptionId) {
     console.error('Missing required data in payment succeeded');
@@ -180,7 +185,8 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 
   // Get subscription details
-  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
+  const Stripe = (await import('stripe')).default;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items.data[0]?.price.id;
 
@@ -197,8 +203,8 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 
   // Get user ID
-  const customer = await stripe.customers.retrieve(customerId);
-  const userId = customer.metadata?.supabase_user_id;
+  const customer = await stripe.customers.retrieve(customerId as string);
+  const userId = (customer as Stripe.Customer).metadata?.supabase_user_id;
 
   if (!userId) {
     console.error('No user ID found in customer metadata');
@@ -210,7 +216,8 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   await supabase
     .from('profiles')
     .update({
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
     })
     .eq('id', userId);
 
@@ -221,9 +228,10 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const customerId = invoice.customer;
 
   // Get user ID
-  const stripe = (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
-  const customer = await stripe.customers.retrieve(customerId);
-  const userId = customer.metadata?.supabase_user_id;
+  const Stripe = (await import('stripe')).default;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const customer = await stripe.customers.retrieve(customerId as string);
+  const userId = (customer as Stripe.Customer).metadata?.supabase_user_id;
 
   if (!userId) {
     console.error('No user ID found in customer metadata');

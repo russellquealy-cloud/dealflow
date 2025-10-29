@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { PaywallReason } from '@/lib/paywall';
+import { PaywallReason, getPaywallMessage } from '@/lib/paywall';
 
 interface UpgradeModalProps {
   reason: PaywallReason;
@@ -126,14 +126,14 @@ export default function UpgradeModal({
             color: '#1a1a1a', 
             marginBottom: '8px' 
           }}>
-            {reason.title}
+            Upgrade Required
           </h2>
           <p style={{ 
             fontSize: '16px', 
             color: '#6b7280', 
             lineHeight: '1.5' 
           }}>
-            {reason.message}
+            {getPaywallMessage({ reason })}
           </p>
         </div>
 
@@ -168,14 +168,14 @@ export default function UpgradeModal({
                   color: '#374151',
                   marginBottom: '4px'
                 }}>
-                  {reason.suggestedSegment === 'investor' ? 'Investor' : 'Wholesaler'} Basic
+                  {currentSegment === 'investor' ? 'Investor' : 'Wholesaler'} Basic
                 </h4>
                 <div style={{ 
                   fontSize: '24px', 
                   fontWeight: '700', 
                   color: '#059669' 
                 }}>
-                  {getPlanPricing(reason.suggestedSegment || currentSegment, 'basic')}
+                  {getPlanPricing(currentSegment, 'basic')}
                 </div>
               </div>
               
@@ -186,7 +186,7 @@ export default function UpgradeModal({
                 fontSize: '14px',
                 color: '#6b7280'
               }}>
-                {getPlanFeatures(reason.suggestedSegment || currentSegment, 'basic').map((feature, index) => (
+                {getPlanFeatures(currentSegment, 'basic').map((feature, index) => (
                   <li key={index} style={{ 
                     padding: '4px 0',
                     display: 'flex',
@@ -199,7 +199,7 @@ export default function UpgradeModal({
               </ul>
               
               <button
-                onClick={() => handleUpgrade(reason.suggestedSegment || currentSegment, 'basic')}
+                onClick={() => handleUpgrade(currentSegment, 'basic')}
                 disabled={isLoading}
                 style={{
                   width: '100%',
@@ -248,14 +248,14 @@ export default function UpgradeModal({
                   color: '#374151',
                   marginBottom: '4px'
                 }}>
-                  {reason.suggestedSegment === 'investor' ? 'Investor' : 'Wholesaler'} Pro
+                  {currentSegment === 'investor' ? 'Investor' : 'Wholesaler'} Pro
                 </h4>
                 <div style={{ 
                   fontSize: '24px', 
                   fontWeight: '700', 
                   color: '#3b82f6' 
                 }}>
-                  {getPlanPricing(reason.suggestedSegment || currentSegment, 'pro')}
+                  {getPlanPricing(currentSegment, 'pro')}
                 </div>
               </div>
               
@@ -266,7 +266,7 @@ export default function UpgradeModal({
                 fontSize: '14px',
                 color: '#6b7280'
               }}>
-                {getPlanFeatures(reason.suggestedSegment || currentSegment, 'pro').map((feature, index) => (
+                {getPlanFeatures(currentSegment, 'pro').map((feature, index) => (
                   <li key={index} style={{ 
                     padding: '4px 0',
                     display: 'flex',
@@ -279,7 +279,7 @@ export default function UpgradeModal({
               </ul>
               
               <button
-                onClick={() => handleUpgrade(reason.suggestedSegment || currentSegment, 'pro')}
+                onClick={() => handleUpgrade(currentSegment, 'pro')}
                 disabled={isLoading}
                 style={{
                   width: '100%',

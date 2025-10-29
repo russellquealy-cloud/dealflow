@@ -35,7 +35,7 @@ export default function TermsPage() {
               1. Acceptance of Terms
             </h2>
             <p style={{ marginBottom: '16px' }}>
-              By accessing and using Off Axis Deals ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+              By accessing and using Off Axis Deals (&quot;the Service&quot;), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
@@ -97,7 +97,7 @@ export default function TermsPage() {
               8. Disclaimer
             </h2>
             <p style={{ marginBottom: '16px' }}>
-              The information on this service is provided on an "as is" basis. To the fullest extent permitted by law, this Company excludes all representations, warranties, conditions and terms relating to our service and the use of this service.
+              The information on this service is provided on an &quot;as is&quot; basis. To the fullest extent permitted by law, this Company excludes all representations, warranties, conditions and terms relating to our service and the use of this service.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>

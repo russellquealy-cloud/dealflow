@@ -37,7 +37,7 @@ export default function Header() {
     const loadUserData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        setEmail(session.user.email);
+        setEmail(session.user.email || null);
         // Load user role
         const { data: profile } = await supabase
           .from('profiles')

@@ -106,7 +106,7 @@ export default function PrivacyPage() {
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              8. Children's Privacy
+              8. Children&apos;s Privacy
             </h2>
             <p style={{ marginBottom: '16px' }}>
               Our service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.
@@ -116,7 +116,7 @@ export default function PrivacyPage() {
               9. Changes to This Policy
             </h2>
             <p style={{ marginBottom: '16px' }}>
-              We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.
+              We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the &quot;Last updated&quot; date.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>

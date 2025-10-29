@@ -226,7 +226,7 @@ export default function MyListingsPage() {
 
   const handleToggleFeatured = async (listingId: string, currentFeatured: boolean) => {
     try {
-      const updateData: any = { featured: !currentFeatured };
+      const updateData: Record<string, unknown> = { featured: !currentFeatured };
       
       // If making it featured, set featured_until to 1 week from now
       if (!currentFeatured) {

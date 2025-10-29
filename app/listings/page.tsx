@@ -6,9 +6,36 @@ import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient from '@/components/ListingsSplitClient';
 import GoogleMapWrapper from '@/components/GoogleMapWrapper';
 import SearchBarClient from '@/components/SearchBarClient';
-import LocationSearch from '@/components/LocationSearch';
-import PostDealButton from '@/components/PostDealButton';
 import { toNum } from '@/lib/format';
+import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
+
+interface ListingData {
+  id: string;
+  title?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  price?: number;
+  arv?: number;
+  repairs?: number;
+  spread?: number;
+  roi?: number;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  year_built?: number;
+  lot_size?: number;
+  property_type?: string;
+  description?: string;
+  images?: string[];
+  latitude?: number;
+  longitude?: number;
+  created_at?: string;
+  updated_at?: string;
+  featured?: boolean;
+  featured_until?: string;
+}
 
 interface Row {
   id: string;
@@ -39,42 +66,6 @@ interface Row {
   featured_until?: string;
 }
 
-interface ListItem {
-  id: string;
-  title?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  price?: number;
-  arv?: number;
-  repairs?: number;
-  spread?: number;
-  roi?: number;
-  beds?: number;
-  baths?: number;
-  sqft?: number;
-  year_built?: number;
-  lot_size?: number;
-  property_type?: string;
-  description?: string;
-  images?: string[];
-  latitude?: number;
-  longitude?: number;
-  created_at?: string;
-  updated_at?: string;
-  featured?: boolean;
-  featured_until?: string;
-}
-
-interface MapPoint {
-  id: string;
-  lat: number;
-  lng: number;
-  price?: number;
-  featured?: boolean;
-  featured_until?: string;
-}
 
 export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
@@ -84,14 +75,14 @@ export default function ListingsPage() {
   const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [activeMapBounds, setActiveMapBounds] = useState(false);
   const [filters, setFilters] = useState<Filters>({
-    minPrice: undefined,
-    maxPrice: undefined,
-    minBeds: undefined,
-    maxBeds: undefined,
-    minBaths: undefined,
-    maxBaths: undefined,
-    minSqft: undefined,
-    maxSqft: undefined,
+    minPrice: null,
+    maxPrice: null,
+    minBeds: null,
+    maxBeds: null,
+    minBaths: null,
+    maxBaths: null,
+    minSqft: null,
+    maxSqft: null,
     sortBy: 'newest'
   });
 
@@ -209,7 +200,7 @@ export default function ListingsPage() {
             if (boundedData) {
               const rows = boundedData as unknown as Row[];
               
-              const items: ListItem[] = rows.map((r) => {
+              const items = rows.map((r) => {
                 const price = toNum(r.price);
                 const arv = toNum(r.arv);
                 const repairs = toNum(r.repairs ?? r.repair_costs);
@@ -250,8 +241,8 @@ export default function ListingsPage() {
                 if (r.latitude && r.longitude) {
                   pts.push({
                     id: String(r.id),
-                    lat: toNum(r.latitude),
-                    lng: toNum(r.longitude),
+                    lat: toNum(r.latitude) || 0,
+                    lng: toNum(r.longitude) || 0,
                     price: toNum(r.price),
                     featured: r.featured,
                     featured_until: r.featured_until
@@ -259,7 +250,7 @@ export default function ListingsPage() {
                 }
               }
               
-              setAllListings(items);
+              setAllListings(items as ListItem[]);
               setAllPoints(pts);
             }
           } catch (err) {
@@ -298,7 +289,7 @@ export default function ListingsPage() {
 
         if (data) {
           const rows = data as unknown as Row[];
-          const items: ListItem[] = rows.map((r) => {
+          const items = rows.map((r) => {
             const price = toNum(r.price);
             const arv = toNum(r.arv);
             const repairs = toNum(r.repairs ?? r.repair_costs);
@@ -339,8 +330,8 @@ export default function ListingsPage() {
             if (r.latitude && r.longitude) {
               pts.push({
                 id: String(r.id),
-                lat: toNum(r.latitude),
-                lng: toNum(r.longitude),
+                lat: toNum(r.latitude) || 0,
+                lng: toNum(r.longitude) || 0,
                 price: toNum(r.price),
                 featured: r.featured,
                 featured_until: r.featured_until
@@ -348,7 +339,7 @@ export default function ListingsPage() {
             }
           }
 
-          setAllListings(items);
+          setAllListings(items as ListItem[]);
           setAllPoints(pts);
         }
       } catch (err) {
@@ -363,7 +354,7 @@ export default function ListingsPage() {
 
   // Apply filters to listings
   const filteredListings = useMemo(() => {
-    let filtered = allListings;
+    let filtered = allListings as ListingData[];
 
     // Apply text search
     if (searchQuery.trim()) {
@@ -420,13 +411,15 @@ export default function ListingsPage() {
 
   // Memoize map component to prevent re-renders
   const MapComponent = useMemo(() => {
-    return (props: any) => (
+    const MapComponentInner = (props: Record<string, unknown>) => (
       <GoogleMapWrapper
         {...props}
         points={allPoints}
         onBoundsChange={handleMapBoundsChange}
       />
     );
+    MapComponentInner.displayName = 'MapComponent';
+    return MapComponentInner;
   }, [allPoints, handleMapBoundsChange]);
 
   if (loading) {
@@ -465,7 +458,7 @@ export default function ListingsPage() {
       <div className="flex-1 min-h-0 overflow-hidden">
         <ListingsSplitClient
           points={allPoints}
-          listings={filteredListings}
+          listings={filteredListings as ListItem[]}
           onBoundsChange={handleMapBoundsChange}
           MapComponent={MapComponent}
         />

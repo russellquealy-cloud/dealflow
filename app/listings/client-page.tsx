@@ -6,7 +6,6 @@ import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient from '@/components/ListingsSplitClient';
 import GoogleMapWrapper from '@/components/GoogleMapWrapper';
 import SearchBarClient from '@/components/SearchBarClient';
-import LocationSearch from '@/components/LocationSearch';
 import PostDealButton from '@/components/PostDealButton';
 import { toNum } from '@/lib/format';
 import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
@@ -14,6 +13,20 @@ import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
 interface Props {
   initialListings?: ListItem[];
   initialPoints?: MapPoint[];
+}
+
+interface ListingData {
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  price?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  home_sqft?: number;
+  created_at?: string;
 }
 
 interface Row {
@@ -34,9 +47,14 @@ interface Row {
   sqft?: number;
   year_built?: number;
   lot_size?: number;
+  garage?: boolean;
   property_type?: string;
   description?: string;
+  owner_phone?: string;
+  owner_email?: string;
+  owner_name?: string;
   images?: string[];
+  cover_image_url?: string;
   latitude?: number;
   longitude?: number;
   created_at?: string;
@@ -53,14 +71,14 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
   const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [activeMapBounds, setActiveMapBounds] = useState(false);
   const [filters, setFilters] = useState<Filters>({
-    minPrice: undefined,
-    maxPrice: undefined,
-    minBeds: undefined,
-    maxBeds: undefined,
-    minBaths: undefined,
-    maxBaths: undefined,
-    minSqft: undefined,
-    maxSqft: undefined,
+    minPrice: null,
+    maxPrice: null,
+    minBeds: null,
+    maxBeds: null,
+    minBaths: null,
+    maxBaths: null,
+    minSqft: null,
+    maxSqft: null,
     sortBy: 'newest'
   });
 
@@ -68,7 +86,7 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
   const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Optimized map bounds change handler - CLIENT-SIDE ONLY
-  const handleMapBoundsChangeWithFilters = useCallback((bounds: unknown, filtersToUse: Filters) => {
+  const handleMapBoundsChangeWithFilters = useCallback((bounds: unknown) => {
     // Clear any existing timeout
     if (boundsChangeTimeoutRef.current) {
       clearTimeout(boundsChangeTimeoutRef.current);
@@ -123,8 +141,8 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
   }, [mapBounds]);
 
   const handleMapBoundsChange = useCallback((bounds: unknown) => {
-    return handleMapBoundsChangeWithFilters(bounds, filters);
-  }, [handleMapBoundsChangeWithFilters, filters]);
+    return handleMapBoundsChangeWithFilters(bounds);
+  }, [handleMapBoundsChangeWithFilters]);
 
   // Load all listings on mount (only if no initial data provided)
   useEffect(() => {
@@ -158,15 +176,15 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
 
             return {
               id: String(r.id),
-              title: r.title || `${r.bedrooms || 0} bed, ${r.bathrooms || 0} bath`,
+              title: r.title || `${r.bedrooms || 0} bed, ${r.baths || 0} bath`,
               address: r.address || `${r.city || ''}, ${r.state || ''} ${r.zip || ''}`.trim(),
               city: r.city,
               state: r.state,
               zip: r.zip,
               price,
               bedrooms: r.bedrooms || r.beds,
-              bathrooms: r.bathrooms || r.baths,
-              home_sqft: r.home_sqft || r.sqft,
+              bathrooms: r.baths,
+              home_sqft: r.sqft,
               lot_size: r.lot_size,
               garage: r.garage,
               year_built: r.year_built,
@@ -194,8 +212,8 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
             if (r.latitude && r.longitude) {
               pts.push({
                 id: String(r.id),
-                lat: toNum(r.latitude),
-                lng: toNum(r.longitude),
+                lat: toNum(r.latitude) || 0,
+                lng: toNum(r.longitude) || 0,
                 price: toNum(r.price),
                 featured: r.featured,
                 featured_until: r.featured_until
@@ -223,8 +241,8 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
     // Apply map bounds filtering FIRST (most important)
     if (activeMapBounds && mapBounds) {
       filtered = filtered.filter(listing => {
-        const lat = (listing as any).latitude;
-        const lng = (listing as any).longitude;
+        const lat = (listing as ListingData).latitude;
+        const lng = (listing as ListingData).longitude;
         
         if (!lat || !lng) {
           return false;
@@ -243,10 +261,10 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(listing => {
-        const address = (listing as any).address;
-        const city = (listing as any).city;
-        const state = (listing as any).state;
-        const zip = (listing as any).zip;
+        const address = (listing as ListingData).address;
+        const city = (listing as ListingData).city;
+        const state = (listing as ListingData).state;
+        const zip = (listing as ListingData).zip;
         return (address && address.toLowerCase().includes(query)) ||
                (city && city.toLowerCase().includes(query)) ||
                (state && state.toLowerCase().includes(query)) ||
@@ -255,26 +273,26 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
     }
 
     // Apply filters
-    if (filters.minPrice) filtered = filtered.filter(l => ((l as any).price ?? 0) >= filters.minPrice!);
-    if (filters.maxPrice) filtered = filtered.filter(l => ((l as any).price ?? 0) <= filters.maxPrice!);
-    if (filters.minBeds) filtered = filtered.filter(l => ((l as any).bedrooms ?? 0) >= filters.minBeds!);
-    if (filters.maxBeds) filtered = filtered.filter(l => ((l as any).bedrooms ?? 0) <= filters.maxBeds!);
-    if (filters.minBaths) filtered = filtered.filter(l => ((l as any).bathrooms ?? 0) >= filters.minBaths!);
-    if (filters.maxBaths) filtered = filtered.filter(l => ((l as any).bathrooms ?? 0) <= filters.maxBaths!);
-    if (filters.minSqft) filtered = filtered.filter(l => ((l as any).home_sqft ?? 0) >= filters.minSqft!);
-    if (filters.maxSqft) filtered = filtered.filter(l => ((l as any).home_sqft ?? 0) <= filters.maxSqft!);
+    if (filters.minPrice) filtered = filtered.filter(l => ((l as ListingData).price ?? 0) >= filters.minPrice!);
+    if (filters.maxPrice) filtered = filtered.filter(l => ((l as ListingData).price ?? 0) <= filters.maxPrice!);
+    if (filters.minBeds) filtered = filtered.filter(l => ((l as ListingData).bedrooms ?? 0) >= filters.minBeds!);
+    if (filters.maxBeds) filtered = filtered.filter(l => ((l as ListingData).bedrooms ?? 0) <= filters.maxBeds!);
+    if (filters.minBaths) filtered = filtered.filter(l => ((l as ListingData).bathrooms ?? 0) >= filters.minBaths!);
+    if (filters.maxBaths) filtered = filtered.filter(l => ((l as ListingData).bathrooms ?? 0) <= filters.maxBaths!);
+    if (filters.minSqft) filtered = filtered.filter(l => ((l as ListingData).home_sqft ?? 0) >= filters.minSqft!);
+    if (filters.maxSqft) filtered = filtered.filter(l => ((l as ListingData).home_sqft ?? 0) <= filters.maxSqft!);
 
     // Apply sorting
     if (filters.sortBy === 'price_asc') {
-      filtered.sort((a, b) => ((a as any).price ?? 0) - ((b as any).price ?? 0));
+      filtered.sort((a, b) => ((a as ListingData).price ?? 0) - ((b as ListingData).price ?? 0));
     } else if (filters.sortBy === 'price_desc') {
-      filtered.sort((a, b) => ((b as any).price ?? 0) - ((a as any).price ?? 0));
+      filtered.sort((a, b) => ((b as ListingData).price ?? 0) - ((a as ListingData).price ?? 0));
     } else if (filters.sortBy === 'sqft_asc') {
-      filtered.sort((a, b) => ((a as any).home_sqft ?? 0) - ((b as any).home_sqft ?? 0));
+      filtered.sort((a, b) => ((a as ListingData).home_sqft ?? 0) - ((b as ListingData).home_sqft ?? 0));
     } else if (filters.sortBy === 'sqft_desc') {
-      filtered.sort((a, b) => ((b as any).home_sqft ?? 0) - ((a as any).home_sqft ?? 0));
+      filtered.sort((a, b) => ((b as ListingData).home_sqft ?? 0) - ((a as ListingData).home_sqft ?? 0));
     } else {
-      filtered.sort((a, b) => new Date((b as any).created_at ?? '').getTime() - new Date((a as any).created_at ?? '').getTime());
+      filtered.sort((a, b) => new Date((b as ListingData).created_at ?? '').getTime() - new Date((a as ListingData).created_at ?? '').getTime());
     }
 
     return filtered;
@@ -297,13 +315,15 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
 
   // Memoize map component to prevent re-renders
   const MapComponent = useMemo(() => {
-    return (props: any) => (
+    const MapComponentInner = (props: Record<string, unknown>) => (
       <GoogleMapWrapper
         {...props}
         onBoundsChange={handleMapBoundsChange}
         points={allPoints}
       />
     );
+    MapComponentInner.displayName = 'MapComponent';
+    return MapComponentInner;
   }, [handleMapBoundsChange, allPoints]);
 
   if (loading) {

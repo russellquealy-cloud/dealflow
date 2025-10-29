@@ -184,99 +184,99 @@ export function canViewListing(profile: UserProfile, usage: UsageCounts): boolea
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  if (limits.listing_views === -1) return true; // unlimited
+  if ('listing_views' in limits && limits.listing_views === -1) return true; // unlimited
   
-  return usage.listing_views < limits.listing_views;
+  return 'listing_views' in limits ? usage.listing_views < limits.listing_views : true;
 }
 
 export function canSeeContact(profile: UserProfile, usage: UsageCounts): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  if (limits.contacts === -1) return true; // unlimited
+  if ('contacts' in limits && limits.contacts === -1) return true; // unlimited
   
-  return usage.contacts < limits.contacts;
+  return 'contacts' in limits ? usage.contacts < limits.contacts : true;
 }
 
 export function canRunAI(profile: UserProfile, usage: UsageCounts): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  if (limits.ai_runs === -1) return true; // unlimited
+  if ('ai_runs' in limits && limits.ai_runs === -1) return true; // unlimited
   
-  return usage.ai_runs < limits.ai_runs;
+  return 'ai_runs' in limits ? usage.ai_runs < limits.ai_runs : true;
 }
 
 export function canExport(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_export || false;
+  return 'can_export' in limits ? limits.can_export : false;
 }
 
 export function canPostListing(profile: UserProfile, usage: UsageCounts): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  if (limits.listings_posted === -1) return true; // unlimited
+  if ('listings_posted' in limits && limits.listings_posted === -1) return true; // unlimited
   
-  return usage.listings_posted < limits.listings_posted;
+  return 'listings_posted' in limits ? usage.listings_posted < limits.listings_posted : true;
 }
 
 export function canUseDraw(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_use_draw || false;
+  return 'can_use_draw' in limits ? limits.can_use_draw : false;
 }
 
 export function canUseSatellite(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_use_satellite || false;
+  return 'can_use_satellite' in limits ? limits.can_use_satellite : false;
 }
 
 export function canSaveFavorites(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_save_favorites || false;
+  return 'can_save_favorites' in limits ? limits.can_save_favorites : false;
 }
 
 export function canUseAlerts(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_use_alerts || false;
+  return 'can_use_alerts' in limits ? limits.can_use_alerts : false;
 }
 
 export function canAnalytics(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_analytics || false;
+  return 'can_analytics' in limits ? limits.can_analytics : false;
 }
 
 export function canFeatured(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_featured || false;
+  return 'can_featured' in limits ? limits.can_featured : false;
 }
 
 export function canChat(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_chat || false;
+  return 'can_chat' in limits ? limits.can_chat : false;
 }
 
 export function canVerifiedBadge(profile: UserProfile): boolean {
   if (!profile) return false;
   
   const limits = PLAN_LIMITS[profile.segment][profile.tier];
-  return limits.can_verified_badge || false;
+  return 'can_verified_badge' in limits ? limits.can_verified_badge : false;
 }
 
 // Check if organization has available seats

@@ -203,16 +203,16 @@ export default function AccountPage() {
             <div style={{ 
               padding: '8px 16px', 
               borderRadius: 8, 
-              background: profile.type === 'wholesaler' ? '#fef3c7' : '#dbeafe',
-              color: profile.type === 'wholesaler' ? '#92400e' : '#1e40af',
+              background: profile.role === 'wholesaler' ? '#fef3c7' : '#dbeafe',
+              color: profile.role === 'wholesaler' ? '#92400e' : '#1e40af',
               fontWeight: 600,
               display: 'inline-block',
               marginBottom: 16
             }}>
-              {profile.type === 'wholesaler' ? '🏠 Wholesaler' : '💰 Investor'}
+              {profile.role === 'wholesaler' ? '🏠 Wholesaler' : '💰 Investor'}
             </div>
             <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
-              {profile.type === 'wholesaler' 
+              {profile.role === 'wholesaler' 
                 ? 'You can post deals and find investors for your properties.'
                 : 'You can browse deals and find investment opportunities.'
               }

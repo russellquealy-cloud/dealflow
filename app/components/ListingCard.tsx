@@ -52,13 +52,7 @@ export default function ListingCard({ listing }: Props) {
   const baths = listing.bathrooms;
   const sqft = listing.home_sqft;
   
-  const lotSize = toNum(listing.lot_size);
-  const garage = listing.garage;
-  const yearBuilt = listing.year_built;
-  const assignmentFee = toNum(listing.assignment_fee);
   const description = listing.description;
-  const ownerPhone = listing.owner_phone;
-  const ownerEmail = listing.owner_email;
   
   const address =
     listing.address ??

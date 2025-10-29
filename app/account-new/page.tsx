@@ -10,7 +10,7 @@ export default function AccountPage() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ 
-    role?: string; 
+    role?: 'admin' | 'investor' | 'wholesaler'; 
     membership_tier?: string; 
     company_name?: string;
     full_name?: string;
@@ -330,8 +330,8 @@ export default function AccountPage() {
                   padding: '8px 16px', 
                   border: '1px solid #3b82f6', 
                   borderRadius: 6,
-                  background: profile?.role === 'investor' ? '#3b82f6' : '#fff',
-                  color: profile?.role === 'investor' ? '#fff' : '#3b82f6',
+                  background: (profile?.role as string) === 'investor' ? '#3b82f6' : '#fff',
+                  color: (profile?.role as string) === 'investor' ? '#fff' : '#3b82f6',
                   fontWeight: 600,
                   cursor: 'pointer',
                   fontSize: 12
@@ -360,8 +360,8 @@ export default function AccountPage() {
                   padding: '8px 16px', 
                   border: '1px solid #f59e0b', 
                   borderRadius: 6,
-                  background: profile?.role === 'wholesaler' ? '#f59e0b' : '#fff',
-                  color: profile?.role === 'wholesaler' ? '#fff' : '#f59e0b',
+                  background: (profile?.role as string) === 'wholesaler' ? '#f59e0b' : '#fff',
+                  color: (profile?.role as string) === 'wholesaler' ? '#fff' : '#f59e0b',
                   fontWeight: 600,
                   cursor: 'pointer',
                   fontSize: 12
@@ -390,8 +390,8 @@ export default function AccountPage() {
                   padding: '8px 16px', 
                   border: '1px solid #dc2626', 
                   borderRadius: 6,
-                  background: profile?.role === 'admin' ? '#dc2626' : '#fff',
-                  color: profile?.role === 'admin' ? '#fff' : '#dc2626',
+                  background: (profile?.role as string) === 'admin' ? '#dc2626' : '#fff',
+                  color: (profile?.role as string) === 'admin' ? '#fff' : '#dc2626',
                   fontWeight: 600,
                   cursor: 'pointer',
                   fontSize: 12
