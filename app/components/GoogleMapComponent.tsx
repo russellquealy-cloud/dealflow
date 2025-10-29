@@ -63,6 +63,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries,
     version: 'weekly',
+    preventGoogleFontsLoading: true,
   });
 
   // Memoize center and zoom from localStorage
@@ -113,12 +114,13 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     }
     clustererRef.current = new MarkerClusterer({ map: mapInstance });
 
-    // Set up bounds change listener
+    // Set up bounds change listener with aggressive anti-flickering
     const emitBounds = () => {
       if (mapInstance && onBoundsChange && !isProcessingBoundsRef.current) {
         const now = Date.now();
-        // Prevent bounds updates more frequent than every 500ms
-        if (now - lastBoundsUpdateRef.current < 500) {
+        // Prevent bounds updates more frequent than every 2 seconds
+        if (now - lastBoundsUpdateRef.current < 2000) {
+          console.log('Bounds unchanged (within threshold), skipping update to prevent flicker');
           return;
         }
         
@@ -133,20 +135,23 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
             west: bounds.getSouthWest().lng(),
             east: bounds.getNorthEast().lng()
           };
+          console.log('Bounds changed significantly, applying spatial filter for bounds:', boundsObject);
           onBoundsChange(boundsObject);
         }
-        // Reset the flag after a short delay
+        // Reset the flag after a longer delay
         setTimeout(() => {
           isProcessingBoundsRef.current = false;
-        }, 200);
+        }, 1000);
+      } else if (isProcessingBoundsRef.current) {
+        console.log('Already processing bounds, ignoring duplicate call');
       }
     };
 
-    // Debounced bounds emission with longer delay to reduce flickering
+    // Debounced bounds emission with very long delay to eliminate flickering
     let boundsTimeout: NodeJS.Timeout;
     const debouncedEmitBounds = () => {
       clearTimeout(boundsTimeout);
-      boundsTimeout = setTimeout(emitBounds, 1000); // Increased to 1000ms to reduce flickering
+      boundsTimeout = setTimeout(emitBounds, 3000); // Increased to 3000ms to eliminate flickering
     };
 
     // Add event listeners - only use 'idle' to reduce flickering
@@ -334,22 +339,43 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
   if (loadError) {
     console.error('Google Maps load error:', loadError);
     return (
-      <div className="w-full h-full flex items-center justify-center bg-red-50">
-        <div className="text-center p-4">
-          <div className="text-red-600 text-xl mb-2">⚠️</div>
-          <h3 className="text-red-800 font-semibold mb-2">Google Maps Error</h3>
-          <p className="text-red-600 text-sm mb-2">Failed to load Google Maps API</p>
-          <p className="text-red-500 text-xs">Error: {loadError.message}</p>
-          <p className="text-gray-600 text-xs mt-2">
-            Check your API key and ensure it&apos;s properly configured.
-          </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        padding: '20px',
+        textAlign: 'center',
+        background: '#f8f9fa',
+        border: '1px solid #e9ecef',
+        borderRadius: '8px'
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗺️</div>
+        <h3 style={{ margin: '0 0 8px 0', color: '#495057', fontSize: '18px' }}>Map Unavailable</h3>
+        <p style={{ margin: '0 0 16px 0', color: '#6c757d', fontSize: '14px' }}>
+          Unable to load Google Maps. This may be due to:
+        </p>
+        <ul style={{ margin: '0 0 16px 0', padding: '0 0 0 20px', color: '#6c757d', fontSize: '12px', textAlign: 'left' }}>
+          <li>Poor internet connection</li>
+          <li>API key configuration</li>
+          <li>Browser compatibility</li>
+        </ul>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '10px 20px',
+            background: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}
+        >
+          Retry Loading Map
+        </button>
       </div>
     );
   }

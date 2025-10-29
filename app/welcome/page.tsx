@@ -6,21 +6,26 @@ import { useState } from 'react';
 export default function WelcomePage() {
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
+  // Add responsive styles
+  const containerStyle = {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    padding: '10px'
+  };
+
+  const contentStyle = {
+    background: 'white',
+    borderRadius: '16px',
+    padding: '20px',
+    maxWidth: '1200px',
+    width: '100%',
+    margin: '0 auto',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+  };
+
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '60px',
-        maxWidth: '1200px',
-        width: '100%',
-        margin: '0 auto',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
-      }}>
+    <div style={containerStyle}>
+      <div style={contentStyle}>
         {/* Hero Section */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
           <h1 style={{ 

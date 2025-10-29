@@ -6,8 +6,9 @@ import Footer from "@/components/Footer";
 import MobileLayout from "@/components/MobileLayout";
 
 export const metadata: Metadata = {
-  title: "Off Axis Deals",
-  description: "Find real estate investment deals fast",
+  title: "Off Axis Deals - Real Estate Investment Platform",
+  description: "Connect investors with wholesalers. Find off-market real estate deals, analyze properties with AI, and grow your investment portfolio. Join thousands of successful real estate investors and wholesalers.",
+  keywords: "real estate investment, off-market deals, property wholesaling, real estate platform, investment opportunities, property analysis, real estate AI",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -15,6 +16,17 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false
+  },
+  openGraph: {
+    title: "Off Axis Deals - Real Estate Investment Platform",
+    description: "Connect investors with wholesalers. Find off-market real estate deals, analyze properties with AI, and grow your investment portfolio.",
+    type: "website",
+    siteName: "Off Axis Deals"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Off Axis Deals - Real Estate Investment Platform",
+    description: "Connect investors with wholesalers. Find off-market real estate deals, analyze properties with AI, and grow your investment portfolio."
   }
 };
 

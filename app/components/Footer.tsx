@@ -57,6 +57,65 @@ export default function Footer() {
           </Link>
         </div>
         <div style={rightStyle}>
+          {/* Mobile App Links */}
+          <div style={{ display: 'flex', gap: '10px', marginRight: '20px', alignItems: 'center' }}>
+            <a 
+              href="https://apps.apple.com/app/off-axis-deals" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                color: '#6c757d', 
+                textDecoration: 'none',
+                padding: '6px 10px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '12px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f8f9fa';
+                e.currentTarget.style.borderColor = '#adb5bd';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#dee2e6';
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>🍎</span>
+              <span>App Store</span>
+            </a>
+            <a 
+              href="https://play.google.com/store/apps/details?id=com.offaxisdeals.app" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                color: '#6c757d', 
+                textDecoration: 'none',
+                padding: '6px 10px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '12px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f8f9fa';
+                e.currentTarget.style.borderColor = '#adb5bd';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#dee2e6';
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>🤖</span>
+              <span>Google Play</span>
+            </a>
+          </div>
           <span style={{ color: '#6c757d' }}>
             © 2024 Off Axis Deals. All rights reserved.
           </span>

@@ -160,7 +160,7 @@ export default function ContactSalesPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit}>
+          <form id="contact-form" onSubmit={handleSubmit}>
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
@@ -508,24 +508,29 @@ export default function ContactSalesPage() {
             }}>
               Schedule a call with our sales team
             </p>
-            <a 
-              href="https://calendly.com/offaxisdeals/sales"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button 
+              onClick={() => {
+                // Scroll to the contact form
+                const form = document.getElementById('contact-form');
+                if (form) {
+                  form.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
               style={{
                 background: '#059669',
                 color: 'white',
                 padding: '12px 24px',
                 borderRadius: '8px',
-                textDecoration: 'none',
+                border: 'none',
                 fontSize: '14px',
                 fontWeight: '600',
                 display: 'inline-block',
-                marginRight: '12px'
+                marginRight: '12px',
+                cursor: 'pointer'
               }}
             >
-              📅 Schedule Call
-            </a>
+              📝 Fill Out Form
+            </button>
             <a 
               href="mailto:sales@offaxisdeals.com"
               style={{
