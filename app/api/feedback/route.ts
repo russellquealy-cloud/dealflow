@@ -48,9 +48,11 @@ export async function POST(request: NextRequest) {
           message: message,
           created_at: new Date().toISOString()
         })
-        .catch(err => {
-          console.error('Error storing feedback in database:', err);
-          // Don't fail the request if DB insert fails
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error storing feedback in database:', error);
+            // Don't fail the request if DB insert fails
+          }
         });
     }
 

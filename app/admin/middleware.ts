@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerClient } from '@/supabase/server';
 
-export async function adminMiddleware(_request: NextRequest) {
-  const supabase = createServerClient();
+export async function adminMiddleware() {
+  const supabase = await createServerClient();
   const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {

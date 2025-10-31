@@ -21,9 +21,8 @@ interface Conversation {
 
 export default function MessagesPage() {
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+      const [conversations, setConversations] = useState<Conversation[]>([]);
+      const [loading, setLoading] = useState(true);
   const loadingRef = useRef(false);
 
   useEffect(() => {
@@ -53,9 +52,7 @@ export default function MessagesPage() {
           return;
         }
 
-        setUserId(session.user.id);
-
-        // Get all messages for this user
+            // Get all messages for this user
         // Note: profiles table doesn't have email column, only full_name
         const { data: messages, error } = await supabase
           .from('messages')
@@ -72,7 +69,18 @@ export default function MessagesPage() {
         // Group messages by thread_id
         const conversationMap = new Map<string, Conversation>();
 
-        messages?.forEach((msg: any) => {
+            messages?.forEach((msg: {
+              thread_id: string;
+              listing_id: string;
+              from_id: string;
+              to_id: string;
+              body: string;
+              created_at: string;
+              read_at: string | null;
+              listing?: { title?: string; address?: string };
+              sender?: { full_name?: string };
+              recipient?: { full_name?: string };
+            }) => {
           const threadId = msg.thread_id;
           const isFromMe = msg.from_id === session.user.id;
           const otherUserId = isFromMe ? msg.to_id : msg.from_id;

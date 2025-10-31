@@ -80,13 +80,11 @@ async function sendViaSMTP(options: EmailOptions & { from: string }): Promise<bo
       },
     });
 
-    // Parse from email format
-    let fromName = 'Off Axis Deals';
+    // Parse from email format to extract address for reply-to
     let fromAddress = options.from;
     if (options.from.includes('<')) {
       const match = options.from.match(/^(.+?)\s*<(.+?)>$/);
       if (match) {
-        fromName = match[1].replace(/['"]/g, '');
         fromAddress = match[2];
       }
     }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/supabase/server';
 import { createHash } from 'crypto';
-import { sendMessageNotificationEmail } from '@/lib/email';
 
 // Generate deterministic UUID v5 from a string
 function uuidFromString(str: string): string {
@@ -158,40 +157,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Send notification email to recipient
-      try {
-        // Get recipient's email from auth.users (not profiles)
-        const { data: recipientProfile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', recipientId)
-          .single();
-
-        const { data: listingData } = await supabase
-          .from('listings')
-          .select('title, address')
-          .eq('id', listingId)
-          .single();
-
-        // Get recipient email from auth (need to use admin client or RPC)
-        // For now, we'll skip email if we can't get it easily
-        // TODO: Add RPC function to get user email or use admin client
-        
-        const listingTitle = listingData?.title || listingData?.address || 'Property Listing';
-        const messagePreview = message.substring(0, 100);
-        const messageLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/messages/${listingId}`;
-        
-        // Try to send notification (will fail gracefully if email not available)
-        // await sendMessageNotificationEmail(
-        //   recipientEmail,
-        //   recipientProfile?.full_name || 'A user',
-        //   listingTitle,
-        //   messagePreview,
-        //   messageLink
-        // );
-      } catch (emailError) {
-        // Don't fail message send if email fails
-        console.error('Error sending notification email:', emailError);
-      }
+      // TODO: Implement email notifications when recipient email can be retrieved from auth.users
+      // Currently commented out as we need admin client or RPC function to get user email
 
       return NextResponse.json({ message: newMessage });
   } catch (error) {

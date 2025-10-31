@@ -28,7 +28,7 @@ interface Listing {
 export default function MessagesPage() {
   const params = useParams();
   const router = useRouter();
-  const listingId = params.listingId as string;
+  const listingId = params?.listingId as string;
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [listing, setListing] = useState<Listing | null>(null);

@@ -16,9 +16,8 @@ interface WatchlistItem {
 
 export default function WatchlistsPage() {
   const router = useRouter();
-  const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+      const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
+      const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadWatchlists = async () => {
@@ -29,9 +28,7 @@ export default function WatchlistsPage() {
         return;
       }
 
-      setUserId(session.user.id);
-
-      try {
+        try {
         const response = await fetch('/api/watchlists', {
           credentials: 'include',
         });
@@ -78,7 +75,7 @@ export default function WatchlistsPage() {
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: '0 0 8px 0', fontSize: 32, fontWeight: 700 }}>My Watchlist</h1>
         <p style={{ margin: 0, color: '#6b7280', fontSize: 16 }}>
-          Properties you've saved for later
+          Properties you&apos;ve saved for later
         </p>
       </div>
 
@@ -93,7 +90,7 @@ export default function WatchlistsPage() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</div>
           <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>No Saved Properties</h2>
           <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-            Start saving properties you're interested in to track them here.
+              Start saving properties you&apos;re interested in to track them here.
           </p>
           <Link href="/listings" style={{
             display: 'inline-block',
@@ -113,7 +110,7 @@ export default function WatchlistsPage() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
           gap: 20
         }}>
-          {watchlists.map((item) => (
+            {watchlists.map((item: WatchlistItem) => (
             <div key={item.id} style={{ position: 'relative' }}>
               <ListingCard listing={item.listing} />
               <button

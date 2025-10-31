@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
-import Link from 'next/link';
 
 interface Alert {
   id: string;
@@ -19,7 +18,11 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [alertType, setAlertType] = useState<'price' | 'location' | 'property_type' | 'custom'>('price');
-  const [alertCriteria, setAlertCriteria] = useState<Record<string, unknown>>({});
+  const [alertCriteria, setAlertCriteria] = useState<Record<string, unknown>>({
+    maxPrice: undefined,
+    location: '',
+    property_type: '',
+  });
 
   useEffect(() => {
     const loadAlerts = async () => {
@@ -127,8 +130,8 @@ export default function AlertsPage() {
               <input
                 type="number"
                 placeholder="e.g., 200000"
-                value={alertCriteria.maxPrice || ''}
-                onChange={(e) => setAlertCriteria({ ...alertCriteria, maxPrice: Number(e.target.value) })}
+                value={(typeof alertCriteria.maxPrice === 'number' ? alertCriteria.maxPrice : '') || ''}
+                onChange={(e) => setAlertCriteria({ ...alertCriteria, maxPrice: e.target.value ? Number(e.target.value) : undefined })}
                 style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
               />
             </div>

@@ -12,20 +12,20 @@ export async function createServerClient() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options) {
-          try {
-            cookieStore.set(name, value, options);
-          } catch (error) {
-            // Cookie setting might fail in some contexts, ignore silently
-          }
-        },
-        remove(name: string, options) {
-          try {
-            cookieStore.set(name, '', { ...options, maxAge: 0 });
-          } catch (error) {
-            // Cookie removal might fail in some contexts, ignore silently
-          }
-        },
+            set(name: string, value: string, options) {
+              try {
+                cookieStore.set(name, value, options);
+              } catch {
+                // Cookie setting might fail in some contexts, ignore silently
+              }
+            },
+            remove(name: string, options) {
+              try {
+                cookieStore.set(name, '', { ...options, maxAge: 0 });
+              } catch {
+                // Cookie removal might fail in some contexts, ignore silently
+              }
+            },
       },
     }
   );
