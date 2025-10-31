@@ -3,6 +3,7 @@ import { formatCurrency } from '@/lib/format';
 import ContactButtons from '@/components/ContactButtons';
 import { coverUrlFromListing, galleryFromListing } from '@/lib/images';
 import ImageGallery from '@/components/ImageGallery';
+import WatchlistButton from '@/components/WatchlistButton';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -91,8 +92,11 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
       <div style={{ marginTop: 18, whiteSpace: 'pre-wrap' }}>{data.description || ''}</div>
 
-      <div style={{ marginTop: 18 }}>
-        <ContactButtons listingId={data.id} />
+      <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <WatchlistButton listingId={data.id} size="medium" />
+        <div style={{ flex: 1 }}>
+          <ContactButtons listingId={data.id} />
+        </div>
       </div>
     </main>
   );

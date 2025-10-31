@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const customerId = session.customer;
   const subscriptionId = session.subscription;
   const priceId = session.metadata?.priceId;
@@ -101,7 +101,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const customerId = subscription.customer;
   const priceId = subscription.items.data[0]?.price.id;
 
@@ -145,7 +145,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const customerId = subscription.customer;
 
   // Get user ID
@@ -174,7 +174,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const customerId = invoice.customer;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const subscriptionId = (invoice as any).subscription;

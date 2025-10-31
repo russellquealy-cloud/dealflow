@@ -4,13 +4,96 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import Link from 'next/link';
+import type { SubscriptionTier } from '@/lib/stripe';
+
+// Helper function to get plan name and features (client-side safe)
+function getPlanInfo(segment?: string, tier?: string): { name: string; tier: SubscriptionTier; features: string[] } {
+  const segmentUpper = segment?.toUpperCase() || 'INVESTOR';
+  const tierUpper = tier?.toUpperCase() || 'FREE';
+  
+  let subscriptionTier: SubscriptionTier = 'FREE';
+  let planName = 'Free';
+  const features: string[] = [];
+  
+  if (tierUpper === 'FREE') {
+    subscriptionTier = 'FREE';
+    planName = 'Free';
+    features.push('Browse listings');
+    features.push('View basic property details');
+  } else if (segmentUpper === 'INVESTOR' && tierUpper === 'BASIC') {
+    subscriptionTier = 'INVESTOR_BASIC';
+    planName = 'Investor Basic';
+    features.push('Unlimited listing views');
+    features.push('Contact property owners');
+    features.push('10 AI analyses per month');
+    features.push('Save favorites & watchlists');
+    features.push('Property alerts');
+    features.push('Map drawing tools');
+    features.push('Satellite view');
+  } else if (segmentUpper === 'INVESTOR' && tierUpper === 'PRO') {
+    subscriptionTier = 'INVESTOR_PRO';
+    planName = 'Investor Pro';
+    features.push('Everything in Basic');
+    features.push('Unlimited AI analyses');
+    features.push('Export reports (CSV/PDF)');
+    features.push('Custom alerts');
+    features.push('Advanced analytics');
+    features.push('Priority support');
+    features.push('API access');
+  } else if (segmentUpper === 'WHOLESALER' && tierUpper === 'BASIC') {
+    subscriptionTier = 'WHOLESALER_BASIC';
+    planName = 'Wholesaler Basic';
+    features.push('Post up to 10 listings/month');
+    features.push('Basic analytics (views, saves)');
+    features.push('Property insights');
+    features.push('Contact tracking');
+    features.push('Email support');
+  } else if (segmentUpper === 'WHOLESALER' && tierUpper === 'PRO') {
+    subscriptionTier = 'WHOLESALER_PRO';
+    planName = 'Wholesaler Pro';
+    features.push('Post up to 30 listings/month');
+    features.push('AI repair estimator');
+    features.push('Investor demand heatmaps');
+    features.push('Featured placement');
+    features.push('Verified badge');
+    features.push('Investor chat');
+    features.push('Advanced analytics');
+    features.push('Priority support');
+  }
+  
+  return { name: planName, tier: subscriptionTier, features };
+}
+
+// Helper to get next tier for upgrade
+function getNextTier(segment?: string, tier?: string): { name: string; href: string } | null {
+  const segmentUpper = segment?.toUpperCase() || 'INVESTOR';
+  const tierUpper = tier?.toUpperCase() || 'FREE';
+  
+  if (tierUpper === 'FREE') {
+    if (segmentUpper === 'INVESTOR') {
+      return { name: 'Investor Basic', href: '/pricing?segment=investor&tier=basic' };
+    } else {
+      return { name: 'Wholesaler Basic', href: '/pricing?segment=wholesaler&tier=basic' };
+    }
+  } else if (tierUpper === 'BASIC') {
+    if (segmentUpper === 'INVESTOR') {
+      return { name: 'Investor Pro', href: '/pricing?segment=investor&tier=pro' };
+    } else {
+      return { name: 'Wholesaler Pro', href: '/pricing?segment=wholesaler&tier=pro' };
+    }
+  }
+  
+  return null;
+}
 
 export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ 
-    role?: string; 
+    role?: string;
+    segment?: string;
+    tier?: string;
     membership_tier?: string; 
     company_name?: string;
     full_name?: string;
@@ -19,16 +102,24 @@ export default function AccountPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Add timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        console.warn('Account load timeout - setting loading to false');
+        setLoading(false);
+      }, 10000); // 10 second timeout
+      
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('Session error:', sessionError);
           setLoading(false);
+          clearTimeout(timeoutId);
           return;
         }
         
         if (!session) {
+          clearTimeout(timeoutId);
           router.push('/login?next=/account');
           return;
         }
@@ -47,26 +138,47 @@ export default function AccountPage() {
           // Create a basic profile if none exists
           if (profileError.code === 'PGRST116') {
             console.log('No profile found, creating basic profile...');
-            const { data: newProfile } = await supabase
-              .from('profiles')
-              .insert({
-                id: session.user.id,
-                role: 'investor',
-                membership_tier: 'investor_free',
-                verified: false
-              })
-              .select()
-              .single();
-            setProfile(newProfile);
+            try {
+              const { data: newProfile, error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: session.user.id,
+                  role: 'investor',
+                  segment: 'investor',
+                  tier: 'free',
+                  membership_tier: 'free',
+                  verified: false
+                })
+                .select()
+                .single();
+              if (createError) {
+                console.error('Error creating profile:', createError);
+                setProfile({ role: 'investor', segment: 'investor', tier: 'free', membership_tier: 'free' });
+              } else {
+                console.log('Profile loaded:', newProfile);
+                setProfile(newProfile);
+              }
+            } catch (createErr) {
+              console.error('Exception creating profile:', createErr);
+              setProfile({ role: 'investor', segment: 'investor', tier: 'free', membership_tier: 'free' });
+            }
+          } else {
+            // Other error - set default profile
+            console.error('Unexpected profile error:', profileError);
+            setProfile({ role: 'investor', segment: 'investor', tier: 'free', membership_tier: 'free' });
           }
         } else {
+          console.log('Profile loaded successfully:', profileData);
+          console.log('Segment:', profileData?.segment, 'Tier:', profileData?.tier);
           setProfile(profileData);
         }
         
         setLoading(false);
+        clearTimeout(timeoutId);
       } catch (err) {
         console.error('Account loading error:', err);
         setLoading(false);
+        clearTimeout(timeoutId);
       }
     };
 
@@ -137,56 +249,63 @@ export default function AccountPage() {
         background: '#fff'
       }}>
         <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Subscription</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <div style={{ 
-            padding: '4px 12px', 
-            borderRadius: 20, 
-            background: '#10b981', 
-            color: '#fff', 
-            fontSize: 14, 
-            fontWeight: 600 
-          }}>
-            Free Plan
-          </div>
-          <span style={{ color: '#6b7280', fontSize: 14 }}>
-            Upgrade to Pro for advanced features
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-          <div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 16, fontWeight: 600 }}>Free Features</h3>
-            <ul style={{ margin: 0, paddingLeft: 16, color: '#6b7280', fontSize: 14 }}>
-              <li>Up to 5 listings</li>
-              <li>Basic search</li>
-              <li>Basic analytics</li>
-            </ul>
-          </div>
-          <div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 16, fontWeight: 600 }}>Pro Features</h3>
-            <ul style={{ margin: 0, paddingLeft: 16, color: '#6b7280', fontSize: 14 }}>
-              <li>Unlimited listings</li>
-              <li>Advanced search</li>
-              <li>Detailed analytics</li>
-              <li>Priority support</li>
-            </ul>
-          </div>
-        </div>
-        <Link 
-          href="/pricing"
-          style={{ 
-            display: 'inline-block',
-            marginTop: 16,
-            padding: '8px 16px', 
-            border: '1px solid #10b981', 
-            borderRadius: 8, 
-            background: '#10b981', 
-            color: '#fff', 
-            textDecoration: 'none',
-            fontWeight: 600
-          }}
-        >
-          Upgrade to Pro
-        </Link>
+        {(() => {
+          const planInfo = getPlanInfo(profile?.segment, profile?.tier);
+          const nextTier = getNextTier(profile?.segment, profile?.tier);
+          const isFree = (profile?.tier?.toUpperCase() || 'FREE') === 'FREE';
+          const isBasic = (profile?.tier?.toUpperCase() || '') === 'BASIC';
+          
+          return (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ 
+                  padding: '4px 12px', 
+                  borderRadius: 20, 
+                  background: isFree ? '#6b7280' : isBasic ? '#3b82f6' : '#10b981', 
+                  color: '#fff', 
+                  fontSize: 14, 
+                  fontWeight: 600 
+                }}>
+                  {planInfo.name}
+                </div>
+                {nextTier && (
+                  <span style={{ color: '#6b7280', fontSize: 14 }}>
+                    Upgrade to {nextTier.name} for more features
+                  </span>
+                )}
+              </div>
+              
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: 16, fontWeight: 600 }}>Current Plan Features</h3>
+                <ul style={{ margin: 0, paddingLeft: 16, color: '#374151', fontSize: 14, lineHeight: 1.8 }}>
+                  {planInfo.features.map((feature, idx) => (
+                    <li key={idx}>{feature}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              {nextTier && (
+                <Link 
+                  href={nextTier.href}
+                  style={{ 
+                    display: 'inline-block',
+                    marginTop: 16,
+                    padding: '10px 20px', 
+                    border: '1px solid #3b82f6', 
+                    borderRadius: 8, 
+                    background: '#3b82f6', 
+                    color: '#fff', 
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    fontSize: 14
+                  }}
+                >
+                  Upgrade to {nextTier.name} →
+                </Link>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Profile Type */}
@@ -203,16 +322,16 @@ export default function AccountPage() {
             <div style={{ 
               padding: '8px 16px', 
               borderRadius: 8, 
-              background: profile.role === 'wholesaler' ? '#fef3c7' : '#dbeafe',
-              color: profile.role === 'wholesaler' ? '#92400e' : '#1e40af',
+              background: (profile.segment || profile.role) === 'wholesaler' ? '#fef3c7' : '#dbeafe',
+              color: (profile.segment || profile.role) === 'wholesaler' ? '#92400e' : '#1e40af',
               fontWeight: 600,
               display: 'inline-block',
               marginBottom: 16
             }}>
-              {profile.role === 'wholesaler' ? '🏠 Wholesaler' : '💰 Investor'}
+              {(profile.segment || profile.role) === 'wholesaler' ? '🏠 Wholesaler' : '💰 Investor'}
             </div>
             <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
-              {profile.role === 'wholesaler' 
+              {(profile.segment || profile.role) === 'wholesaler' 
                 ? 'You can post deals and find investors for your properties.'
                 : 'You can browse deals and find investment opportunities.'
               }
@@ -256,31 +375,63 @@ export default function AccountPage() {
       </div>
 
       {/* Analytics */}
-      {profile && (
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: 12, 
-          padding: 24, 
-          marginBottom: 24,
-          background: '#fff'
-        }}>
-          <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Analytics</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-            <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>0</div>
-              <div style={{ fontSize: 14, color: '#6b7280' }}>Total Listings</div>
-            </div>
-            <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>0</div>
-              <div style={{ fontSize: 14, color: '#6b7280' }}>Views</div>
-            </div>
-            <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>0</div>
-              <div style={{ fontSize: 14, color: '#6b7280' }}>Contacts</div>
-            </div>
+      {profile && (() => {
+        const isInvestor = profile.segment === 'investor' || (profile.role === 'investor' && !profile.segment);
+        const isWholesaler = profile.segment === 'wholesaler' || profile.role === 'wholesaler';
+        
+        return (
+          <div style={{ 
+            border: '1px solid #e5e7eb', 
+            borderRadius: 12, 
+            padding: 24, 
+            marginBottom: 24,
+            background: '#fff'
+          }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Analytics</h2>
+            {isInvestor ? (
+              // Investor Analytics
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0f9ff' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>Saved Listings</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0fdf4' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>Contacts Made</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>AI Analyses</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#faf5ff' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#a855f7' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>Watchlists</div>
+                </div>
+              </div>
+            ) : isWholesaler ? (
+              // Wholesaler Analytics
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0f9ff' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>My Listings</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0fdf4' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>Total Views</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>Contacts</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fef2f2' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}>0</div>
+                  <div style={{ fontSize: 14, color: '#6b7280' }}>Featured Listings</div>
+                </div>
+              </div>
+            ) : null}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Account Actions */}
       <div style={{ 

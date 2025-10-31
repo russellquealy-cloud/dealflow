@@ -1,12 +1,13 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 
 export const dynamic = 'force-dynamic';
 
 function LoginInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const next = params?.get('next') ?? '/';
   const error = params?.get('error');
@@ -52,10 +53,11 @@ function LoginInner() {
             }
           }
           
-          // Use window.location.href for mobile compatibility
+          // Use router.push with a small delay for session to persist
           setTimeout(() => {
-            window.location.href = next;
-          }, 500);
+            router.push(next);
+            router.refresh();
+          }, 300);
         }
       } else {
         // Magic link login with mobile-optimized redirect

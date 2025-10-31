@@ -74,6 +74,8 @@ export default function ListingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [activeMapBounds, setActiveMapBounds] = useState(false);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
+  const [mapZoom, setMapZoom] = useState<number | undefined>(undefined);
   const [filters, setFilters] = useState<Filters>({
     minPrice: null,
     maxPrice: null,
@@ -274,20 +276,65 @@ export default function ListingsPage() {
 
   // Load all listings on mount
   useEffect(() => {
-    const loadListings = async () => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const loadListings = async (retryCount = 0) => {
+      if (!isMounted) return;
+
+      // Clear any existing timeout
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      // Add timeout to prevent infinite loading
+      timeoutId = setTimeout(() => {
+        if (!isMounted) return;
+        console.warn('Listings load timeout - setting loading to false');
+        setLoading(false);
+        // Retry once after timeout
+        if (retryCount === 0) {
+          console.log('Retrying listings load...');
+          setTimeout(() => loadListings(1), 1000);
+        }
+      }, 10000); // 10 second timeout with retry
+      
       try {
-        setLoading(true);
-        const { data, error } = await supabase
+        if (retryCount === 0) {
+          setLoading(true);
+        }
+        
+        console.log(`Loading listings from Supabase... (attempt ${retryCount + 1})`);
+        
+        // Query with explicit field selection and limit for performance
+        // Note: repair_costs and assignment_fee columns don't exist, using repairs only
+        const query = supabase
           .from('listings')
-          .select('*, latitude, longitude')
-          .order('created_at', { ascending: false });
+          .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, property_type, description, images, created_at, updated_at, featured, featured_until')
+          .order('created_at', { ascending: false })
+          .limit(1000); // Limit to prevent huge queries
+
+        const { data, error } = await query;
+
+        // Clear timeout since we got a response
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        if (!isMounted) return;
 
         if (error) {
           console.error('Error loading listings:', error);
+          setAllListings([]);
+          setAllPoints([]);
+          setLoading(false);
           return;
         }
 
-        if (data) {
+        console.log(`Listings query completed. Found ${data?.length || 0} listings.`);
+
+        if (data && Array.isArray(data) && data.length > 0) {
           const rows = data as unknown as Row[];
           const items = rows.map((r) => {
             const price = toNum(r.price);
@@ -340,16 +387,85 @@ export default function ListingsPage() {
           }
 
           setAllListings(items as ListItem[]);
-        setAllPoints(pts);
+          setAllPoints(pts);
+        } else {
+          // No data returned - set empty arrays
+          console.log('No listings found in database');
+          setAllListings([]);
+          setAllPoints([]);
         }
       } catch (err) {
+        if (!isMounted) return;
         console.error('Error loading listings:', err);
+        
+        // Retry once on error
+        if (retryCount === 0) {
+          console.log('Retrying listings load after error...');
+          setTimeout(() => loadListings(1), 2000);
+          return;
+        }
+        
+        setAllListings([]);
+        setAllPoints([]);
       } finally {
-        setLoading(false);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadListings();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  // Handle geocoding events from search bar
+  useEffect(() => {
+    const handleGeocode = async (e: Event) => {
+      const customEvent = e as CustomEvent<{ q: string }>;
+      const query = customEvent.detail.q;
+      
+      if (!query) return;
+      
+      try {
+        const response = await fetch('/api/geocode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: query })
+        });
+        
+        if (!response.ok) {
+          console.error('Geocoding failed');
+          return;
+        }
+        
+        const data = await response.json();
+        if (data.location) {
+          // Move map to geocoded location
+          setMapCenter({ lat: data.location.lat, lng: data.location.lng });
+          setMapZoom(12); // Zoom to city level
+          // Also update search query to show the formatted address
+          setSearchQuery(data.formatted_address || query);
+        }
+      } catch (error) {
+        console.error('Error geocoding:', error);
+      }
+    };
+    
+    window.addEventListener('df:geocode', handleGeocode);
+    return () => {
+      window.removeEventListener('df:geocode', handleGeocode);
+    };
   }, []);
 
   // Apply filters to listings
@@ -416,11 +532,13 @@ export default function ListingsPage() {
         {...props}
         points={allPoints}
         onBoundsChange={handleMapBoundsChange}
+        center={mapCenter}
+        zoom={mapZoom}
       />
     );
     MapComponentInner.displayName = 'MapComponent';
     return MapComponentInner;
-  }, [allPoints, handleMapBoundsChange]);
+  }, [allPoints, handleMapBoundsChange, mapCenter, mapZoom]);
 
   if (loading) {
     return (

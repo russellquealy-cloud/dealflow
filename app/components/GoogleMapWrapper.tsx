@@ -21,6 +21,8 @@ type Props = {
   points: Point[];
   onBoundsChange?: (bounds: { south: number; north: number; west: number; east: number } | null) => void;
   onPolygonComplete?: (polygon: google.maps.Polygon) => void;
+  center?: { lat: number; lng: number };
+  zoom?: number;
 };
 
 export default function GoogleMapWrapper(props: Props) {

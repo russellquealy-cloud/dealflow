@@ -19,6 +19,8 @@ type Props = {
   points: Point[]; 
   onBoundsChange?: (bounds: { south: number; north: number; west: number; east: number } | null) => void;
   onPolygonComplete?: (polygon: google.maps.Polygon) => void;
+  center?: { lat: number; lng: number }; // External control of map center
+  zoom?: number; // External control of zoom
 };
 
 const libraries: ("drawing" | "geometry" | "places" | "marker")[] = ["drawing", "geometry", "places", "marker"];
@@ -47,7 +49,7 @@ const defaultOptions = {
   }),
 };
 
-export default function GoogleMapComponent({ points, onBoundsChange, onPolygonComplete }: Props) {
+export default function GoogleMapComponent({ points, onBoundsChange, onPolygonComplete, center: externalCenter, zoom: externalZoom }: Props) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<Point | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
@@ -66,8 +68,13 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     preventGoogleFontsLoading: true,
   });
 
-  // Memoize center and zoom from localStorage
+  // Memoize center and zoom from localStorage, or use external center if provided
   const mapCenter = useMemo(() => {
+    // If external center is provided, use it
+    if (externalCenter && externalCenter.lat && externalCenter.lng) {
+      return externalCenter;
+    }
+    
     if (typeof window === 'undefined') return defaultCenter;
     
     try {
@@ -82,9 +89,12 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
       console.warn('Failed to restore map center from localStorage:', error);
     }
     return defaultCenter;
-  }, []);
+  }, [externalCenter]);
 
   const mapZoom = useMemo(() => {
+    if (externalZoom !== undefined) {
+      return externalZoom;
+    }
     if (typeof window === 'undefined') return 4;
     
     try {
@@ -99,7 +109,24 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
       console.warn('Failed to restore map zoom from localStorage:', error);
     }
     return 4;
-  }, []);
+  }, [externalZoom]);
+
+  // Pan map when external center changes (e.g., from geocoding)
+  const isPanningRef = useRef(false);
+  React.useEffect(() => {
+    if (map && externalCenter && externalCenter.lat && externalCenter.lng) {
+      // Temporarily disable bounds updates to prevent flickering during pan
+      isPanningRef.current = true;
+      map.panTo(new google.maps.LatLng(externalCenter.lat, externalCenter.lng));
+      if (externalZoom !== undefined) {
+        map.setZoom(externalZoom);
+      }
+      // Re-enable bounds updates after pan completes
+      setTimeout(() => {
+        isPanningRef.current = false;
+      }, 2000);
+    }
+  }, [map, externalCenter, externalZoom]);
 
   // Memoize map options to prevent re-renders
   const mapOptions = useMemo(() => defaultOptions, []);
@@ -116,10 +143,14 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
 
     // Set up bounds change listener with aggressive anti-flickering
     const emitBounds = () => {
+      // Don't emit bounds if we're panning from an external source (like geocoding)
+      if (isPanningRef.current) {
+        return;
+      }
       if (mapInstance && onBoundsChange && !isProcessingBoundsRef.current) {
         const now = Date.now();
-        // Prevent bounds updates more frequent than every 2 seconds
-        if (now - lastBoundsUpdateRef.current < 2000) {
+        // Prevent bounds updates more frequent than every 3 seconds to eliminate flickering
+        if (now - lastBoundsUpdateRef.current < 3000) {
           console.log('Bounds unchanged (within threshold), skipping update to prevent flicker');
           return;
         }

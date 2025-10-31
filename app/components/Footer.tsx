@@ -55,6 +55,9 @@ export default function Footer() {
           <Link href="/contact-sales" style={linkStyle}>
             Contact Sales
           </Link>
+          <Link href="/feedback" style={linkStyle}>
+            Feedback & Bug Reports
+          </Link>
         </div>
         <div style={rightStyle}>
           {/* Mobile App Links */}

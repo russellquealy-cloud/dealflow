@@ -15,29 +15,46 @@ export default function ContactButtons({ listingId, email, phone }: Props) {
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Link
-        href={`/contact?listingId=${encodeURIComponent(id)}`}
+        href={`/messages/${encodeURIComponent(id)}`}
         className="border rounded px-3 py-2 hover:bg-neutral-50"
+        style={{
+          display: 'inline-block',
+          padding: '8px 16px',
+          border: '1px solid #3b82f6',
+          borderRadius: 6,
+          background: '#3b82f6',
+          color: '#fff',
+          textDecoration: 'none',
+          fontWeight: 600,
+          fontSize: 14
+        }}
       >
-        Message Seller
+        💬 Message Seller
       </Link>
 
-      <a
-        href={email ? `mailto:${email}?subject=Inquiry about listing ${id}` : '#'}
-        className="border rounded px-3 py-2 hover:bg-neutral-50"
-        aria-disabled={!email}
-        onClick={(e) => { if (!email) e.preventDefault(); }}
-      >
-        Email
-      </a>
+      {/* Email and Phone are now hidden - all communication goes through internal messaging */}
+      {/* Keeping them hidden but available if needed for future feature */}
+      {false && (
+        <>
+          <a
+            href={email ? `mailto:${email}?subject=Inquiry about listing ${id}` : '#'}
+            className="border rounded px-3 py-2 hover:bg-neutral-50"
+            aria-disabled={!email}
+            onClick={(e) => { if (!email) e.preventDefault(); }}
+          >
+            Email
+          </a>
 
-      <a
-        href={phone ? `tel:${phone}` : '#'}
-        className="border rounded px-3 py-2 hover:bg-neutral-50"
-        aria-disabled={!phone}
-        onClick={(e) => { if (!phone) e.preventDefault(); }}
-      >
-        Call / Text
-      </a>
+          <a
+            href={phone ? `tel:${phone}` : '#'}
+            className="border rounded px-3 py-2 hover:bg-neutral-50"
+            aria-disabled={!phone}
+            onClick={(e) => { if (!phone) e.preventDefault(); }}
+          >
+            Call / Text
+          </a>
+        </>
+      )}
     </div>
   );
 }

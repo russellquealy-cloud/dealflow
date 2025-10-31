@@ -1,62 +1,39 @@
-// app/api/contact-sales/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { sendSalesEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.json();
-    
-    // Validate required fields
-    if (!formData.name || !formData.email || !formData.role) {
+    const body = await request.json();
+    const { name, email, company, phone, role, teamSize, needs, budget, timeline, message } = body;
+
+    if (!name || !email || !message) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Name, email, and message are required' },
         { status: 400 }
       );
     }
 
-    // Send email notification to sales team
-    const emailContent = `
-New Enterprise Sales Inquiry
-
-Contact Information:
-- Name: ${formData.name}
-- Email: ${formData.email}
-- Phone: ${formData.phone || 'Not provided'}
-- Company: ${formData.company || 'Not provided'}
-
-Requirements:
-- Role: ${formData.role}
-- Team Size: ${formData.teamSize || 'Not specified'}
-- Primary Needs: ${formData.needs || 'Not specified'}
-- Budget Range: ${formData.budget || 'Not specified'}
-- Timeline: ${formData.timeline || 'Not specified'}
-
-Additional Message:
-${formData.message || 'No additional message provided'}
-
+    // Build a detailed message for sales
+    const salesMessage = `
+Name: ${name}
+Email: ${email}
+${company ? `Company: ${company}\n` : ''}${phone ? `Phone: ${phone}\n` : ''}${role ? `Role: ${role}\n` : ''}${teamSize ? `Team Size: ${teamSize}\n` : ''}${needs ? `Primary Needs: ${needs}\n` : ''}${budget ? `Budget Range: ${budget}\n` : ''}${timeline ? `Timeline: ${timeline}\n` : ''}
 ---
-This inquiry was submitted through the Off Axis Deals contact sales form.
-    `;
+Message:
+${message}
+    `.trim();
 
-    // In a real implementation, you would send this email using a service like:
-    // - SendGrid
-    // - Mailgun
-    // - AWS SES
-    // - Nodemailer with SMTP
-    
-    // For now, we'll just log it and return success
-    console.log('Sales inquiry received:', emailContent);
+    // Send sales email
+    const emailSent = await sendSalesEmail(name, email, company, salesMessage);
 
-    // TODO: Implement actual email sending
-    // await sendEmail({
-    //   to: process.env.SALES_EMAIL || 'sales@offaxisdeals.com',
-    //   subject: 'New Enterprise Sales Inquiry',
-    //   text: emailContent,
-    //   html: emailContent.replace(/\n/g, '<br>')
-    // });
+    if (!emailSent) {
+      console.error('Failed to send sales email');
+      // Still return success to user, but log the error
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: 'Sales inquiry submitted successfully' });
   } catch (error) {
-    console.error('Error processing contact sales form:', error);
+    console.error('Error processing sales inquiry:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -51,7 +51,7 @@ export default function AdminDashboard() {
       name: 'AI Tools',
       description: 'AI Analyzer and Repair Estimator',
       links: [
-        { name: 'AI Analyzer', href: '/admin/analyzer', status: 'exists' },
+        { name: 'AI Analyzer', href: '/tools/analyzer', status: 'exists' },
         { name: 'Repair Estimator', href: '/admin/repair-estimator', status: 'stub' }
       ]
     },

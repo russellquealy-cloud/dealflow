@@ -32,6 +32,20 @@ export default function Header() {
   const router = useRouter();
   const [email, setEmail] = React.useState<string | null>(null);
   const [userRole, setUserRole] = React.useState<string>('');
+  const [unreadCount, setUnreadCount] = React.useState<number>(0);
+
+  // Load unread message count
+  const loadUnreadCount = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/messages/unread-count');
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Error loading unread count:', error);
+    }
+  }, []);
 
   React.useEffect(() => {
     const loadUserData = async () => {
@@ -47,6 +61,10 @@ export default function Header() {
         if (profile) {
           setUserRole(profile.role);
         }
+        // Load unread count
+        loadUnreadCount();
+      } else {
+        setUnreadCount(0);
       }
     };
 
@@ -66,13 +84,31 @@ export default function Header() {
           if (profile) {
             setUserRole(profile.role);
           }
+          // Load unread count
+          loadUnreadCount();
         } else {
           setUserRole('');
+          setUnreadCount(0);
         }
       }
     });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    
+    // Poll for unread count every 30 seconds if logged in
+    const pollInterval = setInterval(() => {
+      const checkSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          loadUnreadCount();
+        }
+      };
+      checkSession();
+    }, 30000); // 30 seconds
+    
+    return () => {
+      sub.subscription.unsubscribe();
+      clearInterval(pollInterval);
+    };
+  }, [loadUnreadCount]);
 
   const signOut = async () => {
     try {
@@ -102,14 +138,63 @@ export default function Header() {
         Off Axis Deals
       </Link>
       <div style={right}>
-        <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
+        {/* Only show "My Listings" for wholesalers, not investors */}
+        {userRole === 'wholesaler' && (
+          <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
+        )}
+        {email && (
+          <>
+            <Link href="/watchlists" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>⭐ Watchlist</Link>
+            <Link href="/saved-searches" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔍 Saved</Link>
+            <Link href="/alerts" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔔 Alerts</Link>
+          </>
+        )}
         <Link href="/pricing" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Pricing</Link>
         {userRole === 'admin' && (
           <Link href="/admin" style={{ textDecoration: "none", color: "#dc2626", fontWeight: 600 }}>🔒 Admin</Link>
         )}
-        <PostDealButton />
+        {/* Only show "Post a Deal" for wholesalers, not investors */}
+        {userRole === 'wholesaler' && <PostDealButton />}
                {email ? (
                  <>
+                   {/* Messages button with unread count */}
+                   <Link 
+                     href="/messages" 
+                     style={{ 
+                       textDecoration: "none", 
+                       color: "#333", 
+                       fontWeight: 600,
+                       position: "relative",
+                       padding: "8px 12px",
+                       borderRadius: "8px",
+                       display: "inline-block"
+                     }}
+                     onMouseEnter={(e) => {
+                       e.currentTarget.style.background = "#f3f4f6";
+                     }}
+                     onMouseLeave={(e) => {
+                       e.currentTarget.style.background = "transparent";
+                     }}
+                   >
+                     💬 Messages
+                     {unreadCount > 0 && (
+                       <span style={{
+                         position: "absolute",
+                         top: "-4px",
+                         right: "-4px",
+                         background: "#dc2626",
+                         color: "white",
+                         borderRadius: "10px",
+                         padding: "2px 6px",
+                         fontSize: "11px",
+                         fontWeight: "700",
+                         minWidth: "18px",
+                         textAlign: "center"
+                       }}>
+                         {unreadCount > 99 ? '99+' : unreadCount}
+                       </span>
+                     )}
+                   </Link>
                    <Link href="/account" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Account</Link>
                    <span style={{ color: "#666", fontSize: 14 }}>{email}</span>
                    <button 

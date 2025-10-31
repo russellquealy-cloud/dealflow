@@ -16,5 +16,75 @@ html, body, #__next { height: 100%; }
   max-width: 300px !important;
 }
 
+/* Mobile UI improvements */
+@media (max-width: 768px) {
+  /* Better touch targets */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improved spacing on mobile */
+  main {
+    padding: 16px !important;
+  }
+  
+  /* Better text sizing */
+  h1 {
+    font-size: 24px !important;
+  }
+  
+  h2 {
+    font-size: 20px !important;
+  }
+  
+  /* Improved card spacing */
+  .card, [class*="card"] {
+    margin-bottom: 16px;
+  }
+  
+  /* Better form inputs */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 12px !important;
+  }
+  
+  /* Improved button spacing */
+  button {
+    padding: 12px 20px !important;
+  }
+  
+  /* Better grid layouts on mobile */
+  [style*="grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tablet improvements */
+@media (min-width: 769px) and (max-width: 1024px) {
+  main {
+    padding: 20px !important;
+  }
+}
+
+/* Better focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
 
 

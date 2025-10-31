@@ -6,8 +6,16 @@ import { createServerClient } from '@/supabase/server';
 export async function POST() {
   try {
     // Get user from session
-    const supabase = createServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const supabase = await createServerClient();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return NextResponse.json(
+        { error: 'Authentication error' },
+        { status: 401 }
+      );
+    }
     if (!session) {
       return NextResponse.json(
         { error: 'Not authenticated' },

@@ -2,12 +2,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function PricingPage() {
+function PricingPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState<'investor' | 'wholesaler'>('investor');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -29,6 +30,7 @@ export default function PricingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ segment, tier, period: billingPeriod }),
+        credentials: 'include', // Include cookies for authentication
       });
       
       const { url } = await response.json();
@@ -40,6 +42,31 @@ export default function PricingPage() {
       alert('Error processing payment. Please try again.');
     }
   };
+
+  // Handle query params for auto-upgrade
+  useEffect(() => {
+    const segment = searchParams?.get('segment');
+    const tier = searchParams?.get('tier');
+    const period = searchParams?.get('period');
+    
+    if (segment && (segment === 'investor' || segment === 'wholesaler')) {
+      setUserType(segment);
+    }
+    
+    if (period && (period === 'monthly' || period === 'yearly')) {
+      setBillingPeriod(period);
+    }
+    
+    // Auto-trigger upgrade if segment and tier are provided and user is logged in
+    if (segment && tier && isLoggedIn && (tier === 'basic' || tier === 'pro')) {
+      // Small delay to ensure state is set
+      const timer = setTimeout(() => {
+        handleUpgrade(segment as 'investor' | 'wholesaler', tier as 'basic' | 'pro');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isLoggedIn, billingPeriod]);
 
   const investorTiers = [
     {
@@ -632,5 +659,25 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '16px' }}>Loading pricing...</div>
+        </div>
+      </div>
+    }>
+      <PricingPageInner />
+    </Suspense>
   );
 }

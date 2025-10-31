@@ -21,36 +21,51 @@ export default function InvestorPortal() {
   });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login?next=/portal/investor');
-        return;
-      }
-      
-      setUser(session.user);
-      
-      // Load existing profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (profileData) {
-        setProfile(profileData);
-        setFormData({
-          company_name: profileData.company_name || '',
-          phone: profileData.phone || '',
-          city: profileData.city || '',
-          state: profileData.state || '',
-          investment_preferences: profileData.investment_preferences || '',
-          budget_range: profileData.budget_range || '',
-          bio: profileData.bio || ''
-        });
-      }
-      
+    const timeoutId = setTimeout(() => {
+      console.warn('Portal load timeout - setting loading to false');
       setLoading(false);
+    }, 10000);
+
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          clearTimeout(timeoutId);
+          router.push('/login?next=/portal/investor');
+          return;
+        }
+        
+        setUser(session.user);
+        
+        // Load existing profile
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error loading profile:', error);
+        } else if (profileData) {
+          setProfile(profileData);
+          setFormData({
+            company_name: profileData.company_name || '',
+            phone: profileData.phone || '',
+            city: profileData.city || '',
+            state: profileData.state || '',
+            investment_preferences: profileData.investment_preferences || '',
+            budget_range: profileData.budget_range || '',
+            bio: profileData.bio || ''
+          });
+        }
+        
+        setLoading(false);
+        clearTimeout(timeoutId);
+      } catch (err) {
+        console.error('Error in checkAuth:', err);
+        setLoading(false);
+        clearTimeout(timeoutId);
+      }
     };
 
     checkAuth();
@@ -64,7 +79,9 @@ export default function InvestorPortal() {
     try {
       const profileData = {
         id: user.id,
-        type: 'investor',
+        role: 'investor',
+        segment: 'investor',
+        tier: 'free', // Default to free tier
         company_name: formData.company_name,
         phone: formData.phone,
         city: formData.city,

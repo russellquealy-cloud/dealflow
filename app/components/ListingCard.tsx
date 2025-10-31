@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import WatchlistButton from './WatchlistButton';
 
 export type ListingLike = {
   id: string | number;
@@ -213,9 +214,12 @@ export default function ListingCard({ listing }: Props) {
           </div>
         )}
 
-        {/* View Details Link */}
-        <div style={{ color: '#3b82f6', fontSize: '12px', fontWeight: '600' }}>
-          View Details →
+        {/* View Details Link and Watchlist Button */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+          <div style={{ color: '#3b82f6', fontSize: '12px', fontWeight: '600' }}>
+            View Details →
+          </div>
+          <WatchlistButton listingId={String(listing.id)} size="small" />
         </div>
       </div>
     </div>
