@@ -5,7 +5,7 @@ const nextConfig = {
     return [
       {
         source: "/",
-        destination: "/listings",
+        destination: "/welcome",
         permanent: false, // set true if you want a 308
       },
     ];

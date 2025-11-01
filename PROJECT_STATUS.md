@@ -78,25 +78,25 @@
 - **Estimated Time:** 1-2 hours
 - **See:** `EMAIL_SETUP_VERCEL.md` (instructions below)
 
-#### 2. Database Views Column
-- **Status:** Account stats shows 0 for "Total Views"
-- **Tasks:**
-  - Add `views` column to `listings` table (INTEGER, default 0)
-  - Update listings when viewed (increment counter)
-  - Update account stats query to sum views
-- **SQL:**
-  ```sql
-  ALTER TABLE listings ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
-  CREATE INDEX IF NOT EXISTS idx_listings_views ON listings(views);
-  ```
-- **Estimated Time:** 30 minutes
+#### 2. Database Views Column ✅ COMPLETED
+- **Status:** ✅ SQL executed successfully in production
+- **Completed:**
+  - ✅ `views` column added to listings table
+  - ✅ Index created for performance
+  - ⏳ **Next:** Implement view tracking on listing detail page (increment counter)
+  - ⏳ **Next:** Update account stats query to sum views (currently shows 0 as placeholder)
+- **Estimated Time:** 30 minutes (for implementation)
 
-#### 3. Welcome Page as Default
-- **Status:** Code exists but may need verification
-- **Tasks:**
-  - Verify root `/` redirects to `/welcome` on deployed site
-  - Test on production domain
-- **Estimated Time:** 15 minutes
+#### 3. Welcome Page as Default 🚧 IN PROGRESS
+- **Status:** Code fixed, needs deployment verification
+- **Completed:**
+  - ✅ Fixed `next.config.js` redirect (changed from `/listings` to `/welcome`)
+  - ✅ `app/page.tsx` also has redirect to `/welcome` (backup)
+- **Pending:**
+  - ⏳ Deploy updated code
+  - ⏳ Verify root `/` redirects to `/welcome` on production
+  - ⏳ Test on production domain
+- **Estimated Time:** 15 minutes (after deployment)
 
 #### 4. AI Analyzer Integration
 - **Status:** Placeholder exists, needs OpenAI API key
@@ -159,9 +159,13 @@
 - Footer has placeholder links
 - Need actual App Store / Play Store URLs
 
-#### 11. Analytics Dashboard
-- Add Google Analytics or Plausible
-- Track key events (signups, upgrades, listing views)
+#### 11. Analytics Dashboard - SKIPPED
+- **Decision:** Not needed for beta
+- **Reasoning:** 
+  - You have admin analytics via Supabase dashboard
+  - You have billing analytics via Stripe dashboard
+  - User-facing analytics can be added later if needed
+- **Status:** Removed from priority list
 
 #### 12. Advanced Features
 - CRM Export (needs implementation)
@@ -294,37 +298,40 @@
 ### This Weekend's To-Do List
 
 #### 🚨 Critical (Must Do)
-1. **[ ] Email Service Setup**
-   - Open `EMAIL_SETUP_VERCEL.md` and follow instructions
-   - Choose email service (Resend recommended)
-   - Add all environment variables to Vercel
-   - Test by submitting feedback form
-   - Verify emails arrive in inbox
-   - **Time:** 1-2 hours
+1. **[x] Email Service Setup** ✅ COMPLETED
+   - ✅ Email service configured in Vercel
+   - ⏳ **Next:** Test by submitting feedback form to verify emails arrive
+   - **Time:** 1-2 hours (Done!)
 
-2. **[ ] Database Views Column**
-   - Connect to Supabase production database
-   - Run SQL:
-     ```sql
-     ALTER TABLE listings ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
-     CREATE INDEX IF NOT EXISTS idx_listings_views ON listings(views);
-     ```
-   - Verify column exists
-   - **Time:** 15 minutes
+2. **[x] Database Views Column** ✅ COMPLETED
+   - ✅ SQL executed successfully in production
+   - ✅ Column and index created
+   - ⏳ **Next:** Implement view tracking (increment on listing view)
+   - **Time:** 15 minutes (Done!)
 
-3. **[ ] Welcome Page Verification**
-   - Deploy current code
-   - Visit root URL (e.g., https://www.offaxisdeals.com)
+3. **[ ] Welcome Page Verification** 🚧 IN PROGRESS
+   - ✅ Fixed `next.config.js` redirect (changed from `/listings` to `/welcome`)
+   - ✅ `app/page.tsx` also redirects to `/welcome`
+   - ⏳ **PENDING:** Deploy and verify on production
+   - Visit root URL (e.g., https://www.offaxisdeals.com) after deployment
    - Verify it redirects to `/welcome`
-   - If not, check middleware and page.tsx
-   - **Time:** 15 minutes
+   - **Time:** 15 minutes (after deployment)
 
-4. **[ ] AI Analyzer Setup (If Ready)**
-   - Get OpenAI API key (or skip if not ready)
+4. **[ ] AI Analyzer Setup with Role-Based Restrictions**
+   - **Critical Requirement:** Role-based feature access
+     - **Wholesalers:** Repair Estimator ONLY (not comps/ARV)
+     - **Investors:** Comps/ARV analysis ONLY (not repair estimator)
+   - Get OpenAI API key (or similar AI service)
    - Add `OPENAI_API_KEY` to Vercel env vars
-   - Test `/tools/analyzer` endpoint
-   - Verify paywall gates work
-   - **Time:** 1 hour (if OpenAI account ready)
+   - **Update code to enforce role restrictions:**
+     - Check user role in `/api/analyze` endpoint
+     - Reject if wholesaler tries ARV/comps analysis
+     - Reject if investor tries repair estimator
+     - Update analyzer UI to show role-appropriate options
+   - Test `/tools/analyzer` endpoint with both roles
+   - Verify paywall gates work (Free tier blocked)
+   - Verify tier limits (Basic = 10/month, Pro = unlimited)
+   - **Time:** 2-3 hours (includes role restriction implementation)
 
 #### ✅ Testing & Verification (Critical)
 5. **[ ] End-to-End Testing**
@@ -407,17 +414,20 @@
 
 ## 🎯 This Weekend's Focus - Priority Order
 
-**Priority 1:**
-1. Email setup (blocking other features)
-2. Database views column (quick win)
+**Priority 1 (Critical - Must Do First):**
+1. ✅ Email setup - **COMPLETED** (you confirmed it's done)
+2. ✅ Database views column - **COMPLETED** (SQL executed)
+3. 🚧 Welcome page verification - **IN PROGRESS** (code fixed, needs deployment check) ⬅️ **WORKING ON THIS NOW**
 
-**Priority 2:**
-3. Welcome page verification
-4. AI Analyzer (if ready)
-
-**Priority 3:**
+**Priority 2 (High - Do This Weekend):**
+4. AI Analyzer with role restrictions (when OpenAI ready)
 5. Comprehensive testing
 6. Bug fixes from testing
+
+**Priority 3 (Nice to Have - Can Wait):**
+- Profile information display improvements
+- Listing views tracking implementation
+- Search functionality verification
 
 **Goal:** By end of weekend, have fully functional beta where core flows work end-to-end.
 
