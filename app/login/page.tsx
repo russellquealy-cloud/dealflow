@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 
@@ -17,6 +17,17 @@ function LoginInner() {
   const [message, setMessage] = useState<string | null>(error || null);
   const [loading, setLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic-link'>('password');
+
+  // Check if user is already signed in and redirect
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // User is already signed in, redirect to next or home
+        const redirectUrl = next !== '/' ? next : '/listings';
+        router.push(redirectUrl);
+      }
+    });
+  }, [router, next]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

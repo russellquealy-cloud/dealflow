@@ -287,7 +287,7 @@ export default function ListingsPage() {
         clearTimeout(timeoutId);
       }
 
-      // Add timeout to prevent infinite loading
+      // Add timeout to prevent infinite loading (30 seconds for production)
       timeoutId = setTimeout(() => {
         if (!isMounted) return;
         console.warn('Listings load timeout - setting loading to false');
@@ -295,9 +295,9 @@ export default function ListingsPage() {
         // Retry once after timeout
         if (retryCount === 0) {
           console.log('Retrying listings load...');
-          setTimeout(() => loadListings(1), 1000);
+          setTimeout(() => loadListings(1), 2000);
         }
-      }, 10000); // 10 second timeout with retry
+      }, 30000); // 30 second timeout with retry
       
       try {
         if (retryCount === 0) {
@@ -339,8 +339,8 @@ export default function ListingsPage() {
           const items = rows.map((r) => {
             const price = toNum(r.price);
             const arv = toNum(r.arv);
-            const repairs = toNum(r.repairs ?? r.repair_costs);
-            const spread = arv && price ? arv - price - (toNum(r.assignment_fee) || 0) : undefined;
+            const repairs = toNum(r.repairs);
+            const spread = arv && price ? arv - price : undefined;
             const roi = arv && price ? ((arv - price) / price) * 100 : undefined;
 
             return {

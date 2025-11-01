@@ -1,499 +1,440 @@
-# Off Axis Deals - Project Status & Release Checklist
+# Off Axis Deals - Project Status Report
 
 **Last Updated:** December 2024  
-**Status:** Pre-Launch Development  
-**Version:** 1.0.0-beta
+**Current Phase:** Pre-Beta Testing  
+**Target:** Production-Ready Beta Launch (This Weekend)
 
 ---
 
-## 📋 TABLE OF CONTENTS
-1. [✅ Fully Functional Features](#fully-functional-features)
-2. [🚧 Partially Working / Needs Improvement](#partially-working--needs-improvement)
-3. [❌ Not Implemented / Blocking Issues](#not-implemented--blocking-issues)
-4. [🔧 Configuration Needed](#configuration-needed)
-5. [📱 Mobile App Status](#mobile-app-status)
-6. [🎯 Pre-Release Checklist](#pre-release-checklist)
-7. [🚀 Post-Launch Features](#post-launch-features)
+## ✅ Completed Features
 
----
-
-## ✅ FULLY FUNCTIONAL FEATURES
-
-### 🔐 Authentication & User Management
-- ✅ User signup/signin (email/password)
-- ✅ Session management (persistent across page reloads)
-- ✅ Role-based access (Investor, Wholesaler, Admin)
-- ✅ Profile management
-- ✅ Account page with subscription info
-- ✅ Sign out functionality
-- ✅ Auth state synchronization
-
-### 💳 Subscription & Billing
-- ✅ Pricing page with all tiers (Free, Basic, Pro for both roles)
-- ✅ Monthly and yearly billing options
-- ✅ Stripe checkout integration
-- ✅ Stripe customer portal access
-- ✅ Subscription webhooks (checkout completed, subscription updated/deleted, payment succeeded/failed)
-- ✅ Plan tier detection and feature gating
-- ✅ Upgrade/downgrade flow
-- ✅ Account page subscription display
-
-### 🏠 Listings Management
-- ✅ Browse listings page with map + list view
+### Core Functionality
+- ✅ User authentication (Sign up, Sign in, Sign out)
+- ✅ Role-based access (Investors vs Wholesalers)
+- ✅ Listings display with map view
 - ✅ Google Maps integration with markers
-- ✅ Map clustering for performance
-- ✅ Listing detail pages
-- ✅ Search by address/city/state (with geocoding)
-- ✅ Filter listings (price, beds, baths, sqft)
-- ✅ Sort listings (newest, price asc/desc, sqft asc/desc)
-- ✅ Map bounds filtering
-- ✅ Responsive layout (mobile/desktop split view)
-- ✅ Featured listings display
-- ✅ Image galleries for listings
+- ✅ Search functionality (city/address)
+- ✅ Filters (price, beds, baths, sqft)
+- ✅ Individual listing detail pages
+- ✅ Profile management
+- ✅ Account page with analytics
 
-### 📝 Wholesaler Features
-- ✅ Create new listings (form with validation)
-- ✅ Edit listings
-- ✅ View own listings ("My Listings" page)
-- ✅ Post deal button (only visible to wholesalers)
-- ✅ Listing form with all fields (price, beds, baths, sqft, images, etc.)
+### Subscription & Billing
+- ✅ Stripe integration (monthly & yearly plans)
+- ✅ Pricing page with role-based tiers
+- ✅ Checkout flow
+- ✅ Billing portal
+- ✅ Webhook handling
+- ✅ Plan tier management
 
-### 💬 Messaging System
-- ✅ Messages API endpoints (GET, POST)
-- ✅ Conversation threading by listing
-- ✅ Messages list page (all conversations)
-- ✅ Individual listing message page
-- ✅ Send/receive messages
-- ✅ Unread message count badge in header
-- ✅ Messages button in header with notification badge
-- ✅ Read/unread message tracking
+### Premium Features
+- ✅ Watchlists (investors)
+- ✅ Saved searches (investors)
+- ✅ Alerts system
+- ✅ Messages/Chat between users
+- ✅ AI Analyzer (placeholder - needs OpenAI key)
+- ✅ Post listings (wholesalers)
 
-### 🔍 Search & Discovery
-- ✅ Address/city/state search
-- ✅ Geocoding integration (converts addresses to coordinates)
-- ✅ Map moves to searched location
-- ✅ Advanced filters (price range, beds, baths, sqft range)
-- ✅ Multiple sort options
-
-### 🗺️ Map Features
-- ✅ Google Maps with custom markers
-- ✅ Marker clustering for performance
-- ✅ Map bounds detection
-- ✅ Filter by visible map area
-- ✅ Responsive map height (65vh mobile, full desktop)
-- ✅ Draw area functionality (UI exists)
-- ✅ Map center/zoom control
-
-### 📄 Static Pages
+### UI/UX
+- ✅ Responsive design (mobile & desktop)
+- ✅ Header with navigation
+- ✅ Footer with legal links
 - ✅ Welcome/landing page
-- ✅ Pricing page (fully interactive)
+- ✅ Error handling
+- ✅ Loading states
+
+### Legal & Trust
 - ✅ Terms of Service page
 - ✅ Privacy Policy page
-- ✅ Contact Sales page
-- ✅ Feedback/Bug Report page
-- ✅ Footer with all legal links
-
-### 🎨 UI/UX
-- ✅ Responsive design (mobile/tablet/desktop)
-- ✅ Professional styling with Tailwind CSS
-- ✅ Header navigation
-- ✅ Footer with links
-- ✅ Loading states
-- ✅ Error messages
-- ✅ Mobile-optimized layouts
-
-### 🛠️ Developer Features
-- ✅ Environment variable management
-- ✅ Database migrations (SQL scripts)
-- ✅ Error logging
-- ✅ Development mode hot reload
+- ✅ Contact Sales form
+- ✅ Feedback/Bug report form
 
 ---
 
-## 🚧 PARTIALLY WORKING / NEEDS IMPROVEMENT
+## 🔧 Recently Fixed Issues
 
-### 📝 Listings Issues
-- 🚧 **Listings owner_id**: Test listings have `null` owner_id, preventing messaging
-  - **Fix Needed**: Seed real listings with proper owner_id or update test data
-  - **Impact**: Users cannot message sellers on test listings
-- 🚧 **Listings timeout**: Occasionally times out (15s limit)
-  - **Status**: Improved but may need further optimization
-- 🚧 **Map flickering**: Occurs occasionally during bounds updates
-  - **Status**: Improved with debouncing, may need more tuning
-
-### 💬 Messaging Issues
-- 🚧 **401 Unauthorized errors**: Sometimes occurs when loading messages
-  - **Status**: Fixed server-side auth, but may need cookie handling improvements
-  - **Workaround**: Refresh page if it occurs
-- 🚧 **Loading performance**: Messages page sometimes requires refresh to load
-  - **Status**: Added guards to prevent duplicate loads, but may need optimization
-
-### 🔍 Search & Filters
-- 🚧 **Search delay**: Small delay when searching (geocoding API call)
-  - **Status**: Working but could be optimized with better caching
-
-### 📊 Analytics & Reporting
-- 🚧 **Analytics buttons**: UI exists but not fully functional
-  - **Location**: Admin dashboard and account page
-  - **Status**: Needs data connections and real analytics
-  - **Priority**: Medium (not blocking launch)
-
-### 💳 Billing
-- 🚧 **Yearly pricing**: Configured but needs testing
-  - **Status**: Code complete, requires Stripe price ID verification
-  - **Impact**: Low (monthly billing works)
-
-### 🎨 UI Polish
-- 🚧 **Image optimization warnings**: Next.js image component needs `sizes` prop
-  - **Status**: Non-critical, performance optimization
-- 🚧 **Mobile UI appearance**: User noted "sloppy" appearance
-  - **Status**: Needs design review and improvements
+1. ✅ **Listings Loading** - Fixed timeout, removed invalid column references
+2. ✅ **Sign Out** - Fixed hang issue, now uses hard redirect
+3. ✅ **Pricing Redirect Loop** - Added auth check before redirecting
+4. ✅ **Login Hang** - Redirects if already signed in
+5. ✅ **Billing Cancel 404** - Created cancel page
+6. ✅ **Mobile List View** - Fixed to show multiple listings
+7. ✅ **Account Stats** - Now shows real data from database
+8. ✅ **Role-Based UI** - Wholesalers see alerts only
+9. ✅ **Update Profile Button** - Now links correctly
 
 ---
 
-## ❌ NOT IMPLEMENTED / BLOCKING ISSUES
+## 🚧 Remaining Work for Production Beta
 
-### 🚨 Critical Blockers for Launch
+### Critical (Must Have Before Beta)
 
-1. **Real Listings Data**
-   - ❌ Test listings lack proper owner_id (prevents messaging)
-   - ❌ Need real or properly seeded test data
-   - **Action Required**: Update test listings with owner_id or create real listings
+#### 1. Email Service Configuration ⚠️ HIGH PRIORITY
+- **Status:** Code complete, needs Vercel configuration
+- **Tasks:**
+  - Set up SMTP/Resend/SendGrid in Vercel environment variables
+  - Test email delivery (contact sales, feedback, message notifications)
+  - Verify email templates render correctly
+- **Estimated Time:** 1-2 hours
+- **See:** `EMAIL_SETUP_VERCEL.md` (instructions below)
 
-2. **Email Service Integration**
-   - ❌ Feedback form logs to console only
-   - ❌ No email notifications for messages
-   - ❌ No password reset emails (if using)
-   - **Action Required**: Integrate email service (Resend, SendGrid, etc.)
+#### 2. Database Views Column
+- **Status:** Account stats shows 0 for "Total Views"
+- **Tasks:**
+  - Add `views` column to `listings` table (INTEGER, default 0)
+  - Update listings when viewed (increment counter)
+  - Update account stats query to sum views
+- **SQL:**
+  ```sql
+  ALTER TABLE listings ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
+  CREATE INDEX IF NOT EXISTS idx_listings_views ON listings(views);
+  ```
+- **Estimated Time:** 30 minutes
 
-3. **Production Environment Variables**
-   - ❌ Stripe keys need production values
-   - ❌ Supabase URL needs production instance
-   - ❌ Google Maps API key needs production domain restrictions
-   - **Action Required**: Set up production environment
+#### 3. Welcome Page as Default
+- **Status:** Code exists but may need verification
+- **Tasks:**
+  - Verify root `/` redirects to `/welcome` on deployed site
+  - Test on production domain
+- **Estimated Time:** 15 minutes
 
-### ⚠️ Important Missing Features
+#### 4. AI Analyzer Integration
+- **Status:** Placeholder exists, needs OpenAI API key
+- **Tasks:**
+  - Add `OPENAI_API_KEY` to Vercel env vars
+  - Test AI analysis endpoint
+  - Verify paywall gates work correctly
+- **Estimated Time:** 1 hour
 
-4. **Saved Searches**
-   - ❌ Feature exists in pricing tiers but not implemented
-   - **Impact**: Medium (feature advertised but not available)
-
-5. **Watchlists/Favorites**
-   - ❌ Feature exists in pricing tiers but not implemented
-   - **Impact**: Medium (feature advertised but not available)
-
-6. **Alerts System**
-   - ❌ Feature exists in pricing tiers but not implemented
-   - **Impact**: Medium (feature advertised but not available)
-
-7. **AI Analyzer Usage Tracking**
-   - ❌ Feature exists but no usage counting
-   - **Impact**: Medium (limits not enforced)
-
-8. **Contact Access Limits**
-   - ❌ Contact info visible but no limit enforcement
-   - **Impact**: Medium (limits not enforced per tier)
-
-9. **CRM Export**
-   - ❌ Feature advertised in Pro/Enterprise tiers but not implemented
-   - **Impact**: Low (Enterprise feature)
-
-10. **Off-Market Data Feed**
-    - ❌ Feature advertised in Enterprise tier but not implemented
-    - **Impact**: Low (Enterprise feature)
-
-11. **Team Seats Management**
-    - ❌ Feature advertised in Enterprise tier but not implemented
-    - **Impact**: Low (Enterprise feature)
-
-12. **White-Label Branding**
-    - ❌ Feature advertised in Enterprise tier but not implemented
-    - **Impact**: Low (Enterprise feature)
-
-13. **Push Notifications**
-    - ❌ No push notifications for messages
-    - **Impact**: Medium (user experience)
-
-14. **Verified Badge**
-    - ❌ Feature advertised but not implemented
-    - **Impact**: Low (Pro feature)
-
-15. **Featured Placement**
-    - ⚠️ Database field exists but not actively managed
-    - **Impact**: Low
+#### 5. Search Functionality Verification
+- **Status:** Code complete, needs testing
+- **Tasks:**
+  - Test search on production
+  - Verify map pans to searched location
+  - Debug if not working (check browser console)
+- **Estimated Time:** 30 minutes
 
 ---
 
-## 🔧 CONFIGURATION NEEDED
+### Important (Should Have Before Beta)
 
-### ✅ Completed
-- ✅ Supabase database setup
-- ✅ Stripe account setup (monthly prices)
-- ✅ Google Maps API key configured
-- ✅ Basic RLS policies created
+#### 6. Profile Information Display
+- **Status:** Partial - shows email, role, tier
+- **Tasks:**
+  - Display full name on account page
+  - Show company name for wholesalers
+  - Add profile picture upload (optional for beta)
+- **Estimated Time:** 1 hour
 
-### ⏳ Pending Configuration
+#### 7. Post a Deal Flow
+- **Status:** Form exists, needs verification
+- **Tasks:**
+  - Test creating listing as wholesaler
+  - Verify images upload correctly
+  - Check geocoding works
+  - Test "My Listings" page
+- **Estimated Time:** 1 hour
 
-1. **Stripe Yearly Prices**
-   - ⏳ Create yearly pricing in Stripe Dashboard
-   - ⏳ Add price IDs to `.env.local`:
+#### 8. Message Notifications
+- **Status:** Email code exists, needs email service
+- **Tasks:**
+  - Test sending message notification emails
+  - Verify email contains correct links
+  - Test unread count badge updates
+- **Estimated Time:** 30 minutes (after email setup)
+
+#### 9. Listing Views Tracking
+- **Status:** Views column needs to be added
+- **Tasks:**
+  - Track views on listing detail page
+  - Increment counter in database
+  - Display in account stats
+- **Estimated Time:** 45 minutes
+
+---
+
+### Nice to Have (Can Add Post-Beta)
+
+#### 10. Mobile App Store Links
+- Footer has placeholder links
+- Need actual App Store / Play Store URLs
+
+#### 11. Analytics Dashboard
+- Add Google Analytics or Plausible
+- Track key events (signups, upgrades, listing views)
+
+#### 12. Advanced Features
+- CRM Export (needs implementation)
+- Off-market data feed (needs implementation)
+- Team seats management (needs implementation)
+- White-label branding (needs implementation)
+- API access (needs implementation)
+
+#### 13. Performance Optimization
+- Image optimization (Next.js Image component already used)
+- Database query optimization
+- Caching strategy
+
+#### 14. Testing
+- End-to-end tests (Playwright setup exists)
+- Unit tests for critical paths
+- Load testing
+
+---
+
+## 🐛 Known Issues to Monitor
+
+1. **Map Flickering** - May occur with large listing counts (monitoring)
+2. **Listings Load Timeout** - Increased to 30s, may need further optimization
+3. **Email Delivery** - Untested until email service configured
+4. **AI Analyzer** - Not functional until OpenAI key added
+
+---
+
+## 📋 Pre-Launch Checklist
+
+### Environment Setup
+- [ ] All environment variables set in Vercel
+- [ ] Supabase production instance configured
+- [ ] Stripe production keys active
+- [ ] Google Maps API key with billing enabled
+- [ ] Email service configured (SMTP/Resend/SendGrid)
+
+### Database
+- [ ] All migrations run on production
+- [ ] RLS policies verified
+- [ ] Test data cleaned (or kept for demo)
+- [ ] Views column added to listings table
+
+### Testing
+- [ ] Test signup flow
+- [ ] Test login/logout
+- [ ] Test listing creation (wholesaler)
+- [ ] Test listing viewing (investor)
+- [ ] Test search functionality
+- [ ] Test filters
+- [ ] Test map interaction
+- [ ] Test checkout flow (use test cards)
+- [ ] Test message sending
+- [ ] Test email delivery
+- [ ] Test on mobile devices
+- [ ] Test on different browsers
+
+### Legal
+- [ ] Terms of Service reviewed
+- [ ] Privacy Policy reviewed
+- [ ] Contact information verified
+- [ ] Support email configured
+
+### Documentation
+- [ ] Deployment guide complete
+- [ ] Admin user guide (if applicable)
+- [ ] User FAQ/Help section
+
+---
+
+## 🎯 This Weekend's Focus
+
+**Priority Order:**
+1. Email service setup (CRITICAL)
+2. Database views column (QUICK WIN)
+3. Welcome page verification (QUICK WIN)
+4. AI Analyzer setup (if OpenAI account ready)
+5. End-to-end testing of all flows
+6. Fix any critical bugs discovered
+
+**Goal:** Have a fully functional beta where:
+- Users can sign up and choose role
+- Users can browse listings
+- Wholesalers can post listings
+- Investors can contact wholesalers
+- Payments work end-to-end
+- Emails are delivered
+
+---
+
+## 📊 Technical Debt / Future Improvements
+
+1. **Database Optimization**
+   - Add indexes on frequently queried columns
+   - Optimize spatial queries for map filtering
+
+2. **Code Quality**
+   - TypeScript strict mode (some `any` types remain)
+   - Error boundary improvements
+   - Better error messages for users
+
+3. **Security**
+   - Rate limiting on API routes
+   - Input validation/sanitization review
+   - CSRF protection verification
+
+4. **Performance**
+   - Implement caching strategy
+   - Optimize image loading
+   - Reduce bundle size
+
+---
+
+## 📞 Support & Resources
+
+- **Supabase Dashboard:** https://app.supabase.com
+- **Stripe Dashboard:** https://dashboard.stripe.com
+- **Vercel Dashboard:** https://vercel.com/dashboard
+- **Google Cloud Console:** https://console.cloud.google.com
+
+---
+
+**Next Steps:** Follow `EMAIL_SETUP_VERCEL.md` to configure email, then proceed with checklist items.
+
+---
+
+## 📝 ACTION ITEMS - START HERE
+
+### This Weekend's To-Do List
+
+#### 🚨 Critical (Must Do)
+1. **[ ] Email Service Setup**
+   - Open `EMAIL_SETUP_VERCEL.md` and follow instructions
+   - Choose email service (Resend recommended)
+   - Add all environment variables to Vercel
+   - Test by submitting feedback form
+   - Verify emails arrive in inbox
+   - **Time:** 1-2 hours
+
+2. **[ ] Database Views Column**
+   - Connect to Supabase production database
+   - Run SQL:
+     ```sql
+     ALTER TABLE listings ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
+     CREATE INDEX IF NOT EXISTS idx_listings_views ON listings(views);
      ```
-     STRIPE_PRICE_INVESTOR_BASIC_YEARLY=price_xxxxx
-     STRIPE_PRICE_INVESTOR_PRO_YEARLY=price_xxxxx
-     STRIPE_PRICE_WHOLESALER_BASIC_YEARLY=price_xxxxx
-     STRIPE_PRICE_WHOLESALER_PRO_YEARLY=price_xxxxx
-     ```
+   - Verify column exists
+   - **Time:** 15 minutes
 
-2. **Stripe Webhook**
-   - ⏳ Configure webhook endpoint in Stripe Dashboard
-   - ⏳ Add webhook secret to `.env.local`:
-     ```
-     STRIPE_WEBHOOK_SECRET=whsec_xxxxx
-     ```
+3. **[ ] Welcome Page Verification**
+   - Deploy current code
+   - Visit root URL (e.g., https://www.offaxisdeals.com)
+   - Verify it redirects to `/welcome`
+   - If not, check middleware and page.tsx
+   - **Time:** 15 minutes
 
-3. **Email Service**
-   - ⏳ Choose and configure email service (Resend/SendGrid/etc.)
-   - ⏳ Add API key to `.env.local`
-   - ⏳ Update feedback API to send emails
-   - ⏳ Configure email templates
+4. **[ ] AI Analyzer Setup (If Ready)**
+   - Get OpenAI API key (or skip if not ready)
+   - Add `OPENAI_API_KEY` to Vercel env vars
+   - Test `/tools/analyzer` endpoint
+   - Verify paywall gates work
+   - **Time:** 1 hour (if OpenAI account ready)
 
-4. **Production Environment**
-   - ⏳ Set up production Supabase instance
-   - ⏳ Set up production Stripe account
-   - ⏳ Configure production Google Maps API key
-   - ⏳ Set up production domain
-   - ⏳ Configure DNS records
-   - ⏳ Set up SSL certificates
+#### ✅ Testing & Verification (Critical)
+5. **[ ] End-to-End Testing**
+   - Test signup → login → browse listings
+   - Test posting listing (as wholesaler)
+   - Test messaging (investor → wholesaler)
+   - Test search functionality
+   - Test filters
+   - Test checkout flow (use test cards: 4242 4242 4242 4242)
+   - Test on mobile device
+   - Test on different browsers
+   - **Time:** 2-3 hours
 
-5. **Listings Data**
-   - ⏳ Seed real listings with proper owner_id
-   - ⏳ Or create script to assign owner_id to existing listings
-   - ⏳ Add proper images to listings
+6. **[ ] Fix Any Critical Bugs**
+   - Document bugs found during testing
+   - Prioritize blocking issues
+   - Fix or create issues in GitHub
+   - **Time:** As needed
 
----
+#### 📋 Pre-Launch Checklist
 
-## 📱 MOBILE APP STATUS
+**Environment Setup:**
+- [ ] Verify all Vercel environment variables are set
+  - [ ] `EMAIL_SERVICE`
+  - [ ] Email API keys (RESEND_API_KEY, SMTP_*, or SENDGRID_API_KEY)
+  - [ ] `SALES_EMAIL`, `SUPPORT_EMAIL`, `NOREPLY_EMAIL`
+  - [ ] `STRIPE_SECRET_KEY` (production)
+  - [ ] `STRIPE_WEBHOOK_SECRET` (production)
+  - [ ] All Stripe price IDs (8 total: 4 monthly + 4 yearly)
+  - [ ] `NEXT_PUBLIC_SUPABASE_URL` (production)
+  - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` (production)
+  - [ ] `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+  - [ ] `OPENAI_API_KEY` (if using AI analyzer)
 
-### ⏳ Not Started
-- ❌ iOS app development
-- ❌ Android app development
-- ❌ Push notifications setup
-- ❌ Mobile app authentication
-- ❌ Mobile app listing display
-- ❌ Mobile app messaging
+**Database:**
+- [ ] Run SQL migrations on production Supabase
+- [ ] Verify RLS policies are active
+- [ ] Add `views` column to listings table
+- [ ] Test database connection from production
 
-### 📋 Mobile App Requirements (Future)
-- Mobile app will use same Supabase backend
-- Push notifications via Expo or React Native
-- Mobile-optimized UI/UX
-- Offline capabilities (future)
+**Stripe:**
+- [ ] Verify production API keys are active
+- [ ] Test checkout with test card: 4242 4242 4242 4242
+- [ ] Verify webhook endpoint is configured
+- [ ] Test webhook delivery (or use Stripe CLI)
+- [ ] Verify subscription creation updates profiles
 
----
+**Google Maps:**
+- [ ] Verify API key has billing enabled
+- [ ] Check API quotas and limits
+- [ ] Test map loads on production
 
-## 🎯 PRE-RELEASE CHECKLIST
+**Email:**
+- [ ] Email service configured (from step 1 above)
+- [ ] Test feedback form sends email
+- [ ] Test contact sales form sends email
+- [ ] Test message notifications send email
+- [ ] Check spam folder if emails not arriving
 
-### 🚨 Critical (Must Complete Before Launch)
+**Testing:**
+- [ ] Sign up new user → works
+- [ ] Login → works
+- [ ] Logout → works
+- [ ] Browse listings → listings load
+- [ ] Search → map moves to location
+- [ ] Filters → listings filter correctly
+- [ ] View listing detail → page loads
+- [ ] Post listing (wholesaler) → creates successfully
+- [ ] Send message → message sends
+- [ ] Upgrade subscription → checkout works
+- [ ] Cancel subscription → cancel page loads
 
-- [ ] **Fix listings owner_id issue**
-  - [ ] Update all test listings with valid owner_id
-  - [ ] Test messaging with real owner_id
-  - [ ] Verify messages can be sent/received
-
-- [ ] **Set up production environment**
-  - [ ] Create production Supabase project
-  - [ ] Migrate database schema to production
-  - [ ] Set up production Stripe account
-  - [ ] Configure production Google Maps API key
-  - [ ] Set up production domain and DNS
-  - [ ] Configure SSL certificates
-  - [ ] Set up Vercel/production hosting
-
-- [ ] **Configure email service**
-  - [ ] Choose email provider (Resend recommended)
-  - [ ] Set up account and API key
-  - [ ] Update feedback API to send emails
-  - [ ] Test email sending
-  - [ ] Configure message notification emails (future)
-
-- [ ] **Complete Stripe setup**
-  - [ ] Add yearly price IDs to production environment
-  - [ ] Configure webhook endpoint
-  - [ ] Test checkout flow end-to-end
-  - [ ] Test subscription webhooks
-  - [ ] Test customer portal
-
-- [ ] **Security & Privacy**
-  - [ ] Review and update RLS policies
-  - [ ] Test authentication security
-  - [ ] Verify no sensitive data exposure
-  - [ ] Review privacy policy accuracy
-  - [ ] Review terms of service accuracy
-
-- [ ] **Database**
-  - [ ] Run all migrations in production
-  - [ ] Verify all tables exist
-  - [ ] Verify RLS policies are active
-  - [ ] Create admin user
-  - [ ] Seed initial data (if needed)
-
-### ⚠️ Important (Should Complete Before Launch)
-
-- [ ] **Fix known bugs**
-  - [ ] Resolve map flickering (if still occurring)
-  - [ ] Fix listings timeout (if still occurring)
-  - [ ] Resolve messaging 401 errors (if still occurring)
-  - [ ] Fix image optimization warnings
-
-- [ ] **UI/UX improvements**
-  - [ ] Polish mobile UI appearance
-  - [ ] Review and improve responsive design
-  - [ ] Add missing loading states
-  - [ ] Improve error messages
-  - [ ] Add image `sizes` props for optimization
-
-- [ ] **Testing**
-  - [ ] Test all user flows end-to-end
-  - [ ] Test investor signup → browse → upgrade flow
-  - [ ] Test wholesaler signup → create listing → messaging flow
-  - [ ] Test billing/subscription flows
-  - [ ] Test messaging system thoroughly
-  - [ ] Test search and filtering
-  - [ ] Test map interactions
-  - [ ] Test mobile responsiveness
-  - [ ] Cross-browser testing
-
-- [ ] **Content**
-  - [ ] Review all static page content (Terms, Privacy, etc.)
-  - [ ] Update welcome page content if needed
-  - [ ] Review pricing page copy
-  - [ ] Add real listings (at least 10-20 for testing)
-
-### 📊 Nice to Have (Can Add Post-Launch)
-
-- [ ] **Feature Implementation**
-  - [ ] Implement saved searches
-  - [ ] Implement watchlists/favorites
-  - [ ] Implement alerts system
-  - [ ] Add AI analyzer usage tracking
-  - [ ] Add contact access limit enforcement
-  - [ ] Implement analytics dashboard
-  - [ ] Add verified badge system
-  - [ ] Implement featured placement management
-
-- [ ] **Enterprise Features** (Post-Launch)
-  - [ ] CRM export functionality
-  - [ ] Off-market data feed
-  - [ ] Team seats management
-  - [ ] White-label branding
-
-- [ ] **Enhancements**
-  - [ ] Push notifications for messages
-  - [ ] Email notifications for messages
-  - [ ] Advanced analytics
-  - [ ] Better image handling
-  - [ ] Performance optimizations
+**Legal/Support:**
+- [ ] Terms of Service page accessible
+- [ ] Privacy Policy page accessible
+- [ ] Contact Sales form works
+- [ ] Support email inbox monitored
 
 ---
 
-## 🚀 POST-LAUNCH FEATURES
+## 🎯 This Weekend's Focus - Priority Order
 
-### Phase 2 (Weeks 1-4 After Launch)
-- Mobile app development start
-- Saved searches implementation
-- Watchlists/favorites implementation
-- Alerts system
-- Usage tracking and enforcement
+**Priority 1:**
+1. Email setup (blocking other features)
+2. Database views column (quick win)
 
-### Phase 3 (Months 2-3)
-- Advanced analytics dashboard
-- CRM export
-- Verified badge system
-- Featured placement management
-- Push notifications
+**Priority 2:**
+3. Welcome page verification
+4. AI Analyzer (if ready)
 
-### Phase 4 (Months 4-6)
-- Enterprise features (team seats, white-label)
-- Off-market data feed
-- Mobile app launch
-- Performance optimizations
-- Advanced AI features
+**Priority 3:**
+5. Comprehensive testing
+6. Bug fixes from testing
+
+**Goal:** By end of weekend, have fully functional beta where core flows work end-to-end.
 
 ---
 
-## 📊 FEATURE COMPLETION SUMMARY
+## 📌 Quick Reference
 
-| Category | Complete | Partial | Not Started | Total |
-|----------|----------|--------|-------------|-------|
-| Authentication | ✅ 8 | 🚧 0 | ❌ 0 | 8 |
-| Billing/Subscriptions | ✅ 10 | 🚧 1 | ❌ 0 | 11 |
-| Listings | ✅ 12 | 🚧 3 | ❌ 0 | 15 |
-| Messaging | ✅ 8 | 🚧 2 | ❌ 2 | 12 |
-| Search/Discovery | ✅ 5 | 🚧 1 | ❌ 0 | 6 |
-| Admin Features | ✅ 6 | 🚧 1 | ❌ 5 | 12 |
-| Enterprise Features | ✅ 0 | 🚧 0 | ❌ 5 | 5 |
-| UI/UX | ✅ 6 | 🚧 2 | ❌ 0 | 8 |
-| **TOTAL** | **✅ 55** | **🚧 10** | **❌ 12** | **77** |
-
-**Completion Rate:** ~71% fully functional, ~13% partial, ~16% not started
+- **Email Setup Guide:** `EMAIL_SETUP_VERCEL.md`
+- **Deployment Guide:** `DEPLOYMENT_AND_TESTING.md`
+- **Vercel Dashboard:** https://vercel.com/dashboard
+- **Supabase Dashboard:** https://app.supabase.com
+- **Stripe Dashboard:** https://dashboard.stripe.com
 
 ---
 
-## 🎯 IMMEDIATE NEXT STEPS (Priority Order)
-
-1. **🔴 URGENT: Fix Listings owner_id**
-   - Update test listings or create real listings
-   - Test messaging functionality
-   - **Time Estimate:** 1-2 hours
-
-2. **🔴 URGENT: Set Up Production Environment**
-   - Create production Supabase project
-   - Set up production Stripe account
-   - Configure production domain
-   - **Time Estimate:** 2-4 hours
-
-3. **🟠 HIGH: Configure Email Service**
-   - Set up Resend account
-   - Configure feedback API
-   - Test email sending
-   - **Time Estimate:** 1-2 hours
-
-4. **🟠 HIGH: Complete Stripe Setup**
-   - Add yearly prices
-   - Configure webhooks
-   - Test end-to-end billing
-   - **Time Estimate:** 1-2 hours
-
-5. **🟡 MEDIUM: Fix Known Bugs**
-   - Map flickering (if still occurring)
-   - Messages 401 errors (if still occurring)
-   - Image optimization warnings
-   - **Time Estimate:** 2-4 hours
-
-6. **🟡 MEDIUM: UI Polish**
-   - Mobile UI improvements
-   - Loading states
-   - Error messages
-   - **Time Estimate:** 4-6 hours
-
-7. **🟢 LOW: Feature Implementation**
-   - Saved searches
-   - Watchlists
-   - Alerts
-   - **Time Estimate:** 8-12 hours each
-
----
-
-## 📝 NOTES
-
-- Most core functionality is working and ready for testing
-- Main blocker is listings owner_id preventing messaging
-- Production environment setup is critical before launch
-- Email service is important for user communication
-- Several advertised features need implementation post-launch
-- Mobile app is planned but not started
-
----
-
-**Document Generated:** December 2024  
-**For Questions or Updates:** Review codebase and update this document accordingly
-
+**Status Tracking:** 
+- ✅ = Complete
+- 🚧 = In Progress  
+- [ ] = Not Started
+- ⚠️ = Needs Attention

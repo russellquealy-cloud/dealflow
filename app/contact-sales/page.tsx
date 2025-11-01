@@ -508,12 +508,19 @@ export default function ContactSalesPage() {
             }}>
               Schedule a call with our sales team
             </p>
-            <button 
-              onClick={() => {
+            <a
+              href="#contact-form"
+              onClick={(e) => {
+                e.preventDefault();
                 // Scroll to the contact form
                 const form = document.getElementById('contact-form');
                 if (form) {
-                  form.scrollIntoView({ behavior: 'smooth' });
+                  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  // Focus first input
+                  const firstInput = form.querySelector('input') as HTMLInputElement;
+                  if (firstInput) {
+                    setTimeout(() => firstInput.focus(), 300);
+                  }
                 }
               }}
               style={{
@@ -526,11 +533,12 @@ export default function ContactSalesPage() {
                 fontWeight: '600',
                 display: 'inline-block',
                 marginRight: '12px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                textDecoration: 'none'
               }}
             >
               📝 Fill Out Form
-            </button>
+            </a>
             <a 
               href="mailto:sales@offaxisdeals.com"
               style={{

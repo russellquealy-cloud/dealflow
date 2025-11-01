@@ -99,6 +99,16 @@ export default function AccountPage() {
     full_name?: string;
     verified?: boolean;
   } | null>(null);
+  const [stats, setStats] = useState<{
+    savedListings?: number;
+    contactsMade?: number;
+    aiAnalyses?: number;
+    watchlists?: number;
+    myListings?: number;
+    totalViews?: number;
+    contacts?: number;
+    featuredListings?: number;
+  }>({});
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -171,6 +181,43 @@ export default function AccountPage() {
           console.log('Profile loaded successfully:', profileData);
           console.log('Segment:', profileData?.segment, 'Tier:', profileData?.tier);
           setProfile(profileData);
+          
+          // Load stats based on user role
+          const isInvestor = profileData.segment === 'investor' || (profileData.role === 'investor' && !profileData.segment);
+          const isWholesaler = profileData.segment === 'wholesaler' || profileData.role === 'wholesaler';
+          
+          if (isInvestor) {
+            // Investor stats
+            const [watchlistsRes, savedSearchesRes, messagesRes] = await Promise.all([
+              supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+              supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+              supabase.from('messages').select('id', { count: 'exact', head: true }).eq('from_id', session.user.id)
+            ]);
+            
+            setStats({
+              savedListings: watchlistsRes.count || 0,
+              watchlists: watchlistsRes.count || 0,
+              contactsMade: messagesRes.count || 0,
+              aiAnalyses: 0 // TODO: Add AI analyses tracking table
+            });
+          } else if (isWholesaler) {
+            // Wholesaler stats
+            const [listingsRes, featuredRes, messagesRes] = await Promise.all([
+              supabase.from('listings').select('id', { count: 'exact' }).eq('owner_id', session.user.id),
+              supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id).eq('featured', true),
+              supabase.from('messages').select('id', { count: 'exact', head: true }).eq('to_id', session.user.id)
+            ]);
+            
+            // Total views would need a views column - for now, use listing count as placeholder
+            const totalViews = 0; // TODO: Add views tracking to listings table
+            
+            setStats({
+              myListings: listingsRes.count || 0,
+              totalViews,
+              contacts: messagesRes.count || 0,
+              featuredListings: featuredRes.count || 0
+            });
+          }
         }
         
         setLoading(false);
@@ -392,19 +439,19 @@ export default function AccountPage() {
               // Investor Analytics
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0f9ff' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>{stats.savedListings || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>Saved Listings</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0fdf4' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{stats.contactsMade || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>Contacts Made</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>{stats.aiAnalyses || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>AI Analyses</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#faf5ff' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#a855f7' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#a855f7' }}>{stats.watchlists || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>Watchlists</div>
                 </div>
               </div>
@@ -412,19 +459,19 @@ export default function AccountPage() {
               // Wholesaler Analytics
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0f9ff' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>{stats.myListings || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>My Listings</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0fdf4' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{stats.totalViews || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>Total Views</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>{stats.contacts || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>Contacts</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fef2f2' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}>0</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}>{stats.featuredListings || 0}</div>
                   <div style={{ fontSize: 14, color: '#6b7280' }}>Featured Listings</div>
                 </div>
               </div>
@@ -454,17 +501,22 @@ export default function AccountPage() {
           }}>
             Change Password
           </button>
-          <button style={{ 
-            padding: '8px 16px', 
-            border: '1px solid #6b7280', 
-            borderRadius: 8, 
-            background: '#fff', 
-            color: '#374151', 
-            cursor: 'pointer',
-            fontWeight: 600
-          }}>
+          <Link
+            href="/profile"
+            style={{ 
+              padding: '8px 16px', 
+              border: '1px solid #6b7280', 
+              borderRadius: 8, 
+              background: '#fff', 
+              color: '#374151', 
+              cursor: 'pointer',
+              fontWeight: 600,
+              textDecoration: 'none',
+              display: 'inline-block'
+            }}
+          >
             Update Profile
-          </button>
+          </Link>
           <button 
             onClick={handleSignOut}
             style={{ 

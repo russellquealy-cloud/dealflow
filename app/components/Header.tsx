@@ -113,18 +113,21 @@ export default function Header() {
   const signOut = async () => {
     try {
       console.log('🔐 Signing out...');
-      // end client session
+      // Sign out from Supabase first
       await supabase.auth.signOut();
-      // also hit server route to clear cookies if set
-      await fetch('/auth/signout', { method: 'POST' }).catch(() => {});
+      // Then call server-side signout endpoint
+      try {
+        await fetch('/auth/signout', { method: 'POST' });
+      } catch (fetchError) {
+        console.warn('Server signout failed, continuing:', fetchError);
+      }
       console.log('🔐 Sign out complete, redirecting...');
-      router.push('/'); // back home
-      router.refresh();
+      // Use window.location for a hard redirect to clear all state
+      window.location.href = '/welcome';
     } catch (error) {
       console.error('🔐 Sign out error:', error);
       // Force redirect even if sign out fails
-      router.push('/');
-      router.refresh();
+      window.location.href = '/welcome';
     }
   };
 
@@ -142,12 +145,15 @@ export default function Header() {
         {userRole === 'wholesaler' && (
           <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
         )}
-        {email && (
+        {email && userRole !== 'wholesaler' && (
           <>
             <Link href="/watchlists" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>⭐ Watchlist</Link>
             <Link href="/saved-searches" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔍 Saved</Link>
             <Link href="/alerts" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔔 Alerts</Link>
           </>
+        )}
+        {email && userRole === 'wholesaler' && (
+          <Link href="/alerts" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔔 Alerts</Link>
         )}
         <Link href="/pricing" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Pricing</Link>
         {userRole === 'admin' && (

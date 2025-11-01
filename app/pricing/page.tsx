@@ -14,13 +14,26 @@ function PricingPageInner() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setIsLoggedIn(!!data.session);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session);
     });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleUpgrade = async (segment: 'investor' | 'wholesaler', tier: 'basic' | 'pro') => {
-    if (!isLoggedIn) {
+    // Check auth synchronously before redirecting
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
       router.push(`/login?next=/pricing&segment=${segment}&tier=${tier}&period=${billingPeriod}`);
       return;
     }

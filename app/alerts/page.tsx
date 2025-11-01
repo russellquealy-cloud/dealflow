@@ -41,6 +41,13 @@ export default function AlertsPage() {
         if (response.ok) {
           const data = await response.json();
           setAlerts(data.alerts || []);
+        } else if (response.status === 401) {
+          router.push('/login?next=/alerts');
+          return;
+        } else {
+          console.error('Error loading alerts:', response.status, response.statusText);
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Error details:', errorData);
         }
       } catch (error) {
         console.error('Error loading alerts:', error);
