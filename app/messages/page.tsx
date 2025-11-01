@@ -52,76 +52,22 @@ export default function MessagesPage() {
           return;
         }
 
-            // Get all messages for this user
-        // Note: profiles table doesn't have email column, only full_name
-        const { data: messages, error } = await supabase
-          .from('messages')
-          .select('*, listing:listings(id, title, address), sender:profiles!messages_from_id_fkey(full_name), recipient:profiles!messages_to_id_fkey(full_name)')
-          .or(`from_id.eq.${session.user.id},to_id.eq.${session.user.id}`)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error loading messages:', error);
-          setLoading(false);
-          return;
-        }
-
-        // Group messages by thread_id
-        const conversationMap = new Map<string, Conversation>();
-
-            messages?.forEach((msg: {
-              thread_id: string;
-              listing_id: string;
-              from_id: string;
-              to_id: string;
-              body: string;
-              created_at: string;
-              read_at: string | null;
-              listing?: { title?: string; address?: string };
-              sender?: { full_name?: string };
-              recipient?: { full_name?: string };
-            }) => {
-          const threadId = msg.thread_id;
-          const isFromMe = msg.from_id === session.user.id;
-          const otherUserId = isFromMe ? msg.to_id : msg.from_id;
-          const otherUser = isFromMe ? msg.recipient : msg.sender;
-
-          if (!conversationMap.has(threadId)) {
-            conversationMap.set(threadId, {
-              thread_id: threadId,
-              listing_id: msg.listing_id,
-              listing_title: msg.listing?.title,
-              listing_address: msg.listing?.address,
-              other_user_id: otherUserId,
-              other_user_name: otherUser?.full_name,
-              other_user_email: undefined, // Email not available from profiles table
-              last_message: msg.body,
-              last_message_at: msg.created_at,
-              unread_count: !isFromMe && !msg.read_at ? 1 : 0,
-              is_unread: !isFromMe && !msg.read_at
-            });
-          } else {
-            const conv = conversationMap.get(threadId)!;
-            // Update if this message is newer
-            if (new Date(msg.created_at) > new Date(conv.last_message_at || 0)) {
-              conv.last_message = msg.body;
-              conv.last_message_at = msg.created_at;
-            }
-            // Count unread messages
-            if (!isFromMe && !msg.read_at) {
-              conv.unread_count += 1;
-              conv.is_unread = true;
-            }
-          }
+        // Use API endpoint instead of direct database query for better error handling
+        const response = await fetch('/api/messages/conversations', {
+          credentials: 'include',
+          cache: 'no-store',
         });
 
-        // Convert to array and sort by last message time
-        const conversationsList = Array.from(conversationMap.values())
-          .sort((a, b) => {
-            const timeA = new Date(a.last_message_at || 0).getTime();
-            const timeB = new Date(b.last_message_at || 0).getTime();
-            return timeB - timeA; // Newest first
-          });
+        if (!response.ok) {
+          if (response.status === 401) {
+            router.push('/login?next=' + encodeURIComponent('/messages'));
+            return;
+          }
+          throw new Error(`Failed to load conversations: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const conversationsList = data.conversations || [];
 
         setConversations(conversationsList);
         setLoading(false);

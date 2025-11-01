@@ -49,22 +49,53 @@ export default function Header() {
 
   React.useEffect(() => {
     const loadUserData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setEmail(session.user.email || null);
-        // Load user role
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          setUserRole(profile.role);
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          return;
         }
-        // Load unread count
-        loadUnreadCount();
-      } else {
-        setUnreadCount(0);
+        
+        if (session) {
+          setEmail(session.user.email || null);
+          // Load user role with timeout and error handling
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (profileError) {
+              console.error('Error loading profile:', profileError);
+              // Try again after a short delay
+              setTimeout(async () => {
+                const { data: retryProfile } = await supabase
+                  .from('profiles')
+                  .select('role')
+                  .eq('id', session.user.id)
+                  .single();
+                if (retryProfile) {
+                  console.log('Retry successful - loaded role:', retryProfile.role);
+                  setUserRole(retryProfile.role || '');
+                }
+              }, 1000);
+            } else if (profile) {
+              console.log('Loaded user role:', profile.role);
+              setUserRole(profile.role || '');
+            }
+          } catch (error) {
+            console.error('Error in role loading:', error);
+          }
+          // Load unread count
+          loadUnreadCount();
+        } else {
+          setEmail(null);
+          setUserRole('');
+          setUnreadCount(0);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
       }
     };
 
@@ -75,14 +106,22 @@ export default function Header() {
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         setEmail(session?.user?.email || null);
         if (session) {
-          // Load user role
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          if (profile) {
-            setUserRole(profile.role);
+          // Load user role with error handling
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (profileError) {
+              console.error('Error loading profile on auth change:', profileError);
+            } else if (profile) {
+              console.log('Auth change - loaded role:', profile.role);
+              setUserRole(profile.role || '');
+            }
+          } catch (error) {
+            console.error('Error in role loading on auth change:', error);
           }
           // Load unread count
           loadUnreadCount();
@@ -113,14 +152,29 @@ export default function Header() {
   const signOut = async () => {
     try {
       console.log('🔐 Signing out...');
-      // Sign out from Supabase first
-      await supabase.auth.signOut();
-      // Then call server-side signout endpoint
-      try {
-        await fetch('/auth/signout', { method: 'POST' });
-      } catch (fetchError) {
-        console.warn('Server signout failed, continuing:', fetchError);
-      }
+      
+      // Create a timeout to force redirect after 3 seconds
+      const timeoutId = setTimeout(() => {
+        console.warn('🔐 Sign out timeout, forcing redirect...');
+        window.location.href = '/welcome';
+      }, 3000);
+      
+      // Sign out from Supabase first (with timeout)
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign out timeout')), 2000)
+      );
+      
+      await Promise.race([signOutPromise, timeoutPromise]).catch(() => {
+        console.warn('Sign out timed out or failed, continuing...');
+      });
+      
+      // Then call server-side signout endpoint (non-blocking)
+      fetch('/auth/signout', { method: 'POST' }).catch(() => {
+        // Ignore errors
+      });
+      
+      clearTimeout(timeoutId);
       console.log('🔐 Sign out complete, redirecting...');
       // Use window.location for a hard redirect to clear all state
       window.location.href = '/welcome';

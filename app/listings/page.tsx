@@ -287,17 +287,17 @@ export default function ListingsPage() {
         clearTimeout(timeoutId);
       }
 
-      // Add timeout to prevent infinite loading (30 seconds for production)
+      // Add timeout to prevent infinite loading (10 seconds - faster timeout)
       timeoutId = setTimeout(() => {
         if (!isMounted) return;
         console.warn('Listings load timeout - setting loading to false');
         setLoading(false);
-        // Retry once after timeout
+        // Retry once after timeout with simpler query
         if (retryCount === 0) {
-          console.log('Retrying listings load...');
-          setTimeout(() => loadListings(1), 2000);
+          console.log('Retrying listings load with simplified query...');
+          setTimeout(() => loadListings(1), 1000);
         }
-      }, 30000); // 30 second timeout with retry
+      }, 10000); // 10 second timeout - reduced from 30
       
       try {
         if (retryCount === 0) {
@@ -306,13 +306,14 @@ export default function ListingsPage() {
         
         console.log(`Loading listings from Supabase... (attempt ${retryCount + 1})`);
         
-        // Query with explicit field selection and limit for performance
-        // Note: repair_costs and assignment_fee columns don't exist, using repairs only
+        // Optimized query - load essential fields first, then filter client-side
+        // Use smaller limit and prioritize featured listings
         const query = supabase
           .from('listings')
           .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, property_type, description, images, created_at, updated_at, featured, featured_until')
+          .order('featured', { ascending: false, nullsFirst: false })
           .order('created_at', { ascending: false })
-          .limit(1000); // Limit to prevent huge queries
+          .limit(retryCount === 0 ? 500 : 100); // Start with 500, retry with 100 if timeout
 
         const { data, error } = await query;
 
@@ -394,6 +395,8 @@ export default function ListingsPage() {
           setAllListings([]);
           setAllPoints([]);
         }
+        
+        setLoading(false);
       } catch (err) {
         if (!isMounted) return;
         console.error('Error loading listings:', err);

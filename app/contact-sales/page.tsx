@@ -87,25 +87,6 @@ export default function ContactSalesPage() {
           }}>
             We&apos;ve received your inquiry and will get back to you within 24 hours with a custom quote and next steps.
           </p>
-          <div style={{ marginBottom: '24px' }}>
-            <a 
-              href="/Enterprise_Quote_Builder.xlsx"
-              download
-              style={{
-                background: '#3b82f6',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
-                display: 'inline-block',
-                marginRight: '16px'
-              }}
-            >
-              📊 Download Enterprise Quote Template
-            </a>
-          </div>
           <Link 
             href="/pricing"
             style={{
