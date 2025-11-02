@@ -187,35 +187,57 @@ export default function AccountPage() {
           const isWholesaler = profileData.segment === 'wholesaler' || profileData.role === 'wholesaler';
           
           if (isInvestor) {
-            // Investor stats
-            const [watchlistsRes, messagesRes] = await Promise.all([
-              supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-              supabase.from('messages').select('id', { count: 'exact', head: true }).eq('from_id', session.user.id)
-            ]);
-            
-            setStats({
-              savedListings: watchlistsRes.count || 0,
-              watchlists: watchlistsRes.count || 0,
-              contactsMade: messagesRes.count || 0,
-              aiAnalyses: 0 // TODO: Add AI analyses tracking table
-            });
+            // Investor stats - use simpler queries with timeout
+            try {
+              const [watchlistsRes, messagesRes] = await Promise.all([
+                supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+                supabase.from('messages').select('id', { count: 'exact', head: true }).eq('from_id', session.user.id)
+              ]);
+              
+              setStats({
+                savedListings: watchlistsRes.count || 0,
+                watchlists: watchlistsRes.count || 0,
+                contactsMade: messagesRes.count || 0,
+                aiAnalyses: 0 // TODO: Add AI analyses tracking table
+              });
+            } catch (statsError) {
+              console.error('Error loading investor stats:', statsError);
+              // Set default stats on error
+              setStats({
+                savedListings: 0,
+                watchlists: 0,
+                contactsMade: 0,
+                aiAnalyses: 0
+              });
+            }
           } else if (isWholesaler) {
-            // Wholesaler stats
-            const [listingsRes, featuredRes, messagesRes] = await Promise.all([
-              supabase.from('listings').select('id', { count: 'exact' }).eq('owner_id', session.user.id),
-              supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id).eq('featured', true),
-              supabase.from('messages').select('id', { count: 'exact', head: true }).eq('to_id', session.user.id)
-            ]);
-            
-            // Total views would need a views column - for now, use listing count as placeholder
-            const totalViews = 0; // TODO: Add views tracking to listings table
-            
-            setStats({
-              myListings: listingsRes.count || 0,
-              totalViews,
-              contacts: messagesRes.count || 0,
-              featuredListings: featuredRes.count || 0
-            });
+            // Wholesaler stats - use simpler queries with timeout
+            try {
+              const [listingsRes, featuredRes, messagesRes] = await Promise.all([
+                supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id),
+                supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id).eq('featured', true),
+                supabase.from('messages').select('id', { count: 'exact', head: true }).eq('to_id', session.user.id)
+              ]);
+              
+              // Total views would need a views column - for now, use listing count as placeholder
+              const totalViews = 0; // TODO: Add views tracking to listings table
+              
+              setStats({
+                myListings: listingsRes.count || 0,
+                totalViews,
+                contacts: messagesRes.count || 0,
+                featuredListings: featuredRes.count || 0
+              });
+            } catch (statsError) {
+              console.error('Error loading wholesaler stats:', statsError);
+              // Set default stats on error
+              setStats({
+                myListings: 0,
+                totalViews: 0,
+                contacts: 0,
+                featuredListings: 0
+              });
+            }
           }
         }
         

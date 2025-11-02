@@ -1,15 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 export const runtime = "nodejs";
 
-function createSupabaseFromCookies() {
-  // Cast to any to support environments where cookies() is (incorrectly) typed as a Promise
-  const store = cookies() as unknown as {
-    get: (name: string) => { value: string } | undefined;
-    set: (init: { name: string; value: string } & CookieOptions) => void;
-  };
+async function createSupabaseFromCookies() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,23 +13,73 @@ function createSupabaseFromCookies() {
     {
       cookies: {
         get(name: string) {
-          return store.get?.(name)?.value;
+          return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          store.set?.({ name, value, ...options });
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            // Cookie setting might fail in some contexts, ignore silently
+            console.error('Error setting cookie:', error);
+          }
         },
         remove(name: string, options: CookieOptions) {
-          store.set?.({ name, value: "", ...options, maxAge: 0 });
+          try {
+            cookieStore.set({ name, value: "", ...options, maxAge: 0 });
+          } catch (error) {
+            // Cookie removal might fail in some contexts, ignore silently
+            console.error('Error removing cookie:', error);
+          }
         },
       },
     }
   );
 }
 
-async function handler(req: Request) {
-  const supabase = createSupabaseFromCookies();
-  await supabase.auth.signOut();
-  return NextResponse.redirect(new URL("/", req.url), { status: 302 });
+async function handler(req: NextRequest) {
+  try {
+    const supabase = await createSupabaseFromCookies();
+    
+    // Sign out from Supabase
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Sign out error:', error);
+    }
+    
+    // Clear all auth-related cookies manually as backup
+    const cookieStore = await cookies();
+    const cookieNames = [
+      'sb-access-token',
+      'sb-refresh-token',
+      'supabase-auth-token',
+      `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0]}-auth-token`
+    ];
+    
+    cookieNames.forEach(name => {
+      try {
+        cookieStore.delete(name);
+      } catch (e) {
+        // Ignore errors
+      }
+    });
+    
+    // Redirect to welcome page
+    const url = new URL("/welcome", req.url);
+    const response = NextResponse.redirect(url, { status: 302 });
+    
+    // Also clear cookies in response headers
+    cookieNames.forEach(name => {
+      response.cookies.delete(name);
+      response.cookies.set(name, '', { maxAge: 0, path: '/' });
+    });
+    
+    return response;
+  } catch (error) {
+    console.error('Sign out handler error:', error);
+    // Even if there's an error, redirect to welcome
+    return NextResponse.redirect(new URL("/welcome", req.url), { status: 302 });
+  }
 }
 
 export { handler as GET, handler as POST };

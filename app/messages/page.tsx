@@ -30,18 +30,27 @@ export default function MessagesPage() {
     if (loadingRef.current) return;
     loadingRef.current = true;
 
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Messages load timeout - setting loading to false');
+      setLoading(false);
+      loadingRef.current = false;
+    }, 15000); // 15 second timeout
+
     const loadConversations = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('Session error:', sessionError);
+          clearTimeout(timeoutId);
           setLoading(false);
           loadingRef.current = false;
           return;
         }
 
         if (!session) {
+          clearTimeout(timeoutId);
           setLoading(false);
           loadingRef.current = false;
           // Only redirect if we're not already on the login page and not already redirecting
@@ -64,6 +73,7 @@ export default function MessagesPage() {
         });
 
         if (!response.ok) {
+          clearTimeout(timeoutId);
           if (response.status === 401) {
             // Only redirect once to prevent loops
             if (!sessionStorage.getItem('redirecting')) {
@@ -81,11 +91,13 @@ export default function MessagesPage() {
         const data = await response.json();
         const conversationsList = data.conversations || [];
 
+        clearTimeout(timeoutId);
         setConversations(conversationsList);
         setLoading(false);
         loadingRef.current = false;
       } catch (error) {
         console.error('Error loading conversations:', error);
+        clearTimeout(timeoutId);
         setLoading(false);
         loadingRef.current = false;
       }

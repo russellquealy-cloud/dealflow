@@ -46,9 +46,19 @@ function PricingPageInner() {
         credentials: 'include', // Include cookies for authentication
       });
       
-      const { url } = await response.json();
-      if (url) {
-        window.location.href = url;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Checkout error:', errorData);
+        alert(`Error: ${errorData.error || 'Failed to create checkout session'}`);
+        return;
+      }
+      
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('No checkout URL returned:', data);
+        alert('Error: No checkout URL received. Please try again.');
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
@@ -71,15 +81,16 @@ function PricingPageInner() {
     }
     
     // Auto-trigger upgrade if segment and tier are provided and user is logged in
+    // Use a ref to prevent multiple triggers
     if (segment && tier && isLoggedIn && (tier === 'basic' || tier === 'pro')) {
       // Small delay to ensure state is set
       const timer = setTimeout(() => {
         handleUpgrade(segment as 'investor' | 'wholesaler', tier as 'basic' | 'pro');
-      }, 500);
+      }, 1000);
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, isLoggedIn, billingPeriod]);
+  }, [searchParams, isLoggedIn]);
 
   const investorTiers = [
     {

@@ -151,31 +151,39 @@ export default function Header() {
     try {
       console.log('🔐 Signing out...');
       
-      // Create a timeout to force redirect after 3 seconds
-      const timeoutId = setTimeout(() => {
-        console.warn('🔐 Sign out timeout, forcing redirect...');
+      // Clear local state immediately
+      setEmail(null);
+      setUserRole('');
+      setUnreadCount(0);
+      
+      // Sign out from Supabase client-side (non-blocking)
+      supabase.auth.signOut().catch((err) => {
+        console.warn('Client-side sign out error (non-critical):', err);
+      });
+      
+      // Call server-side signout endpoint and wait for redirect
+      try {
+        const response = await fetch('/auth/signout', { 
+          method: 'POST',
+          credentials: 'include',
+          redirect: 'manual' // Handle redirect manually
+        });
+        
+        // If we get a redirect response, follow it
+        if (response.type === 'opaqueredirect' || response.status === 302) {
+          window.location.href = '/welcome';
+        } else {
+          // Fallback: redirect after short delay
+          setTimeout(() => {
+            window.location.href = '/welcome';
+          }, 100);
+        }
+      } catch (fetchError) {
+        console.warn('Server sign out fetch error (non-critical):', fetchError);
+        // Force redirect even if fetch fails
         window.location.href = '/welcome';
-      }, 3000);
+      }
       
-      // Sign out from Supabase first (with timeout)
-      const signOutPromise = supabase.auth.signOut();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Sign out timeout')), 2000)
-      );
-      
-      await Promise.race([signOutPromise, timeoutPromise]).catch(() => {
-        console.warn('Sign out timed out or failed, continuing...');
-      });
-      
-      // Then call server-side signout endpoint (non-blocking)
-      fetch('/auth/signout', { method: 'POST' }).catch(() => {
-        // Ignore errors
-      });
-      
-      clearTimeout(timeoutId);
-      console.log('🔐 Sign out complete, redirecting...');
-      // Use window.location for a hard redirect to clear all state
-      window.location.href = '/welcome';
     } catch (error) {
       console.error('🔐 Sign out error:', error);
       // Force redirect even if sign out fails

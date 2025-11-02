@@ -81,14 +81,22 @@ export default function WholesalerPortal() {
     checkAuth();
   }, [router]);
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!user) return;
     
+    setIsSaving(true);
+    setSaveMessage(null);
+    
     try {
       const profileData = {
         id: user.id,
+        role: 'wholesaler',
+        segment: 'wholesaler', // Set segment so account page knows user is wholesaler
         type: 'wholesaler',
         company_name: formData.company_name,
         phone: formData.phone,
@@ -117,11 +125,30 @@ export default function WholesalerPortal() {
         if (error) throw error;
       }
 
-      alert('Profile updated successfully!');
-      router.push('/account');
+      setSaveMessage({ type: 'success', text: 'Profile updated successfully!' });
+      // Reload profile data
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
+      
+      // Redirect after 1.5 seconds
+      setTimeout(() => {
+        router.push('/account');
+      }, 1500);
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      setSaveMessage({ 
+        type: 'error', 
+        text: error instanceof Error ? error.message : 'Failed to update profile. Please try again.' 
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -159,6 +186,21 @@ export default function WholesalerPortal() {
         Set up your wholesaler profile to start posting deals and connecting with investors.
       </p>
 
+      {/* Save message */}
+      {saveMessage && (
+        <div style={{
+          padding: '12px 16px',
+          borderRadius: 8,
+          marginBottom: 24,
+          background: saveMessage.type === 'success' ? '#d1fae5' : '#fee2e2',
+          color: saveMessage.type === 'success' ? '#065f46' : '#991b1b',
+          border: `1px solid ${saveMessage.type === 'success' ? '#10b981' : '#ef4444'}`,
+          fontWeight: 500
+        }}>
+          {saveMessage.text}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 24 }}>
         <div style={{ 
           border: '1px solid #e5e7eb', 
@@ -169,6 +211,23 @@ export default function WholesalerPortal() {
           <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Business Information</h2>
           
           <div style={{ display: 'grid', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Email</label>
+              <div style={{ 
+                width: '100%', 
+                padding: '8px 12px', 
+                border: '1px solid #d1d5db', 
+                borderRadius: 6,
+                background: '#f9fafb',
+                color: '#6b7280'
+              }}>
+                {user?.email || 'Not available'}
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                Email cannot be changed here. Update it in your account settings.
+              </p>
+            </div>
+            
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Company Name</label>
               <input
@@ -280,17 +339,19 @@ export default function WholesalerPortal() {
           </Link>
           <button
             type="submit"
+            disabled={isSaving}
             style={{ 
               padding: '12px 24px', 
               border: '1px solid #f59e0b', 
               borderRadius: 8, 
-              background: '#f59e0b', 
+              background: isSaving ? '#d1d5db' : '#f59e0b', 
               color: '#fff', 
-              cursor: 'pointer',
-              fontWeight: 600
+              cursor: isSaving ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              opacity: isSaving ? 0.6 : 1
             }}
           >
-            Save Profile
+            {isSaving ? 'Saving...' : 'Save Profile'}
           </button>
         </div>
       </form>
