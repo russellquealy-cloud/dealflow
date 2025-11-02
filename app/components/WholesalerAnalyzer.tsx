@@ -373,13 +373,13 @@ export default function WholesalerAnalyzer() {
           )}
 
           {/* Repair Breakdown */}
-          {questionType === 'repair_estimate' && result.result.calculations?.breakdown && (
+          {questionType === 'repair_estimate' && result.result.calculations?.breakdown && typeof result.result.calculations.breakdown === 'object' && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#6b7280', marginBottom: 8 }}>
                 Repair Breakdown:
               </div>
               <div style={{ display: 'grid', gap: 6 }}>
-                {Object.entries(result.result.calculations.breakdown as Record<string, number>).map(([category, cost]) => (
+                {Object.entries(result.result.calculations.breakdown as unknown as Record<string, number>).map(([category, cost]) => (
                   <div key={category} style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between',
@@ -391,7 +391,7 @@ export default function WholesalerAnalyzer() {
                     <span style={{ textTransform: 'capitalize' }}>
                       {category.replace(/_/g, ' ')}:
                     </span>
-                    <strong>${cost.toLocaleString()}</strong>
+                    <strong>${typeof cost === 'number' ? cost.toLocaleString() : '0'}</strong>
                   </div>
                 ))}
               </div>

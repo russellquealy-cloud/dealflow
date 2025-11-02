@@ -91,7 +91,7 @@ export interface AnalysisResult {
   questionType: InvestorQuestionType | WholesalerQuestionType;
   result: {
     answer: number | string | boolean;
-    calculations?: Record<string, number>;
+    calculations?: Record<string, number | Record<string, number>>;
     comps?: CompData[];
     sensitivity?: SensitivityResult;
     exitAnalysis?: ExitAnalysis;
