@@ -342,9 +342,8 @@ function calculatePriceForROI(
 function calculateSensitivity(
   baseARV: number,
   baseRepairs: number,
-  basePrice: number,
-  _arvVariation: number,
-  _repairsVariation: number
+  basePrice: number
+  // arvVariation and repairsVariation are currently hardcoded, kept for future use
 ): SensitivityResult {
   
   const arvVariations = {
@@ -397,7 +396,7 @@ export async function analyzeStructured(
   let aiCost = 0;
   
   if (role === 'investor') {
-    result = await analyzeInvestorQuestion(input as InvestorQuestionInput, userId);
+    result = await analyzeInvestorQuestion(input as InvestorQuestionInput);
     // Only call AI for ARV comps if needed AND OpenAI is configured
     if (input.questionType === 'arv_from_comps') {
       if (process.env.OPENAI_API_KEY) {
@@ -409,7 +408,7 @@ export async function analyzeStructured(
       aiCost = 0; // Pure calculation, no AI
     }
   } else {
-    result = await analyzeWholesalerQuestion(input as WholesalerQuestionInput, userId);
+    result = await analyzeWholesalerQuestion(input as WholesalerQuestionInput);
     // Only call AI for ARV quick comps if needed AND OpenAI is configured
     if (input.questionType === 'arv_quick_comps') {
       if (process.env.OPENAI_API_KEY) {
@@ -447,8 +446,8 @@ export async function analyzeStructured(
 }
 
 async function analyzeInvestorQuestion(
-  input: InvestorQuestionInput,
-  _userId: string
+  input: InvestorQuestionInput
+  // userId parameter reserved for future features (e.g., user-specific calculations)
 ): Promise<AnalysisResult['result']> {
   switch (input.questionType) {
     case 'deal_at_price':
@@ -508,9 +507,8 @@ async function analyzeInvestorQuestion(
       const sensitivity = calculateSensitivity(
         input.arv,
         input.repairs,
-        input.purchasePrice,
-        input.arvVariation || 5,
-        input.repairsVariation || 10
+        input.purchasePrice
+        // Note: arvVariation and repairsVariation parameters are hardcoded in function
       );
       return {
         answer: 'See sensitivity table',
@@ -564,8 +562,8 @@ async function analyzeInvestorQuestion(
 }
 
 async function analyzeWholesalerQuestion(
-  input: WholesalerQuestionInput,
-  _userId: string
+  input: WholesalerQuestionInput
+  // userId parameter reserved for future features (e.g., user-specific calculations)
 ): Promise<AnalysisResult['result']> {
   switch (input.questionType) {
     case 'mao_calculation':

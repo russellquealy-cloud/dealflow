@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 429 });
       }
       if (error.message.includes('limit reached') || error.message.includes('Upgrade')) {
-        const tier = await getUserSubscriptionTier((await createClient()).auth.getUser().then(r => r.data.user?.id || ''));
+        // Get user ID properly
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const tier = user ? await getUserSubscriptionTier(user.id) : 'FREE';
         return NextResponse.json({ 
           error: error.message,
           upgrade_required: true,
