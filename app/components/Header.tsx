@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/supabase/client";
 import PostDealButton from "./PostDealButton";
 
@@ -29,7 +28,6 @@ const btn: React.CSSProperties = {
 const link: React.CSSProperties = { textDecoration: "none", color: "#111", fontWeight: 800, fontSize: 18 };
 
 export default function Header() {
-  const router = useRouter();
   const [email, setEmail] = React.useState<string | null>(null);
   const [userRole, setUserRole] = React.useState<string>('');
   const [unreadCount, setUnreadCount] = React.useState<number>(0);

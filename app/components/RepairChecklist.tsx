@@ -104,7 +104,7 @@ export default function RepairChecklist({ checklist, onChange }: RepairChecklist
           color: '#6b7280',
         }}>
           <div style={{ fontSize: 14, marginBottom: 8 }}>No repair items added yet</div>
-          <div style={{ fontSize: 12 }}>Click "+ Add Repair Item" to get started</div>
+          <div style={{ fontSize: 12 }}>Click &quot;+ Add Repair Item&quot; to get started</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>

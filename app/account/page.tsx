@@ -188,9 +188,8 @@ export default function AccountPage() {
           
           if (isInvestor) {
             // Investor stats
-            const [watchlistsRes, savedSearchesRes, messagesRes] = await Promise.all([
+            const [watchlistsRes, messagesRes] = await Promise.all([
               supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-              supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
               supabase.from('messages').select('id', { count: 'exact', head: true }).eq('from_id', session.user.id)
             ]);
             

@@ -343,10 +343,9 @@ function calculateSensitivity(
   baseARV: number,
   baseRepairs: number,
   basePrice: number,
-  arvVariation: number,
-  repairsVariation: number
+  _arvVariation: number,
+  _repairsVariation: number
 ): SensitivityResult {
-  const variations = [-0.10, -0.05, 0, 0.05, 0.10];
   
   const arvVariations = {
     minus10: calculateMAO(baseARV * 0.9, baseRepairs),
@@ -374,8 +373,6 @@ export async function analyzeStructured(
   role: UserRole,
   input: InvestorQuestionInput | WholesalerQuestionInput
 ): Promise<AnalysisResult> {
-  const supabase = await createClient();
-  
   // 1. Check rate limits
   const rateLimit = checkRateLimit(userId);
   if (!rateLimit.allowed) {
@@ -451,7 +448,7 @@ export async function analyzeStructured(
 
 async function analyzeInvestorQuestion(
   input: InvestorQuestionInput,
-  userId: string
+  _userId: string
 ): Promise<AnalysisResult['result']> {
   switch (input.questionType) {
     case 'deal_at_price':
@@ -568,7 +565,7 @@ async function analyzeInvestorQuestion(
 
 async function analyzeWholesalerQuestion(
   input: WholesalerQuestionInput,
-  userId: string
+  _userId: string
 ): Promise<AnalysisResult['result']> {
   switch (input.questionType) {
     case 'mao_calculation':
@@ -667,25 +664,30 @@ function generateQuestionKey(role: UserRole, input: InvestorQuestionInput | Whol
 }
 
 async function getCachedAnalysis(userId: string, questionKey: string): Promise<AnalysisResult | null> {
-  const supabase = await createClient();
-  
-  // Store cache key in question signature format
-  const { data } = await supabase
-    .from('ai_analysis_logs')
-    .select('output_data, created_at')
-    .eq('user_id', userId)
-    .eq('analysis_type', questionKey)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-  
-  if (!data) return null;
-  
-  // Check if cache is fresh (1 hour TTL)
-  const cacheAge = Date.now() - new Date(data.created_at).getTime();
-  if (cacheAge > 3600000) return null; // 1 hour
-  
-  return data.output_data as AnalysisResult;
+  try {
+    const supabase = await createClient();
+    
+    // Store cache key in question signature format
+    const { data, error } = await supabase
+      .from('ai_analysis_logs')
+      .select('output_data, created_at')
+      .eq('user_id', userId)
+      .eq('analysis_type', questionKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error || !data) return null;
+    
+    // Check if cache is fresh (1 hour TTL)
+    const cacheAge = Date.now() - new Date(data.created_at).getTime();
+    if (cacheAge > 3600000) return null; // 1 hour
+    
+    return data.output_data as AnalysisResult;
+  } catch {
+    // Fail silently - caching is non-critical
+    return null;
+  }
 }
 
 async function cacheAnalysis(
@@ -693,15 +695,20 @@ async function cacheAnalysis(
   questionKey: string,
   result: AnalysisResult
 ): Promise<void> {
-  const supabase = await createClient();
-  
-  await supabase.from('ai_analysis_logs').insert({
-    user_id: userId,
-    listing_id: null, // Not tied to specific listing
-    analysis_type: questionKey,
-    input_data: { questionKey },
-    output_data: result,
-    ai_cost_cents: result.aiCost,
-  });
+  try {
+    const supabase = await createClient();
+    
+    await supabase.from('ai_analysis_logs').insert({
+      user_id: userId,
+      listing_id: null, // Not tied to specific listing
+      analysis_type: questionKey,
+      input_data: { questionKey },
+      output_data: result,
+      ai_cost_cents: result.aiCost,
+    });
+  } catch (error) {
+    // Fail silently - caching is non-critical
+    console.warn('Failed to cache analysis:', error);
+  }
 }
 
