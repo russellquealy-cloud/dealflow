@@ -57,10 +57,11 @@ export default function Header() {
         if (session) {
           setEmail(session.user.email || null);
           // Load user role with timeout and error handling
+          // Check both 'role' and 'segment' fields to support both naming conventions
           try {
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('role')
+              .select('role, segment')
               .eq('id', session.user.id)
               .single();
             
@@ -70,17 +71,20 @@ export default function Header() {
               setTimeout(async () => {
                 const { data: retryProfile } = await supabase
                   .from('profiles')
-                  .select('role')
+                  .select('role, segment')
                   .eq('id', session.user.id)
                   .single();
                 if (retryProfile) {
-                  console.log('Retry successful - loaded role:', retryProfile.role);
-                  setUserRole(retryProfile.role || '');
+                  const role = retryProfile.segment || retryProfile.role || '';
+                  console.log('Retry successful - loaded role:', role);
+                  setUserRole(role);
                 }
               }, 1000);
             } else if (profile) {
-              console.log('Loaded user role:', profile.role);
-              setUserRole(profile.role || '');
+              // Prefer 'segment' over 'role' for consistency
+              const role = profile.segment || profile.role || '';
+              console.log('Loaded user role:', role);
+              setUserRole(role);
             }
           } catch (error) {
             console.error('Error in role loading:', error);
@@ -105,18 +109,21 @@ export default function Header() {
         setEmail(session?.user?.email || null);
         if (session) {
           // Load user role with error handling
+          // Check both 'role' and 'segment' fields to support both naming conventions
           try {
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('role')
+              .select('role, segment')
               .eq('id', session.user.id)
               .single();
             
             if (profileError) {
               console.error('Error loading profile on auth change:', profileError);
             } else if (profile) {
-              console.log('Auth change - loaded role:', profile.role);
-              setUserRole(profile.role || '');
+              // Prefer 'segment' over 'role' for consistency
+              const role = profile.segment || profile.role || '';
+              console.log('Auth change - loaded role:', role);
+              setUserRole(role);
             }
           } catch (error) {
             console.error('Error in role loading on auth change:', error);

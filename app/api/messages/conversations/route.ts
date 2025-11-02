@@ -19,12 +19,13 @@ export async function GET(request: NextRequest) {
     const user = session.user;
 
     // Get all messages for this user
+    // Optimize query by using index-friendly filters
     const { data: messages, error } = await supabase
       .from('messages')
       .select('*, listing:listings(id, title, address)')
       .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
-      .limit(1000); // Limit to prevent huge queries
+      .limit(500); // Reduced limit for better performance
 
     if (error) {
       console.error('Error fetching messages:', error);

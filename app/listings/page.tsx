@@ -304,14 +304,17 @@ export default function ListingsPage() {
         
         console.log(`Loading listings from Supabase... (attempt ${retryCount + 1})`);
         
-        // Optimized query - load essential fields first, then filter client-side
+        // Optimized query - load essential fields only
+        // Filter out null/empty coordinates for map performance
         // Use smaller limit and prioritize featured listings
         const query = supabase
           .from('listings')
           .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, property_type, description, images, created_at, updated_at, featured, featured_until')
+          .not('latitude', 'is', null) // Only get listings with coordinates
+          .not('longitude', 'is', null)
           .order('featured', { ascending: false, nullsFirst: false })
           .order('created_at', { ascending: false })
-          .limit(retryCount === 0 ? 500 : 100); // Start with 500, retry with 100 if timeout
+          .limit(retryCount === 0 ? 200 : 50); // Reduced limit: 200 for initial, 50 for retry
 
         const { data, error } = await query;
 
