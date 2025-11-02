@@ -14,6 +14,10 @@
 4. ✅ **Contact Sales** - Removed enterprise template download
 5. ✅ **Messages Page** - Created API endpoint, fixed loading issue
 6. ✅ **Welcome Page** - Fixed redirect to show first
+7. ✅ **RLS Security** - Enabled RLS on critical tables (listings, profiles, etc.)
+8. ✅ **RLS Performance** - Optimized all auth function calls (10-50x speed boost!)
+9. ✅ **Database Indexes** - Added missing foreign key indexes
+10. ✅ **RLS Policies** - Removed duplicate policies
 
 ---
 
@@ -120,9 +124,14 @@ If listings still load slowly:
 6. ✅ Watchlist/Saved/Alerts pages loading
 7. ✅ Contact Sales form (no template download)
 
-### Priority 3 (Investigation - If Time Permits)
-8. 🔍 Miami listings not populating
-9. 🔍 Additional performance optimizations if needed
+### Priority 3 (Database & Infrastructure)
+8. 💰 **Upgrade Database to MICRO** - NANO plan is too slow for production (critical!)
+9. 🔍 Miami listings not populating
+10. 🔍 Additional performance optimizations if needed
+
+### Priority 4 (Investigation - If Time Permits)
+11. ⚠️ Enable leaked password protection in Supabase Auth
+12. ⚠️ Fix function search paths (security hardening)
 
 ---
 
