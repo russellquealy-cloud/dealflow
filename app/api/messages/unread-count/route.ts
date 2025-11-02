@@ -1,15 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/supabase/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    if (userError || !user) {
+    if (sessionError || !session || !session.user) {
       // Return 0 instead of 401 for unauthenticated users
       return NextResponse.json({ count: 0 });
     }
+
+    const user = session.user;
 
     // Get count of unread messages for this user
     const { count, error } = await supabase

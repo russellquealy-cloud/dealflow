@@ -1,14 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/supabase/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    if (userError || !user) {
+    if (sessionError) {
+      console.error('Session error in messages API:', sessionError);
+      return NextResponse.json({ error: 'Authentication error' }, { status: 401 });
+    }
+
+    if (!session || !session.user) {
+      console.log('No session found in messages API');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const user = session.user;
 
     // Get all messages for this user
     const { data: messages, error } = await supabase

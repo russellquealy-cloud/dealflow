@@ -47,8 +47,6 @@ interface Row {
   price?: number;
   arv?: number;
   repairs?: number;
-  repair_costs?: number;
-  assignment_fee?: number;
   beds?: number;
   bedrooms?: number;
   baths?: number;
@@ -205,8 +203,8 @@ export default function ListingsPage() {
               const items = rows.map((r) => {
           const price = toNum(r.price);
           const arv = toNum(r.arv);
-          const repairs = toNum(r.repairs ?? r.repair_costs);
-                const spread = arv && price ? arv - price - (toNum(r.assignment_fee) || 0) : undefined;
+          const repairs = toNum(r.repairs);
+                const spread = arv && price ? arv - price : undefined;
                 const roi = arv && price ? ((arv - price) / price) * 100 : undefined;
 
           return {

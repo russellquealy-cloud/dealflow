@@ -21,36 +21,61 @@ export default function WholesalerPortal() {
   });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login?next=/portal/wholesaler');
-        return;
-      }
-      
-      setUser(session.user);
-      
-      // Load existing profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (profileData) {
-        setProfile(profileData);
-        setFormData({
-          company_name: profileData.company_name || '',
-          phone: profileData.phone || '',
-          city: profileData.city || '',
-          state: profileData.state || '',
-          experience_years: profileData.experience_years || '',
-          specialties: profileData.specialties || '',
-          bio: profileData.bio || ''
-        });
-      }
-      
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Wholesaler portal load timeout - setting loading to false');
       setLoading(false);
+    }, 10000); // 10 second timeout
+    
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          clearTimeout(timeoutId);
+          setLoading(false);
+          return;
+        }
+        
+        if (!session) {
+          clearTimeout(timeoutId);
+          router.push('/login?next=/portal/wholesaler');
+          return;
+        }
+        
+        setUser(session.user);
+        
+        // Load existing profile with error handling
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profileError) {
+          console.error('Profile error:', profileError);
+          // Continue even if profile doesn't exist - allow creating new profile
+        } else if (profileData) {
+          setProfile(profileData);
+          setFormData({
+            company_name: profileData.company_name || '',
+            phone: profileData.phone || '',
+            city: profileData.city || '',
+            state: profileData.state || '',
+            experience_years: profileData.experience_years?.toString() || '',
+            specialties: profileData.specialties || '',
+            bio: profileData.bio || ''
+          });
+        }
+        
+        clearTimeout(timeoutId);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading wholesaler portal:', error);
+        clearTimeout(timeoutId);
+        setLoading(false);
+      }
     };
 
     checkAuth();

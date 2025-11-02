@@ -44,9 +44,11 @@ export default function MessagesPage() {
         if (!session) {
           setLoading(false);
           loadingRef.current = false;
-          // Only redirect if we're not already on the login page
+          // Only redirect if we're not already on the login page and not already redirecting
           const currentPath = window.location.pathname;
-          if (!currentPath.includes('/login')) {
+          if (!currentPath.includes('/login') && !sessionStorage.getItem('redirecting')) {
+            sessionStorage.setItem('redirecting', 'true');
+            setTimeout(() => sessionStorage.removeItem('redirecting'), 2000);
             router.push('/login?next=' + encodeURIComponent('/messages'));
           }
           return;
@@ -56,11 +58,21 @@ export default function MessagesPage() {
         const response = await fetch('/api/messages/conversations', {
           credentials: 'include',
           cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
         });
 
         if (!response.ok) {
           if (response.status === 401) {
-            router.push('/login?next=' + encodeURIComponent('/messages'));
+            // Only redirect once to prevent loops
+            if (!sessionStorage.getItem('redirecting')) {
+              sessionStorage.setItem('redirecting', 'true');
+              setTimeout(() => sessionStorage.removeItem('redirecting'), 2000);
+              router.push('/login?next=' + encodeURIComponent('/messages'));
+            }
+            setLoading(false);
+            loadingRef.current = false;
             return;
           }
           throw new Error(`Failed to load conversations: ${response.status}`);
