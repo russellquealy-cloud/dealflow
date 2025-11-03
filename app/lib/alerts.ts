@@ -1,7 +1,7 @@
 "use server";
 
 import { createServerClient } from '@/supabase/server';
-import { sendViaSMTP } from '@/app/lib/email';
+import { sendViaSMTP } from '@/lib/email';
 
 /**
  * Trigger an alert for a user

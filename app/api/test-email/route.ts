@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendBasicTest } from "@/app/lib/email";
+import { sendBasicTest } from "@/lib/email";
 
 export const runtime = "nodejs";
 

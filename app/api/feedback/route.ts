@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/supabase/server';
-import { sendViaSMTP } from '@/app/lib/email';
+import { sendViaSMTP } from '@/lib/email';
 
 export const runtime = "nodejs";
 
