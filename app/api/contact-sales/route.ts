@@ -40,7 +40,7 @@ ${message}
       ${timeline ? `<p><b>Timeline:</b> ${timeline}</p>` : ''}
       <hr>
       <p><b>Message:</b></p>
-      <pre>${(message || "").replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s] as string))}</pre>
+      <pre>${(message || "").replace(/[<>&]/g, (s: string) => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s] as string))}</pre>
     `;
     const text = `New Sales Inquiry\n\nName: ${name}\nEmail: ${email}\n${company ? `Company: ${company}\n` : ''}${phone ? `Phone: ${phone}\n` : ''}\n${salesMessage}`;
     
