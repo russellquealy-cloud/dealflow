@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       <p><b>Type:</b> ${type || "general"}</p>
       <p><b>From:</b> ${userEmail || "anonymous"}</p>
       <p><b>Message:</b></p>
-      <pre>${(message || "").replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s] as string))}</pre>
+      <pre>${(message || "").replace(/[<>&]/g, (s: string) => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s] as string))}</pre>
     `;
     const text = `Type: ${type || "general"}\nFrom: ${userEmail || "anonymous"}\n\n${message || ""}`;
     
