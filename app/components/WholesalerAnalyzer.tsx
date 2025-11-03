@@ -451,7 +451,7 @@ function generateMockResult(
   const mao = arv * (1 - targetMargin / 100) - repairs;
 
   return {
-    success: true,
+    questionType: questionType,
     result: {
       answer: questionType === 'mao_calculation' 
         ? mao
@@ -475,7 +475,9 @@ function generateMockResult(
         `Total repair cost: $${repairs.toLocaleString()}`
       ]
     },
-    aiCost: 0
+    cached: false,
+    aiCost: 0,
+    timestamp: new Date().toISOString()
   };
 }
 

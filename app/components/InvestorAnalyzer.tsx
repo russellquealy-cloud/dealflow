@@ -442,7 +442,7 @@ function generateMockResult(questionType: InvestorQuestionType, formData: Partia
   const spread = arv - purchasePrice - repairs;
 
   return {
-    success: true,
+    questionType: questionType,
     result: {
       answer: questionType === 'deal_at_price' 
         ? spread > 0 
@@ -462,7 +462,9 @@ function generateMockResult(questionType: InvestorQuestionType, formData: Partia
         `Estimated ROI: ${purchasePrice > 0 ? ((spread / purchasePrice) * 100).toFixed(1) : 0}%`
       ]
     },
-    aiCost: 0
+    cached: false,
+    aiCost: 0,
+    timestamp: new Date().toISOString()
   };
 }
 
