@@ -20,14 +20,18 @@ function LoginInner() {
 
   // Check if user is already signed in and redirect
   useEffect(() => {
+    let isMounted = true;
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        // User is already signed in, redirect to next or home
+      if (isMounted && session) {
+        // User is already signed in, use hard redirect to clear any stale state
         const redirectUrl = next !== '/' ? next : '/listings';
-        router.push(redirectUrl);
+        window.location.href = redirectUrl;
       }
     });
-  }, [router, next]);
+    return () => {
+      isMounted = false;
+    };
+  }, [next]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,11 +68,10 @@ function LoginInner() {
             }
           }
           
-          // Use router.push with a small delay for session to persist
+          // Use hard redirect to ensure session is fully established
           setTimeout(() => {
-            router.push(next);
-            router.refresh();
-          }, 300);
+            window.location.href = next;
+          }, 500);
         }
       } else {
         // Magic link login with mobile-optimized redirect

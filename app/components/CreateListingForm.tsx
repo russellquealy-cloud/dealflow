@@ -17,6 +17,8 @@ type FormState = {
   description: string;
   arv: number | "";
   repairs: number | "";
+  property_type: string;
+  age_restricted: boolean;
 };
 
 export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
@@ -33,6 +35,8 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
     description: "",
     arv: "",
     repairs: "",
+    property_type: "single-family",
+    age_restricted: false,
   });
 
   const [images, setImages] = React.useState<File[]>([]);
@@ -106,6 +110,8 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
         arv: form.arv || null,
         repairs: form.repairs || null,
         description: form.description,
+        property_type: form.property_type || "single-family",
+        age_restricted: form.age_restricted || false,
         owner_id: ownerId,
         contact_email: "russell.quealy@gmail.com", // You can make this dynamic
         contact_phone: "555-0123", // You can make this dynamic
@@ -177,6 +183,8 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
         description: "",
         arv: "",
         repairs: "",
+        property_type: "single-family",
+        age_restricted: false,
       });
       setImages([]);
 
@@ -262,7 +270,36 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
+              <select
+                name="property_type"
+                value={form.property_type}
+                onChange={(e) => setForm({...form, property_type: e.target.value})}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="single-family">Single Family</option>
+                <option value="condo">Condo</option>
+                <option value="townhouse">Townhouse</option>
+                <option value="multi-family">Multi-Family</option>
+                <option value="land">Land</option>
+                <option value="manufactured">Manufactured Home</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Age Restricted</label>
+              <label className="flex items-center mt-2">
+                <input
+                  type="checkbox"
+                  name="age_restricted"
+                  checked={form.age_restricted}
+                  onChange={(e) => setForm({...form, age_restricted: e.target.checked})}
+                  className="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">55+ Community</span>
+              </label>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Bedrooms</label>
               <input 

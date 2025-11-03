@@ -4,28 +4,75 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 
-interface Alert {
+function EmailNotificationInfo() {
+  const [email, setEmail] = useState<string>('');
+  
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setEmail(session?.user?.email || 'your email');
+    });
+  }, []);
+
+  return (
+    <div style={{
+      marginTop: 32,
+      padding: 20,
+      background: '#f0f9ff',
+      border: '1px solid #bae6fd',
+      borderRadius: 12
+    }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: '#0369a1', marginBottom: 8 }}>
+        📧 Email Notifications
+      </div>
+      <div style={{ fontSize: 14, color: '#0c4a6e' }}>
+        All enabled alerts will be sent to your registered email address: <strong>{email}</strong>. You will also receive in-app notifications when available.
+      </div>
+    </div>
+  );
+}
+
+// Alert types for each role
+const INVESTOR_ALERTS = [
+  'New Off-Market Property',
+  'Price Drop',
+  'ROI Opportunity',
+  'Sold/Under Contract',
+  'Wholesaler Verified',
+  'Area Market Shift',
+  'Subscription Renewal',
+  'Message/Offer Response'
+];
+
+const WHOLESALER_ALERTS = [
+  'Buyer Interest',
+  'Lead Message',
+  'Listing Performance',
+  'Repair Estimate Ready',
+  'Property Verification',
+  'Market Trend',
+  'Subscription Renewal',
+  'Feedback/Rating'
+];
+
+interface UserAlert {
   id: string;
-  type: 'price' | 'location' | 'property_type' | 'custom';
-  criteria: Record<string, unknown>;
-  active: boolean;
+  user_id: string;
+  role: 'investor' | 'wholesaler';
+  alert_type: string;
+  is_enabled: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export default function AlertsPage() {
   const router = useRouter();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [alertType, setAlertType] = useState<'price' | 'location' | 'property_type' | 'custom'>('price');
-  const [alertCriteria, setAlertCriteria] = useState<Record<string, unknown>>({
-    maxPrice: undefined,
-    location: '',
-    property_type: '',
-  });
+  const [userRole, setUserRole] = useState<'investor' | 'wholesaler' | null>(null);
+  const [alerts, setAlerts] = useState<UserAlert[]>([]);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const loadAlerts = async () => {
+    const loadData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -34,20 +81,53 @@ export default function AlertsPage() {
       }
 
       try {
-        const response = await fetch('/api/alerts', {
-          credentials: 'include',
-        });
+        // Get user role from profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('segment, role')
+          .eq('id', session.user.id)
+          .single();
 
-        if (response.ok) {
-          const data = await response.json();
-          setAlerts(data.alerts || []);
-        } else if (response.status === 401) {
-          router.push('/login?next=/alerts');
-          return;
+        const role = (profile?.segment || profile?.role || 'investor') as 'investor' | 'wholesaler';
+        setUserRole(role);
+
+        // Load user alerts
+        const { data: userAlerts, error } = await supabase
+          .from('user_alerts')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('role', role)
+          .order('alert_type', { ascending: true });
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error loading alerts:', error);
+        }
+
+        // If no alerts exist, create defaults
+        const alertTypes = role === 'investor' ? INVESTOR_ALERTS : WHOLESALER_ALERTS;
+        const existingTypes = new Set(userAlerts?.map(a => a.alert_type) || []);
+
+        const missingAlerts = alertTypes.filter(type => !existingTypes.has(type));
+        
+        if (missingAlerts.length > 0) {
+          const newAlerts = missingAlerts.map(alertType => ({
+            user_id: session.user.id,
+            role,
+            alert_type: alertType,
+            is_enabled: true
+          }));
+
+          const { data: inserted } = await supabase
+            .from('user_alerts')
+            .insert(newAlerts)
+            .select();
+
+          setAlerts([
+            ...(userAlerts || []),
+            ...(inserted || [])
+          ]);
         } else {
-          console.error('Error loading alerts:', response.status, response.statusText);
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Error details:', errorData);
+          setAlerts(userAlerts || []);
         }
       } catch (error) {
         console.error('Error loading alerts:', error);
@@ -56,153 +136,30 @@ export default function AlertsPage() {
       }
     };
 
-    loadAlerts();
+    loadData();
   }, [router]);
 
-  const handleCreate = async () => {
-    if (!alertCriteria || Object.keys(alertCriteria).length === 0) {
-      alert('Please configure alert criteria');
-      return;
-    }
+  const toggleAlert = async (alertId: string, currentValue: boolean) => {
+    if (saving[alertId]) return;
+
+    setSaving(prev => ({ ...prev, [alertId]: true }));
 
     try {
-      const response = await fetch('/api/alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: alertType,
-          criteria: alertCriteria,
-        }),
-        credentials: 'include',
-      });
+      const { error } = await supabase
+        .from('user_alerts')
+        .update({ is_enabled: !currentValue })
+        .eq('id', alertId);
 
-      if (response.ok) {
-        const data = await response.json();
-        setAlerts([...alerts, data.alert]);
-        setAlertType('price');
-        setAlertCriteria({});
-        setShowCreateForm(false);
-      }
-    } catch (error) {
-      console.error('Error creating alert:', error);
-      alert('Failed to create alert');
-    }
-  };
+      if (error) throw error;
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this alert?')) return;
-
-    try {
-      const response = await fetch(`/api/alerts?id=${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        setAlerts(alerts.filter(a => a.id !== id));
-      }
-    } catch (error) {
-      console.error('Error deleting alert:', error);
-    }
-  };
-
-  const handleToggleActive = async (alert: Alert) => {
-    try {
-      const response = await fetch('/api/alerts', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: alert.id,
-          active: !alert.active,
-        }),
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAlerts(alerts.map(a => a.id === alert.id ? data.alert : a));
-      }
+      setAlerts(prev => prev.map(a => 
+        a.id === alertId ? { ...a, is_enabled: !currentValue } : a
+      ));
     } catch (error) {
       console.error('Error updating alert:', error);
-    }
-  };
-
-  const renderCriteriaForm = () => {
-    switch (alertType) {
-      case 'price':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Max Price</label>
-              <input
-                type="number"
-                placeholder="e.g., 200000"
-                value={(typeof alertCriteria.maxPrice === 'number' ? alertCriteria.maxPrice : '') || ''}
-                onChange={(e) => setAlertCriteria({ ...alertCriteria, maxPrice: e.target.value ? Number(e.target.value) : undefined })}
-                style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 600 }}>City/State (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g., Miami, FL"
-                value={(alertCriteria.location as string) || ''}
-                onChange={(e) => setAlertCriteria({ ...alertCriteria, location: e.target.value })}
-                style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-              />
-            </div>
-          </div>
-        );
-      case 'location':
-        return (
-          <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Location</label>
-            <input
-              type="text"
-              placeholder="e.g., Miami, FL or ZIP code"
-              value={(alertCriteria.location as string) || ''}
-              onChange={(e) => setAlertCriteria({ ...alertCriteria, location: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-            />
-          </div>
-        );
-      case 'property_type':
-        return (
-          <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Property Type</label>
-            <select
-              value={(alertCriteria.property_type as string) || ''}
-              onChange={(e) => setAlertCriteria({ ...alertCriteria, property_type: e.target.value })}
-              style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-            >
-              <option value="">Select type...</option>
-              <option value="single-family">Single Family</option>
-              <option value="condo">Condo</option>
-              <option value="townhouse">Townhouse</option>
-              <option value="multi-family">Multi-Family</option>
-            </select>
-          </div>
-        );
-      case 'custom':
-        return (
-          <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Custom Criteria (JSON)</label>
-            <textarea
-              placeholder='{"minBeds": 3, "maxPrice": 200000, "city": "Miami"}'
-              value={JSON.stringify(alertCriteria, null, 2)}
-              onChange={(e) => {
-                try {
-                  setAlertCriteria(JSON.parse(e.target.value));
-                } catch {
-                  // Invalid JSON, ignore
-                }
-              }}
-              style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 6, fontFamily: 'monospace', fontSize: 12 }}
-              rows={4}
-            />
-          </div>
-        );
+      alert('Failed to update alert preference');
+    } finally {
+      setSaving(prev => ({ ...prev, [alertId]: false }));
     }
   };
 
@@ -214,199 +171,127 @@ export default function AlertsPage() {
     );
   }
 
+  const alertTypes = userRole === 'investor' ? INVESTOR_ALERTS : WHOLESALER_ALERTS;
+
   return (
     <main style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: 32, fontWeight: 700 }}>Property Alerts</h1>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: 16 }}>
-            Get notified when properties matching your criteria are added
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          style={{
-            padding: '12px 24px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          {showCreateForm ? 'Cancel' : '+ New Alert'}
-        </button>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ margin: '0 0 8px 0', fontSize: 32, fontWeight: 700 }}>
+          Notification Settings
+        </h1>
+        <p style={{ margin: 0, color: '#6b7280', fontSize: 16 }}>
+          Manage how and when you receive alerts for {userRole === 'investor' ? 'investment opportunities' : 'your listings'}
+        </p>
       </div>
 
-      {showCreateForm && (
-        <div style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: 24,
-          marginBottom: 24,
-          background: '#fff'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>Create New Alert</h3>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Alert Type</label>
-            <select
-              value={alertType}
-              onChange={(e) => {
-                setAlertType(e.target.value as Alert['type']);
-                setAlertCriteria({});
-              }}
-              style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-            >
-              <option value="price">Price Alert</option>
-              <option value="location">Location Alert</option>
-              <option value="property_type">Property Type Alert</option>
-              <option value="custom">Custom Criteria</option>
-            </select>
-          </div>
-          {renderCriteriaForm()}
-          <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
-            <button
-              onClick={handleCreate}
-              style={{
-                padding: '12px 24px',
-                background: '#059669',
-                color: 'white',
-                border: 'none',
-                borderRadius: 8,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Create Alert
-            </button>
-            <button
-              onClick={() => {
-                setShowCreateForm(false);
-                setAlertType('price');
-                setAlertCriteria({});
-              }}
-              style={{
-                padding: '12px 24px',
-                background: '#f3f4f6',
-                color: '#6b7280',
-                border: 'none',
-                borderRadius: 8,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <div style={{
+        background: '#fff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 12,
+        padding: 24
+      }}>
+        {alertTypes.map((alertType) => {
+          const alert = alerts.find(a => a.alert_type === alertType);
+          const isEnabled = alert?.is_enabled ?? true;
+          const alertId = alert?.id;
 
-      {alerts.length === 0 ? (
-        <div style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: 48,
-          textAlign: 'center',
-          background: '#fff'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔔</div>
-          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>No Alerts Set</h2>
-          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-            Create alerts to get notified when properties matching your criteria are added.
-          </p>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            style={{
-              padding: '12px 24px',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-          >
-            Create Your First Alert
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {alerts.map((alert) => (
+          return (
             <div
-              key={alert.id}
+              key={alertType}
               style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: 20,
-                background: alert.active ? '#fff' : '#f9fafb',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                padding: '16px 0',
+                borderBottom: '1px solid #f3f4f6'
               }}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#1a1a1a', textTransform: 'capitalize' }}>
-                    {alert.type.replace('_', ' ')} Alert
-                  </h3>
-                  {!alert.active && (
-                    <span style={{
-                      padding: '2px 8px',
-                      background: '#6b7280',
-                      color: 'white',
-                      borderRadius: 4,
-                      fontSize: 11,
-                      fontWeight: 600,
-                    }}>
-                      Inactive
-                    </span>
-                  )}
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#111', marginBottom: 4 }}>
+                  {alertType}
                 </div>
                 <div style={{ fontSize: 14, color: '#6b7280' }}>
-                  Created {new Date(alert.created_at).toLocaleDateString()}
-                </div>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
-                  {JSON.stringify(alert.criteria).substring(0, 100)}...
+                  {getAlertDescription(alertType, userRole || 'investor')}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => handleToggleActive(alert)}
-                  style={{
-                    padding: '8px 16px',
-                    background: alert.active ? '#f3f4f6' : '#059669',
-                    color: alert.active ? '#6b7280' : 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                  }}
-                >
-                  {alert.active ? 'Deactivate' : 'Activate'}
-                </button>
-                <button
-                  onClick={() => handleDelete(alert.id)}
-                  style={{
-                    padding: '8px 16px',
+              <label style={{
+                position: 'relative',
+                display: 'inline-block',
+                width: 48,
+                height: 24,
+                cursor: saving[alertId || ''] ? 'not-allowed' : 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={isEnabled}
+                  onChange={() => alertId && toggleAlert(alertId, isEnabled)}
+                  disabled={!alertId || saving[alertId || '']}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: isEnabled ? '#10b981' : '#d1d5db',
+                  borderRadius: 24,
+                  transition: 'background 0.3s ease',
+                  opacity: saving[alertId || ''] ? 0.6 : 1
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: isEnabled ? 26 : 2,
+                    width: 20,
+                    height: 20,
                     background: '#fff',
-                    color: '#dc2626',
-                    border: '1px solid #dc2626',
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
+                    borderRadius: '50%',
+                    transition: 'left 0.3s ease',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }} />
+                </span>
+              </label>
             </div>
-          ))}
+          );
+        })}
+      </div>
+
+      <div style={{
+        marginTop: 32,
+        padding: 20,
+        background: '#f0f9ff',
+        border: '1px solid #bae6fd',
+        borderRadius: 12
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#0369a1', marginBottom: 8 }}>
+          📧 Email Notifications
         </div>
-      )}
+        <div style={{ fontSize: 14, color: '#0c4a6e' }}>
+          All enabled alerts will be sent to your registered email address: <strong>{supabase.auth.getSession().then(({data}) => data.session?.user.email || 'your email')}</strong>
+        </div>
+      </div>
     </main>
   );
 }
 
+function getAlertDescription(alertType: string, role: 'investor' | 'wholesaler'): string {
+  const descriptions: Record<string, string> = {
+    'New Off-Market Property': 'Get notified when new properties match your saved search criteria',
+    'Price Drop': 'Alert when a property you\'re tracking reduces its price',
+    'ROI Opportunity': 'Notifications for properties with ROI above your threshold',
+    'Sold/Under Contract': 'Alert when a saved property changes to sold or under contract',
+    'Wholesaler Verified': 'Get notified when a wholesaler you follow gets verified or posts new deals',
+    'Area Market Shift': 'Alerts when median ARV or market activity changes in followed areas',
+    'Subscription Renewal': 'Reminders about upcoming renewals and payment issues',
+    'Message/Offer Response': 'Get notified when wholesalers reply to your messages or offers',
+    'Buyer Interest': 'Alerts when investors view or save your listings',
+    'Lead Message': 'Get notified when investors send messages or make offers',
+    'Listing Performance': 'Weekly summary of views, saves, and messages for your listings',
+    'Repair Estimate Ready': 'Notification when AI analyzer finishes calculating repair costs',
+    'Property Verification': 'Alerts when listings pass verification or need updates',
+    'Market Trend': 'Notifications when comparable sales shift significantly in your area',
+    'Feedback/Rating': 'Alert when investors leave feedback or ratings on your listings'
+  };
+  return descriptions[alertType] || 'Custom alert preference';
+}

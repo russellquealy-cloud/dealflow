@@ -103,7 +103,7 @@ export default function ListingsPage() {
       clearTimeout(boundsChangeTimeoutRef.current);
     }
 
-    // Debounce the bounds change by 1000ms
+    // Debounce the bounds change by 1500ms - increased to reduce flicker
     boundsChangeTimeoutRef.current = setTimeout(async () => {
       // Set processing flag
       isProcessingBoundsRef.current = true;
@@ -136,13 +136,13 @@ export default function ListingsPage() {
     
     const typedBounds = bounds as { south: number; north: number; west: number; east: number };
     
-        // Only update state if bounds actually changed to prevent infinite loops
-        const threshold = 0.01; // About 1 kilometer
-        if (!mapBounds || 
-            Math.abs(mapBounds.south - typedBounds.south) > threshold ||
-            Math.abs(mapBounds.north - typedBounds.north) > threshold ||
-            Math.abs(mapBounds.west - typedBounds.west) > threshold ||
-            Math.abs(mapBounds.east - typedBounds.east) > threshold) {
+            // Only update state if bounds actually changed significantly to prevent flicker
+            const threshold = 0.02; // About 2 kilometers - increased to reduce flicker
+            if (!mapBounds || 
+                Math.abs(mapBounds.south - typedBounds.south) > threshold ||
+                Math.abs(mapBounds.north - typedBounds.north) > threshold ||
+                Math.abs(mapBounds.west - typedBounds.west) > threshold ||
+                Math.abs(mapBounds.east - typedBounds.east) > threshold) {
           
           console.log('Bounds changed significantly, applying spatial filter for bounds:', typedBounds);
           
@@ -309,7 +309,7 @@ export default function ListingsPage() {
         // Use smaller limit and prioritize featured listings
         const query = supabase
           .from('listings')
-          .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, property_type, description, images, created_at, updated_at, featured, featured_until')
+          .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, updated_at, featured, featured_until')
           .not('latitude', 'is', null) // Only get listings with coordinates
           .not('longitude', 'is', null)
           .order('featured', { ascending: false, nullsFirst: false })

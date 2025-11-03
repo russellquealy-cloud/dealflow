@@ -52,6 +52,12 @@ export default function Footer() {
           <Link href="/privacy" style={linkStyle}>
             Privacy Policy
           </Link>
+          <Link href="/refund-policy" style={linkStyle}>
+            Refund Policy
+          </Link>
+          <Link href="/disclaimer" style={linkStyle}>
+            Disclaimer
+          </Link>
           <Link href="/contact-sales" style={linkStyle}>
             Contact Sales
           </Link>

@@ -318,7 +318,7 @@ export const ADD_ONS: AddOn[] = [
   {
     id: 'featured_listing',
     name: 'Featured Listing',
-    price: 10,
+    price: 5,
     description: 'Per listing per week (Wholesaler)',
     availableFor: ['wholesaler']
   },

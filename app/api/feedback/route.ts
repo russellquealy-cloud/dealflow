@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/supabase/server';
-import { sendFeedbackEmail } from '@/lib/email';
+import { sendViaSMTP } from '@/app/lib/email';
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,8 +36,23 @@ export async function POST(request: NextRequest) {
         emailSubject = `[FEEDBACK] ${subject || 'User Feedback'}`;
     }
 
-    // Send feedback email
-    await sendFeedbackEmail(type, subject || emailSubject, message, userEmail || undefined);
+    // Send feedback email using new SMTP system
+    const to = process.env.SUPPORT_EMAIL || 'customerservice@offaxisdeals.com';
+    const html = `
+      <h2>Feedback</h2>
+      <p><b>Type:</b> ${type || "general"}</p>
+      <p><b>From:</b> ${userEmail || "anonymous"}</p>
+      <p><b>Message:</b></p>
+      <pre>${(message || "").replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s] as string))}</pre>
+    `;
+    const text = `Type: ${type || "general"}\nFrom: ${userEmail || "anonymous"}\n\n${message || ""}`;
+    
+    try {
+      await sendViaSMTP({ to, subject: emailSubject, html, text });
+    } catch (emailError) {
+      console.error('Error sending feedback email:', emailError);
+      // Don't fail the request if email fails
+    }
 
     // Optionally store in database for tracking
     if (userId) {

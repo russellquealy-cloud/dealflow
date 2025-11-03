@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendSalesEmail } from '@/lib/email';
+import { sendViaSMTP } from '@/app/lib/email';
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,11 +25,29 @@ Message:
 ${message}
     `.trim();
 
-    // Send sales email
-    const emailSent = await sendSalesEmail(name, email, company, salesMessage);
-
-    if (!emailSent) {
-      console.error('Failed to send sales email');
+    // Send sales email using new SMTP system
+    const to = process.env.SALES_EMAIL || 'sales@offaxisdeals.com';
+    const html = `
+      <h2>New Sales Inquiry</h2>
+      <p><b>Name:</b> ${name}</p>
+      <p><b>Email:</b> ${email}</p>
+      ${company ? `<p><b>Company:</b> ${company}</p>` : ''}
+      ${phone ? `<p><b>Phone:</b> ${phone}</p>` : ''}
+      ${role ? `<p><b>Role:</b> ${role}</p>` : ''}
+      ${teamSize ? `<p><b>Team Size:</b> ${teamSize}</p>` : ''}
+      ${needs ? `<p><b>Primary Needs:</b> ${needs}</p>` : ''}
+      ${budget ? `<p><b>Budget Range:</b> ${budget}</p>` : ''}
+      ${timeline ? `<p><b>Timeline:</b> ${timeline}</p>` : ''}
+      <hr>
+      <p><b>Message:</b></p>
+      <pre>${(message || "").replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s] as string))}</pre>
+    `;
+    const text = `New Sales Inquiry\n\nName: ${name}\nEmail: ${email}\n${company ? `Company: ${company}\n` : ''}${phone ? `Phone: ${phone}\n` : ''}\n${salesMessage}`;
+    
+    try {
+      await sendViaSMTP({ to, subject: `Sales Inquiry from ${name}`, html, text });
+    } catch (emailError) {
+      console.error('Error sending sales email:', emailError);
       // Still return success to user, but log the error
     }
 

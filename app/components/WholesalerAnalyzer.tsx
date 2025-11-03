@@ -64,14 +64,24 @@ export default function WholesalerAnalyzer() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
+        // If API fails, show mock data so user can see the UI
+        if (errorData.error?.includes('API') || errorData.error?.includes('key') || response.status === 500) {
+          console.warn('API not available, showing mock data');
+          setResult(generateMockResult(questionType, formData, repairChecklist));
+          setError(null);
+          return;
+        }
         throw new Error(errorData.error || 'Analysis failed');
       }
 
       const data: AnalysisResult = await response.json();
       setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to analyze');
+      // On any error, show mock data so UI is visible
+      console.warn('Analysis error, showing mock data:', err);
+      setResult(generateMockResult(questionType, formData, repairChecklist));
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -428,6 +438,45 @@ export default function WholesalerAnalyzer() {
       )}
     </div>
   );
+}
+
+function generateMockResult(
+  questionType: WholesalerQuestionType, 
+  formData: Partial<WholesalerQuestionInput>,
+  repairChecklist?: WholesalerQuestionInput['repairChecklist']
+): AnalysisResult {
+  const arv = formData.arv || 300000;
+  const repairs = formData.repairs || (repairChecklist?.reduce((sum, item) => sum + (item.cost || 0), 0) || 25000);
+  const targetMargin = formData.targetMargin || 20;
+  const mao = arv * (1 - targetMargin / 100) - repairs;
+
+  return {
+    success: true,
+    result: {
+      answer: questionType === 'mao_calculation' 
+        ? mao
+        : questionType === 'arv_quick_comps'
+        ? arv
+        : repairs,
+      calculations: {
+        mao: mao,
+        arv: arv,
+        repairs: repairs,
+        targetMargin: targetMargin,
+        wholesaleFee: formData.wholesaleFee || 5000,
+        breakdown: repairChecklist?.reduce((acc, item) => {
+          acc[item.category] = item.cost || 0;
+          return acc;
+        }, {} as Record<string, number>) || {}
+      },
+      notes: [
+        'This is a mock analysis. Connect OpenAI API key to get real analysis.',
+        `Estimated MAO: $${mao.toLocaleString()}`,
+        `Total repair cost: $${repairs.toLocaleString()}`
+      ]
+    },
+    aiCost: 0
+  };
 }
 
 function InputField({ 

@@ -271,33 +271,45 @@ export default function MyListingsPage() {
   }
 
   return (
-    <main style={{ padding: 24 }}>
-      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
-        <a 
-          href="/my-listings/new" 
-          style={{ 
-            display: 'inline-block',
-            padding: '8px 16px', 
-            border: '1px solid #0ea5e9', 
-            borderRadius: 8,
-            background: '#0ea5e9',
-            color: '#fff',
-            textDecoration: 'none',
-            fontWeight: 600
-          }}
-        >
-          Post a Deal
-        </a>
-        <span style={{ color: '#6b7280', fontSize: 14 }}>
-          {listings.length} listing{listings.length !== 1 ? 's' : ''}
-        </span>
-      </div>
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .my-listings-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+      <main style={{ padding: 24 }}>
+        <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+          <a 
+            href="/my-listings/new" 
+            style={{ 
+              display: 'inline-block',
+              padding: '8px 16px', 
+              border: '1px solid #0ea5e9', 
+              borderRadius: 8,
+              background: '#0ea5e9',
+              color: '#fff',
+              textDecoration: 'none',
+              fontWeight: 600
+            }}
+          >
+            Post a Deal
+          </a>
+          <span style={{ color: '#6b7280', fontSize: 14 }}>
+            {listings.length} listing{listings.length !== 1 ? 's' : ''}
+          </span>
+        </div>
 
-      <h1 style={{ margin: '0 0 12px 0', fontSize: 24, fontWeight: 800 }}>My Listings</h1>
+        <h1 style={{ margin: '0 0 12px 0', fontSize: 24, fontWeight: 800 }}>My Listings</h1>
 
-      <div style={{ display: 'grid', gap: 12 }}>
+        <div className="my-listings-grid" style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+          gap: 16
+        }}>
         {listings.map((listing) => (
-          <div key={String(listing.id)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
+          <div key={String(listing.id)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column' }}>
             {editingId === String(listing.id) ? (
               // Edit Form
               <div style={{ display: 'grid', gap: 12 }}>
@@ -533,31 +545,68 @@ export default function MyListingsPage() {
               </div>
             ) : (
               // Display Mode
-              <div>
-                <ListingCard listing={listing} />
-                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ flex: 1, marginBottom: 12 }}>
+                  {/* Image thumbnail - fixed aspect ratio */}
+                  {listing.images && listing.images.length > 0 && (
+                    <div style={{ position: 'relative', width: '100%', height: '180px', marginBottom: 12, borderRadius: 6, overflow: 'hidden' }}>
+                      <Image 
+                        src={listing.images[0]} 
+                        alt={listing.title || 'Property'} 
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        sizes="(max-width: 768px) 100vw, 25vw"
+                      />
+                    </div>
+                  )}
+                  {/* Listing details */}
+                  <div>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: 16, fontWeight: 600, color: '#111' }}>
+                      {listing.title || listing.address || 'Untitled Listing'}
+                    </h3>
+                    {listing.address && (
+                      <p style={{ margin: '0 0 8px 0', fontSize: 13, color: '#6b7280' }}>
+                        {listing.address}
+                        {listing.city && listing.state && `, ${listing.city}, ${listing.state}`}
+                      </p>
+                    )}
+                    {listing.price && (
+                      <p style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700, color: '#111' }}>
+                        ${listing.price.toLocaleString()}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
+                      {listing.bedrooms !== undefined && <span>{listing.bedrooms} bd</span>}
+                      {listing.bathrooms !== undefined && <span>{listing.bathrooms} ba</span>}
+                      {listing.home_sqft !== undefined && <span>{listing.home_sqft.toLocaleString()} sqft</span>}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
                   <button
                     onClick={() => handleEdit(listing)}
-                    style={{ padding: '6px 12px', border: '1px solid #0ea5e9', borderRadius: 6, background: '#fff', color: '#0ea5e9', fontSize: 14 }}
+                    style={{ padding: '8px 12px', border: '1px solid #0ea5e9', borderRadius: 6, background: '#fff', color: '#0ea5e9', fontSize: 14, fontWeight: 600, width: '100%' }}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleToggleFeatured(String(listing.id), listing.featured || false)}
                     style={{ 
-                      padding: '6px 12px', 
+                      padding: '8px 12px', 
                       border: listing.featured ? '1px solid #f59e0b' : '1px solid #f59e0b', 
                       borderRadius: 6, 
                       background: listing.featured ? '#f59e0b' : '#fff', 
                       color: listing.featured ? '#fff' : '#f59e0b', 
-                      fontSize: 14 
+                      fontSize: 14,
+                      fontWeight: 600,
+                      width: '100%'
                     }}
                   >
                     {listing.featured ? '⭐ Featured' : '⭐ Make Featured'}
                   </button>
                   <button
                     onClick={() => handleDelete(String(listing.id))}
-                    style={{ padding: '6px 12px', border: '1px solid #dc2626', borderRadius: 6, background: '#fff', color: '#dc2626', fontSize: 14 }}
+                    style={{ padding: '8px 12px', border: '1px solid #dc2626', borderRadius: 6, background: '#fff', color: '#dc2626', fontSize: 14, fontWeight: 600, width: '100%' }}
                   >
                     Delete
                   </button>
@@ -567,11 +616,12 @@ export default function MyListingsPage() {
           </div>
         ))}
         {listings.length === 0 && (
-          <div style={{ textAlign: 'center', color: '#6b7280', padding: '40px 20px' }}>
+          <div style={{ textAlign: 'center', color: '#6b7280', padding: '40px 20px', gridColumn: '1 / -1' }}>
             No listings yet. <a href="/my-listings/new" style={{ color: '#0ea5e9' }}>Create your first listing</a>
           </div>
         )}
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }

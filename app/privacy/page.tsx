@@ -1,136 +1,99 @@
-// app/privacy/page.tsx
-export default function PrivacyPage() {
+import React from "react";
+
+export default function Privacy() {
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: '#f8fafc',
-      padding: '40px 20px'
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '40px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+    <div style={{ maxWidth: "800px", margin: "auto", padding: "2rem" }}>
+      {/* Logo */}
+      <div style={{ marginBottom: "2rem", textAlign: "center" }}>
+        <div style={{ 
+          display: "inline-flex", 
+          alignItems: "center", 
+          gap: "16px",
+          marginBottom: "1rem"
         }}>
-          <h1 style={{ 
-            fontSize: '32px', 
-            fontWeight: '700', 
-            color: '#1a1a1a',
-            marginBottom: '24px'
+          {/* Logo placeholder - replace with actual logo component/image */}
+          <div style={{
+            width: "60px",
+            height: "60px",
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+            border: "2px solid #10b981",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#10b981",
+            fontSize: "24px",
+            fontWeight: "bold"
           }}>
-            Privacy Policy
-          </h1>
-          
-          <p style={{ 
-            fontSize: '14px', 
-            color: '#6b7280',
-            marginBottom: '32px'
-          }}>
-            Last updated: {new Date().toLocaleDateString()}
-          </p>
-
-          <div style={{ fontSize: '16px', lineHeight: '1.6', color: '#374151' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              1. Information We Collect
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              We collect information you provide directly to us, such as when you create an account, make a purchase, or contact us for support. This may include:
-            </p>
-            <ul style={{ marginLeft: '20px', marginBottom: '16px' }}>
-              <li>Name and email address</li>
-              <li>Payment information (processed securely by Stripe)</li>
-              <li>Property listings and related data</li>
-              <li>Communication preferences</li>
-            </ul>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              2. How We Use Your Information
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              We use the information we collect to:
-            </p>
-            <ul style={{ marginLeft: '20px', marginBottom: '16px' }}>
-              <li>Provide, maintain, and improve our services</li>
-              <li>Process transactions and send related information</li>
-              <li>Send technical notices and support messages</li>
-              <li>Respond to your comments and questions</li>
-              <li>Monitor and analyze trends and usage</li>
-            </ul>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              3. Information Sharing
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except:
-            </p>
-            <ul style={{ marginLeft: '20px', marginBottom: '16px' }}>
-              <li>To trusted service providers who assist us in operating our website</li>
-              <li>When required by law or to protect our rights</li>
-              <li>In connection with a business transfer or acquisition</li>
-            </ul>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              4. Data Security
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. All payment information is processed securely through Stripe and is not stored on our servers.
-            </p>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              5. Cookies and Tracking
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              We use cookies and similar tracking technologies to enhance your experience on our website. You can control cookie settings through your browser preferences.
-            </p>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              6. Your Rights
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              You have the right to:
-            </p>
-            <ul style={{ marginLeft: '20px', marginBottom: '16px' }}>
-              <li>Access your personal information</li>
-              <li>Correct inaccurate data</li>
-              <li>Delete your account and data</li>
-              <li>Opt out of marketing communications</li>
-              <li>Data portability</li>
-            </ul>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              7. Third-Party Services
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              Our service may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to read their privacy policies.
-            </p>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              8. Children&apos;s Privacy
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              Our service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.
-            </p>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              9. Changes to This Policy
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the &quot;Last updated&quot; date.
-            </p>
-
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', marginTop: '32px' }}>
-              10. Contact Us
-            </h2>
-            <p style={{ marginBottom: '16px' }}>
-              If you have any questions about this privacy policy, please contact us at{' '}
-              <a href="mailto:privacy@offaxisdeals.com" style={{ color: '#3b82f6' }}>
-                privacy@offaxisdeals.com
-              </a>
-            </p>
+            🧭
+          </div>
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#0891b2", lineHeight: 1 }}>
+              OFF
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#0891b2", lineHeight: 1 }}>
+              AXIS
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#0891b2", lineHeight: 1 }}>
+              DEALS
+            </div>
           </div>
         </div>
       </div>
+
+      <h1>Privacy Policy</h1>
+      <p>Last updated: {new Date().toLocaleDateString()}</p>
+      <p>
+        Off Axis Deals (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) values your privacy. This Privacy Policy explains 
+        how we collect, use, and protect your information.
+      </p>
+
+      <h2>1. Information We Collect</h2>
+      <p>
+        We collect information you provide (name, email, payment details) and automatically 
+        gathered data (IP address, browser type, usage analytics).
+      </p>
+
+      <h2>2. Use of Information</h2>
+      <p>
+        We use your data to operate, improve, and secure the Platform; manage accounts; process 
+        payments; and communicate updates or offers.
+      </p>
+
+      <h2>3. Data Sharing</h2>
+      <p>
+        We share data only with trusted vendors such as Stripe for payments and Supabase for 
+        hosting and authentication. We never sell your personal data.
+      </p>
+
+      <h2>4. Security</h2>
+      <p>
+        We use encryption, access controls, and monitoring to protect your data. No system is 
+        100% secure, but we work to minimize risk.
+      </p>
+
+      <h2>5. Your Rights</h2>
+      <p>
+        You may request access, correction, or deletion of your personal data by contacting 
+        customerservice@offaxisdeals.com.
+      </p>
+
+      <h2>6. Cookies</h2>
+      <p>
+        We use cookies to improve experience and analytics. You may disable cookies in your 
+        browser, but some functions may stop working.
+      </p>
+
+      <h2>7. Retention</h2>
+      <p>
+        We retain information as long as your account is active or as required by law.
+      </p>
+
+      <h2>8. Updates</h2>
+      <p>
+        We may revise this Privacy Policy periodically. The new policy will be posted on this page 
+        with an updated date.
+      </p>
     </div>
   );
 }
