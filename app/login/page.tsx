@@ -67,10 +67,35 @@ function LoginInner() {
             }
           }
           
-          // Use hard redirect to ensure session is fully established
-          setTimeout(() => {
-            window.location.href = next;
-          }, 500);
+          // CRITICAL: Wait longer and verify session before redirect
+          // This ensures cookies are properly set and server can see them
+          let attempts = 0;
+          const maxAttempts = 10;
+          const verifySession = async () => {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) {
+              console.error('🔐 Session check error:', error);
+            }
+            if (session && session.user) {
+              console.log('🔐 Session verified, redirecting...', { 
+                userId: session.user.id, 
+                email: session.user.email 
+              });
+              // Use hard redirect to ensure session is fully established
+              window.location.href = next;
+            } else if (attempts >= maxAttempts) {
+              console.warn('🔐 Max attempts reached, redirecting anyway...');
+              // Redirect anyway after max attempts
+              window.location.href = next;
+            } else {
+              attempts++;
+              console.log(`🔐 Session not ready yet, attempt ${attempts}/${maxAttempts}`);
+              setTimeout(verifySession, 300);
+            }
+          };
+          
+          // Start verification after a delay to allow cookies to be set
+          setTimeout(verifySession, 500);
         }
       } else {
         // Magic link login with mobile-optimized redirect

@@ -36,25 +36,33 @@ export const supabase = createBrowserClient(
         
         try {
           // Enhanced cookie options for mobile compatibility
-          const cookieOptions = {
+          // CRITICAL: Don't set domain for localhost or when it might cause issues
+          // Only set domain for production domains that need cross-subdomain support
+          const hostname = window.location.hostname;
+          const cookieOptions: Record<string, unknown> = {
             path: '/',
-            domain: window.location.hostname,
             secure: window.location.protocol === 'https:',
             sameSite: 'lax' as const,
             maxAge: 60 * 60 * 24 * 7, // 7 days
             ...options
           };
           
+          // Only set domain if not localhost and not an IP address
+          if (!hostname.includes('localhost') && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+            // For production, don't set domain to allow subdomain flexibility
+            // Setting domain can cause cookies not to work properly
+          }
+          
           // Handle mobile-specific cookie setting
           let cookieString = `${name}=${value}`;
           
           if (cookieOptions.maxAge) {
-            const expires = new Date(Date.now() + cookieOptions.maxAge * 1000);
+            const expires = new Date(Date.now() + (cookieOptions.maxAge as number) * 1000);
             cookieString += `; expires=${expires.toUTCString()}`;
           }
           
           if (cookieOptions.path) cookieString += `; path=${cookieOptions.path}`;
-          if (cookieOptions.domain) cookieString += `; domain=${cookieOptions.domain}`;
+          // Don't set domain - let browser handle it
           if (cookieOptions.secure) cookieString += `; secure`;
           if (cookieOptions.sameSite) cookieString += `; samesite=${cookieOptions.sameSite}`;
           
@@ -71,13 +79,12 @@ export const supabase = createBrowserClient(
         try {
           const cookieOptions = {
             path: '/',
-            domain: window.location.hostname,
             ...options
           };
           
           let cookieString = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC`;
           if (cookieOptions.path) cookieString += `; path=${cookieOptions.path}`;
-          if (cookieOptions.domain) cookieString += `; domain=${cookieOptions.domain}`;
+          // Don't set domain - let browser handle it
           
           document.cookie = cookieString;
           // CRITICAL: Reduce logging to prevent console spam
