@@ -18,16 +18,18 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const img = coverUrlFromListing(data);
   const gallery = galleryFromListing(data);
   
-  // Debug image loading
-  console.log('Listing page image debug:', {
-    id: id,
-    rawData: data,
-    coverImageUrl: data.cover_image_url,
-    imageUrl: data.image_url,
-    images: data.images,
-    finalImg: img,
-    gallery: gallery
-  });
+  // Debug image loading (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Listing page image debug:', {
+      id: id,
+      rawData: data,
+      coverImageUrl: data.cover_image_url,
+      imageUrl: data.image_url,
+      images: data.images,
+      finalImg: img,
+      gallery: gallery
+    });
+  }
 
   const price = data.price ?? 0;
   const arv = data.arv ?? 0;
