@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params?.get('next') ?? '/';
+  const next = params?.get('next') ?? '/listings';
   const error = params?.get('error');
 
   const [email, setEmail] = useState('');
@@ -24,8 +24,7 @@ function LoginInner() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (isMounted && session) {
         // User is already signed in, use hard redirect to clear any stale state
-        const redirectUrl = next !== '/' ? next : '/listings';
-        window.location.href = redirectUrl;
+        window.location.href = next;
       }
     });
     return () => {

@@ -309,7 +309,7 @@ export default function ListingsPage() {
         // Use smaller limit and prioritize featured listings
         const query = supabase
           .from('listings')
-          .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, updated_at, featured, featured_until')
+          .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until')
           .not('latitude', 'is', null) // Only get listings with coordinates
           .not('longitude', 'is', null)
           .order('featured', { ascending: false, nullsFirst: false })
