@@ -446,9 +446,26 @@ function generateMockResult(
   repairChecklist?: WholesalerQuestionInput['repairChecklist']
 ): AnalysisResult {
   const arv = formData.arv || 300000;
-  const repairs = formData.repairs || (repairChecklist?.reduce((sum, item) => sum + (item.cost || 0), 0) || 25000);
+  // If repairChecklist exists but no repairs value, use a simple estimate based on items
+  // Otherwise use formData.repairs or default
+  const repairs = formData.repairs || (repairChecklist && repairChecklist.length > 0 
+    ? repairChecklist.filter(item => item.status !== 'good').length * 5000 // Rough estimate per item
+    : 25000);
   const targetMargin = formData.targetMargin || 20;
   const mao = arv * (1 - targetMargin / 100) - repairs;
+
+  // Create breakdown from repairChecklist (mock estimates)
+  const breakdown: Record<string, number> = {};
+  if (repairChecklist) {
+    repairChecklist.forEach(item => {
+      if (item.status !== 'good') {
+        // Simple mock estimate: use quantity * a base cost estimate
+        const baseEstimate = item.units === 'sqft' ? item.quantity * 5 : 
+                            item.units === 'count' ? item.quantity * 500 : 5000;
+        breakdown[item.category] = baseEstimate;
+      }
+    });
+  }
 
   return {
     questionType: questionType,
@@ -464,10 +481,7 @@ function generateMockResult(
         repairs: repairs,
         targetMargin: targetMargin,
         wholesaleFee: formData.wholesaleFee || 5000,
-        breakdown: repairChecklist?.reduce((acc, item) => {
-          acc[item.category] = item.cost || 0;
-          return acc;
-        }, {} as Record<string, number>) || {}
+        breakdown: breakdown
       },
       notes: [
         'This is a mock analysis. Connect OpenAI API key to get real analysis.',
