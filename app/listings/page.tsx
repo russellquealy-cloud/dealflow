@@ -285,7 +285,7 @@ export default function ListingsPage() {
         clearTimeout(timeoutId);
       }
 
-      // Add timeout to prevent infinite loading (10 seconds - faster timeout)
+      // Add timeout to prevent infinite loading (15 seconds)
       timeoutId = setTimeout(() => {
         if (!isMounted) return;
         console.warn('Listings load timeout - setting loading to false');
@@ -295,7 +295,7 @@ export default function ListingsPage() {
           console.log('Retrying listings load with simplified query...');
           setTimeout(() => loadListings(1), 1000);
         }
-      }, 10000); // 10 second timeout - reduced from 30
+      }, 15000); // 15 second timeout
       
       try {
         if (retryCount === 0) {
@@ -328,6 +328,12 @@ export default function ListingsPage() {
 
         if (error) {
           console.error('Error loading listings:', error);
+          console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          });
           setAllListings([]);
           setAllPoints([]);
           setLoading(false);

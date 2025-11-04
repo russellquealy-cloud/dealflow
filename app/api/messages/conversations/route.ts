@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
 
     // Get all messages for this user
     // Optimize query by using index-friendly filters
+    console.log('Fetching messages for user:', user.id);
+    
     const { data: messages, error } = await supabase
       .from('messages')
       .select('*, listing:listings(id, title, address)')
@@ -29,8 +31,19 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching messages:', error);
-      return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      return NextResponse.json({ 
+        error: 'Failed to fetch messages',
+        details: error.message 
+      }, { status: 500 });
     }
+
+    console.log(`Found ${messages?.length || 0} messages`);
 
     // Get user profiles for sender/recipient names
     const userIds = new Set<string>();
@@ -39,13 +52,23 @@ export async function GET(request: NextRequest) {
       userIds.add(msg.to_id);
     });
 
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', Array.from(userIds));
+    let profiles = [];
+    if (userIds.size > 0) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', Array.from(userIds));
+      
+      if (profileError) {
+        console.error('Error fetching profiles:', profileError);
+        // Continue without profile names
+      } else {
+        profiles = profileData || [];
+      }
+    }
 
     const profileMap = new Map<string, string>();
-    profiles?.forEach((p: { id: string; full_name?: string }) => {
+    profiles.forEach((p: { id: string; full_name?: string }) => {
       if (p.full_name) profileMap.set(p.id, p.full_name);
     });
 
@@ -111,6 +134,7 @@ export async function GET(request: NextRequest) {
         return timeB - timeA;
       });
 
+    console.log(`Returning ${conversations.length} conversations`);
     return NextResponse.json({ conversations });
   } catch (error) {
     console.error('Error in conversations GET:', error);

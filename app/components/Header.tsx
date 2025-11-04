@@ -209,18 +209,24 @@ export default function Header() {
       </Link>
       <div style={right}>
         {/* Only show "My Listings" for wholesalers, not investors */}
-        {userRole === 'wholesaler' && (
+        {email && userRole === 'wholesaler' && (
           <Link href="/my-listings" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>My Listings</Link>
         )}
-        {email && userRole !== 'wholesaler' && (
+        {/* Show investor-specific items for investors (when role is not wholesaler and user is logged in) */}
+        {email && userRole && userRole !== 'wholesaler' && (
           <>
             <Link href="/watchlists" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>⭐ Watchlist</Link>
             <Link href="/saved-searches" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔍 Saved</Link>
             <Link href="/alerts" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔔 Alerts</Link>
           </>
         )}
+        {/* Show alerts for wholesalers */}
         {email && userRole === 'wholesaler' && (
           <Link href="/alerts" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔔 Alerts</Link>
+        )}
+        {/* Show analyzer/tools link for all logged-in users */}
+        {email && (
+          <Link href="/tools/analyzer" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>🔧 Analyzer</Link>
         )}
         <Link href="/pricing" style={{ textDecoration: "none", color: "#333", fontWeight: 600 }}>Pricing</Link>
         {userRole === 'admin' && (

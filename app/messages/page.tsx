@@ -64,6 +64,7 @@ export default function MessagesPage() {
         }
 
         // Use API endpoint instead of direct database query for better error handling
+        console.log('Fetching conversations from API...');
         const response = await fetch('/api/messages/conversations', {
           credentials: 'include',
           cache: 'no-store',
@@ -72,8 +73,13 @@ export default function MessagesPage() {
           },
         });
 
+        console.log('API response status:', response.status);
+
         if (!response.ok) {
           clearTimeout(timeoutId);
+          const errorText = await response.text();
+          console.error('API error response:', errorText);
+          
           if (response.status === 401) {
             // Only redirect once to prevent loops
             if (!sessionStorage.getItem('redirecting')) {
@@ -85,10 +91,11 @@ export default function MessagesPage() {
             loadingRef.current = false;
             return;
           }
-          throw new Error(`Failed to load conversations: ${response.status}`);
+          throw new Error(`Failed to load conversations: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('Received conversations data:', data);
         const conversationsList = data.conversations || [];
 
         clearTimeout(timeoutId);

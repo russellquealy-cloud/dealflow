@@ -20,14 +20,18 @@ export default function AnalyzerPage() {
           return;
         }
 
+        // Check both 'role' and 'segment' fields to support both naming conventions
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, segment')
           .eq('id', session.user.id)
           .single();
 
-        if (profile?.role === 'investor' || profile?.role === 'wholesaler') {
-          setUserRole(profile.role);
+        // Prefer 'segment' over 'role' for consistency with Header component
+        const role = profile?.segment || profile?.role;
+        
+        if (role === 'investor' || role === 'wholesaler') {
+          setUserRole(role);
         } else {
           // Default to investor if role not set
           setUserRole('investor');
