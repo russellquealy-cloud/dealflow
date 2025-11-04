@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       userIds.add(msg.to_id);
     });
 
-    let profiles = [];
+    let profiles: Array<{ id: string; full_name?: string }> = [];
     if (userIds.size > 0) {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')

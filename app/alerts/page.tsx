@@ -257,20 +257,7 @@ export default function AlertsPage() {
         })}
       </div>
 
-      <div style={{
-        marginTop: 32,
-        padding: 20,
-        background: '#f0f9ff',
-        border: '1px solid #bae6fd',
-        borderRadius: 12
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#0369a1', marginBottom: 8 }}>
-          📧 Email Notifications
-        </div>
-        <div style={{ fontSize: 14, color: '#0c4a6e' }}>
-          All enabled alerts will be sent to your registered email address: <strong>{supabase.auth.getSession().then(({data}) => data.session?.user.email || 'your email')}</strong>
-        </div>
-      </div>
+      <EmailNotificationInfo />
     </main>
   );
 }
