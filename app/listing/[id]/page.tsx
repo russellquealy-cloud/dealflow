@@ -61,13 +61,13 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       
       <h1 style={{ margin: 0, marginBottom: 8 }}>{formatCurrency(price)}</h1>
       <div style={{ color: '#6b7280', marginBottom: 16 }}>
-        {[data.address1, data.city, data.state, data.zip].filter(Boolean).join(', ')}
+        {[data.address, data.city, data.state, data.zip].filter(Boolean).join(', ')}
       </div>
 
       <ImageGallery 
         coverImage={img || undefined} 
         galleryImages={gallery || []} 
-        title={`${formatCurrency(price)} - ${[data.address1, data.city, data.state, data.zip].filter(Boolean).join(', ')}`}
+        title={`${formatCurrency(price)} - ${[data.address, data.city, data.state, data.zip].filter(Boolean).join(', ')}`}
       />
 
       <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12 }}>

@@ -480,7 +480,7 @@ function generateMockResult(
         arv: arv,
         repairs: repairs,
         targetMargin: targetMargin,
-        wholesaleFee: formData.wholesaleFee || 5000,
+        wholesaleFee: formData.yourFee || 5000,
         breakdown: breakdown
       },
       notes: [
