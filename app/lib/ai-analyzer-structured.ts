@@ -135,6 +135,8 @@ export interface ExitAnalysis {
   recommendation: string;
 }
 
+type AnalysisCategory = 'arv' | 'repairs' | 'mao' | 'comps';
+
 // ============================================================================
 // COST CONTROLS & RATE LIMITING
 // ============================================================================
@@ -386,7 +388,8 @@ export async function analyzeStructured(
   
   // 3. Check cache first (store question signature as key)
   const questionKey = generateQuestionKey(role, input);
-  const cached = await getCachedAnalysis(userId, questionKey);
+  const analysisCategory = getAnalysisCategory(role, input.questionType);
+  const cached = await getCachedAnalysis(userId, analysisCategory, questionKey);
   if (cached) {
     return { ...cached, cached: true };
   }
@@ -440,7 +443,7 @@ export async function analyzeStructured(
     timestamp: new Date().toISOString(),
   };
   
-  await cacheAnalysis(userId, questionKey, analysisResult);
+  await cacheAnalysis(userId, analysisCategory, questionKey, analysisResult);
   
   return analysisResult;
 }
@@ -661,27 +664,57 @@ function generateQuestionKey(role: UserRole, input: InvestorQuestionInput | Whol
   return `${role}_${input.questionType}_${JSON.stringify(input)}`;
 }
 
-async function getCachedAnalysis(userId: string, questionKey: string): Promise<AnalysisResult | null> {
+function getAnalysisCategory(
+  role: UserRole,
+  questionType: InvestorQuestionType | WholesalerQuestionType
+): AnalysisCategory {
+  if (role === 'investor') {
+    const investorQuestionType = questionType as InvestorQuestionType;
+    switch (investorQuestionType) {
+      case 'arv_from_comps':
+        return 'comps';
+      default:
+        return 'arv';
+    }
+  }
+
+  const wholesalerQuestionType = questionType as WholesalerQuestionType;
+  switch (wholesalerQuestionType) {
+    case 'repair_estimate':
+      return 'repairs';
+    case 'arv_quick_comps':
+      return 'comps';
+    default:
+      return 'mao';
+  }
+}
+
+async function getCachedAnalysis(
+  userId: string,
+  analysisCategory: AnalysisCategory,
+  questionKey: string
+): Promise<AnalysisResult | null> {
   try {
     const supabase = await createClient();
     
-    // Store cache key in question signature format
     const { data, error } = await supabase
       .from('ai_analysis_logs')
       .select('output_data, created_at')
       .eq('user_id', userId)
-      .eq('analysis_type', questionKey)
+      .eq('analysis_type', analysisCategory)
+      .eq('input_data->>questionKey', questionKey)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
     
-    if (error || !data) return null;
+    if (error || !data || data.length === 0) return null;
+
+    const record = data[0];
     
     // Check if cache is fresh (1 hour TTL)
-    const cacheAge = Date.now() - new Date(data.created_at).getTime();
+    const cacheAge = Date.now() - new Date(record.created_at).getTime();
     if (cacheAge > 3600000) return null; // 1 hour
     
-    return data.output_data as AnalysisResult;
+    return record.output_data as AnalysisResult;
   } catch {
     // Fail silently - caching is non-critical
     return null;
@@ -690,20 +723,25 @@ async function getCachedAnalysis(userId: string, questionKey: string): Promise<A
 
 async function cacheAnalysis(
   userId: string,
+  analysisCategory: AnalysisCategory,
   questionKey: string,
   result: AnalysisResult
 ): Promise<void> {
   try {
     const supabase = await createClient();
     
-    await supabase.from('ai_analysis_logs').insert({
+    const { error } = await supabase.from('ai_analysis_logs').insert({
       user_id: userId,
       listing_id: null, // Not tied to specific listing
-      analysis_type: questionKey,
+      analysis_type: analysisCategory,
       input_data: { questionKey },
       output_data: result,
-      ai_cost_cents: result.aiCost,
+      cost_cents: result.aiCost,
     });
+
+    if (error) {
+      console.warn('Failed to cache analysis:', error);
+    }
   } catch (error) {
     // Fail silently - caching is non-critical
     console.warn('Failed to cache analysis:', error);
