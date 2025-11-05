@@ -1,0 +1,9 @@
+{
+  "setup-worktree": [
+    "npm install",
+    "npx prisma generate",
+    "npm run build"
+  ]
+}
+
+// No additional worktree commands required at this time
