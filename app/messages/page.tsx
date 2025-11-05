@@ -33,7 +33,7 @@ export default function MessagesPage() {
 
     // Add timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      console.warn('Messages load timeout - setting loading to false');
+      logger.warn('Messages load timeout - setting loading to false');
       setLoading(false);
       loadingRef.current = false;
     }, 15000); // 15 second timeout
@@ -43,7 +43,7 @@ export default function MessagesPage() {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error('Session error:', sessionError);
+          logger.error('Session error:', sessionError);
           clearTimeout(timeoutId);
           setLoading(false);
           loadingRef.current = false;
