@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
+import type { Session } from '@supabase/supabase-js';
 
 function EmailNotificationInfo() {
   const [email, setEmail] = useState<string>('');
   
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       setEmail(session?.user?.email || 'your email');
     });
   }, []);
