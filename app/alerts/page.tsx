@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,7 +23,7 @@ function EmailNotificationInfo() {
       borderRadius: 12
     }}>
       <div style={{ fontSize: 14, fontWeight: 600, color: '#0369a1', marginBottom: 8 }}>
-        ðŸ“§ Email Notifications
+        📧 Email Notifications
       </div>
       <div style={{ fontSize: 14, color: '#0c4a6e' }}>
         All enabled alerts will be sent to your registered email address: <strong>{email}</strong>. You will also receive in-app notifications when available.
