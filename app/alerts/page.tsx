@@ -106,7 +106,7 @@ export default function AlertsPage() {
 
         // If no alerts exist, create defaults
         const alertTypes = role === 'investor' ? INVESTOR_ALERTS : WHOLESALER_ALERTS;
-        const existingTypes = new Set(userAlerts?.map(a => a.alert_type) || []);
+        const existingTypes = new Set(userAlerts?.map((a: UserAlert) => a.alert_type) || []);
 
         const missingAlerts = alertTypes.filter(type => !existingTypes.has(type));
         
