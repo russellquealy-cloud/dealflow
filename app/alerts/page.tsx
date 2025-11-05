@@ -1,14 +1,15 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
+import type { Session } from '@supabase/supabase-js';
 
 function EmailNotificationInfo() {
   const [email, setEmail] = useState<string>('');
   
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       setEmail(session?.user?.email || 'your email');
     });
   }, []);
@@ -22,7 +23,7 @@ function EmailNotificationInfo() {
       borderRadius: 12
     }}>
       <div style={{ fontSize: 14, fontWeight: 600, color: '#0369a1', marginBottom: 8 }}>
-        📧 Email Notifications
+        ðŸ“§ Email Notifications
       </div>
       <div style={{ fontSize: 14, color: '#0c4a6e' }}>
         All enabled alerts will be sent to your registered email address: <strong>{email}</strong>. You will also receive in-app notifications when available.
@@ -105,7 +106,7 @@ export default function AlertsPage() {
 
         // If no alerts exist, create defaults
         const alertTypes = role === 'investor' ? INVESTOR_ALERTS : WHOLESALER_ALERTS;
-        const existingTypes = new Set(userAlerts?.map(a => a.alert_type) || []);
+        const existingTypes = new Set(userAlerts?.map((a: UserAlert) => a.alert_type) || []);
 
         const missingAlerts = alertTypes.filter(type => !existingTypes.has(type));
         
