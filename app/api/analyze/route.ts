@@ -1,100 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateDeal, type DealInput } from '@/app/lib/deal-calculator';
+import { analyzeProperty, type AIAnalysisInput } from '@/lib/ai-analyzer';
 import { createClient } from '@/lib/supabase/server';
 import { canUserPerformAction, getUserSubscriptionTier } from '@/lib/subscription';
 
-/**
- * Simple deal analysis endpoint
- * Accepts: { price, arv, repairs, sqft, lot_sqft }
- * Returns: { spread, roi, mao, notes, ... }
- */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const { listingId, input }: { listingId: string; input: AIAnalysisInput } = await request.json();
 
-    // Check if this is the simple format (user input calculator)
-    if (body.price !== undefined && body.arv !== undefined && body.repairs !== undefined) {
-      // Simple format - calculate from user inputs
-      const input: DealInput = {
-        price: Number(body.price) || 0,
-        arv: Number(body.arv) || 0,
-        repairs: Number(body.repairs) || 0,
-        sqft: Number(body.sqft) || 0,
-        lot_sqft: body.lot_sqft ? Number(body.lot_sqft) : undefined,
-      };
+    if (!listingId || !input) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
 
-      // Validate required fields
-      if (!input.price || !input.arv || !input.sqft) {
-        return NextResponse.json(
-          { error: 'Price, ARV, and SqFt are required' },
-          { status: 400 }
-        );
-      }
+    // Get user from session
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      // Optional: Check subscription if you want to gate this feature
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-      if (user) {
-        // Check if user can perform analysis (optional - can remove if open to all)
-        const canAnalyze = await canUserPerformAction(user.id, 'ai_analyses', 1);
-        if (!canAnalyze) {
-          const tier = await getUserSubscriptionTier(user.id);
-          return NextResponse.json(
-            {
-              error: 'Analysis not available on your plan',
-              tier,
-              upgrade_required: true,
-            },
-            { status: 403 }
-          );
-        }
+    // Check if user can perform AI analysis
+    const canAnalyze = await canUserPerformAction(user.id, 'ai_analyses', 1);
+    if (!canAnalyze) {
+      const tier = await getUserSubscriptionTier(user.id);
+      return NextResponse.json({ 
+        error: 'AI analysis not available on your plan',
+        tier,
+        upgrade_required: true 
+      }, { status: 403 });
+    }
 
-        // Save analysis to database for history (optional)
-        try {
-          const analysis = calculateDeal(input);
-          const { error: saveError } = await supabase.from('ai_analysis_logs').insert({
-            user_id: user.id,
-            listing_id: null, // No specific listing
-            analysis_type: 'deal_calculator',
-            input_data: input,
-            output_data: analysis,
-            cost: 0, // Free calculation
-          });
+    // Check if analysis already exists for this listing
+    const { data: existingAnalysis } = await supabase
+      .from('ai_analysis_logs')
+      .select('output_data')
+      .eq('user_id', user.id)
+      .eq('listing_id', listingId)
+      .eq('analysis_type', 'arv')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-          if (saveError) {
-            console.warn('Failed to save analysis:', saveError);
-          }
-        } catch (saveErr) {
-          console.warn('Error saving analysis:', saveErr);
-        }
-      }
-
-      // Calculate and return results
-      const analysis = calculateDeal(input);
+    if (existingAnalysis) {
       return NextResponse.json({
-        spread: analysis.spread,
-        roi: analysis.roi,
-        mao: analysis.mao,
-        totalInvestment: analysis.totalInvestment,
-        profitMargin: analysis.profitMargin,
-        profitMarginPercent: analysis.profitMarginPercent,
-        pricePerSqft: analysis.pricePerSqft,
-        arvPerSqft: analysis.arvPerSqft,
-        notes: analysis.notes,
+        analysis: existingAnalysis.output_data,
+        cached: true,
       });
     }
 
-    // Legacy format not supported - return error with helpful message
-    return NextResponse.json(
-      { error: 'Use simple format: {price, arv, repairs, sqft, lot_sqft}' },
-      { status: 400 }
-    );
+    // Perform AI analysis
+    const analysis = await analyzeProperty(user.id, listingId, input);
+
+    return NextResponse.json({
+      analysis,
+      cached: false,
+    });
 
   } catch (error) {
-    console.error('Analysis error:', error);
-    const message = error instanceof Error ? error.message : 'Analysis failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('AI analysis error:', error);
+    return NextResponse.json(
+      { error: 'Analysis failed' },
+      { status: 500 }
+    );
   }
 }
 
