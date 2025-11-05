@@ -93,8 +93,8 @@ export default function ListingsPage() {
 
   // Helper function to handle map bounds changes with specific filters
   const handleMapBoundsChangeWithFilters = useCallback(async (bounds: unknown, filtersToUse: Filters) => {
-      // If we're already processing bounds, ignore this call to prevent loops
-      if (isProcessingBoundsRef.current) {
+    // If we're already processing bounds, ignore this call to prevent loops
+    if (isProcessingBoundsRef.current) {
         logger.log('Already processing bounds, ignoring duplicate call');
           return;
         }

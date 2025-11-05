@@ -48,55 +48,25 @@ function LoginInner() {
 
         if (error) {
           setMessage(error.message);
-        } else {
-          logger.log('🔐 Mobile login successful:', data);
+          setLoading(false);
+        } else if (data.session) {
+          // Session is already valid from signInWithPassword - no need to call getSession() again
+          // This prevents rate limiting from excessive API calls
+          logger.log('🔐 Login successful:', data.session.user.email);
           
-          // Force session refresh for mobile
-          await supabase.auth.getSession();
-          
-          // Store session info in localStorage for mobile persistence
-          if (data.session) {
-            try {
-              localStorage.setItem('dealflow-session', JSON.stringify({
-                access_token: data.session.access_token,
-                refresh_token: data.session.refresh_token,
-                expires_at: data.session.expires_at
-              }));
-              logger.log('🔐 Mobile session stored in localStorage');
-            } catch (err) {
-              logger.warn('⚠️ Could not store session in localStorage:', err);
-            }
+          // Store session for mobile persistence (optional)
+          try {
+            localStorage.setItem('dealflow-session', JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+              expires_at: data.session.expires_at
+            }));
+          } catch (err) {
+            // Ignore localStorage errors
           }
           
-          // CRITICAL: Wait longer and verify session before redirect
-          // This ensures cookies are properly set and server can see them
-          let attempts = 0;
-          const maxAttempts = 10;
-          const verifySession = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-              logger.error('🔐 Session check error:', error);
-            }
-            if (session && session.user) {
-              logger.log('🔐 Session verified, redirecting...', { 
-                userId: session.user.id, 
-                email: session.user.email 
-              });
-              // Use hard redirect to ensure session is fully established
-              window.location.href = next;
-            } else if (attempts >= maxAttempts) {
-              logger.warn('🔐 Max attempts reached, redirecting anyway...');
-              // Redirect anyway after max attempts
-              window.location.href = next;
-            } else {
-              attempts++;
-              logger.log(`🔐 Session not ready yet, attempt ${attempts}/${maxAttempts}`);
-              setTimeout(verifySession, 300);
-            }
-          };
-          
-          // Start verification after a delay to allow cookies to be set
-          setTimeout(verifySession, 500);
+          // Redirect immediately - session is valid
+          window.location.href = next;
         }
       } else {
         // Magic link login with mobile-optimized redirect

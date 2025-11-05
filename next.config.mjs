@@ -7,6 +7,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com', pathname: '/**' },
     ],
   },
+  // For Capacitor: Allow loading from production server
+  // The app will load from https://offaxisdeals.com in the WebView
 };
 
 export default nextConfig;

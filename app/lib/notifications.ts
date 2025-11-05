@@ -72,6 +72,21 @@ export async function sendEmail(notification: NotificationData): Promise<boolean
       return await sendViaPostmark(notification.to, subject, html, text);
     } else if (process.env.SENDGRID_API_KEY) {
       return await sendViaSendGrid(notification.to, subject, html, text);
+    } else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      // Fallback to SMTP if API keys not configured
+      const { sendViaSMTP } = await import('@/lib/email');
+      try {
+        await sendViaSMTP({
+          to: notification.to,
+          subject,
+          html,
+          text,
+        });
+        return true;
+      } catch (smtpError) {
+        console.error('SMTP fallback failed:', smtpError);
+        return false;
+      }
     } else {
       console.warn('No email provider configured');
       return false;
