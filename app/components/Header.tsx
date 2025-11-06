@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/supabase/client";
 import { logger } from "@/lib/logger";
 import PostDealButton from "./PostDealButton";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 const wrap: React.CSSProperties = {
   borderBottom: "1px solid #eee",
@@ -104,7 +105,7 @@ export default function Header() {
 
     loadUserData();
     
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       // CRITICAL: Only update on actual auth changes, not token refreshes
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         setEmail(session?.user?.email || null);
