@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/supabase/client';
+import type { Session } from '@supabase/supabase-js';
 
 export class MobileSessionManager {
   private static instance: MobileSessionManager;
@@ -120,7 +121,7 @@ export class MobileSessionManager {
       await this.restoreSession();
       
       // Listen for auth state changes
-      supabase.auth.onAuthStateChange((event: string, session) => {
+      supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
         console.log('🔐 Mobile auth state changed:', event);
         
         if (event === 'SIGNED_IN' && session) {
