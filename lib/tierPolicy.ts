@@ -131,7 +131,7 @@ export async function getUserProfileWithUsage(userId: string): Promise<{
       exports: 0,
     };
 
-    usageData?.forEach((row) => {
+    usageData?.forEach((row: { metric: string; count: number }) => {
       if (row.metric in usage) {
         usage[row.metric as keyof UsageCounts] = row.count;
       }
