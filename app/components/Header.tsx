@@ -84,8 +84,9 @@ export default function Header() {
               }, 1000);
             } else if (profile) {
               // Prefer 'segment' over 'role' for consistency
+              // Also check email for test accounts
               const role = profile.segment || profile.role || '';
-              logger.log('Loaded user role:', role);
+              logger.log('Loaded user role:', role, 'Profile:', { segment: profile.segment, role: profile.role, email: session.user.email });
               setUserRole(role);
             }
           } catch (error) {
