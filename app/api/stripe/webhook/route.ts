@@ -154,14 +154,16 @@ export async function POST(request: NextRequest) {
         }
 
         // Update subscriptions table
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sub = subscription as any;
         await supabase
           .from('subscriptions')
           .update({
             stripe_price_id: priceId,
-            status: subscription.status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            cancel_at_period_end: subscription.cancel_at_period_end,
+            status: sub.status,
+            current_period_start: new Date((sub.current_period_start as number) * 1000).toISOString(),
+            current_period_end: new Date((sub.current_period_end as number) * 1000).toISOString(),
+            cancel_at_period_end: sub.cancel_at_period_end,
             updated_at: new Date().toISOString(),
           })
           .eq('stripe_subscription_id', subscription.id);
@@ -174,7 +176,7 @@ export async function POST(request: NextRequest) {
               tier: plan.tier,
               segment: plan.segment,
               active_price_id: priceId,
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              current_period_end: new Date((sub.current_period_end as number) * 1000).toISOString(),
               updated_at: new Date().toISOString(),
             })
             .eq('id', userId);
