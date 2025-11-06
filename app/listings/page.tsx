@@ -194,9 +194,12 @@ export default function ListingsPage() {
             repairs,
             spread,
             roi,
-            bedrooms: toNum(r.beds) ?? toNum(r.bedrooms),
-            bathrooms: toNum(r.baths),
-            home_sqft: toNum(r.sqft),
+            beds: toNum(r.beds) ?? toNum(r.bedrooms),
+            baths: toNum(r.baths),
+            sqft: toNum(r.sqft),
+            bedrooms: toNum(r.beds) ?? toNum(r.bedrooms), // Also include for backward compatibility
+            bathrooms: toNum(r.baths), // Also include for backward compatibility
+            home_sqft: toNum(r.sqft), // Also include for backward compatibility
             year_built: toNum(r.year_built),
             lot_size: toNum(r.lot_size),
             property_type: r.property_type ?? undefined,
@@ -299,20 +302,23 @@ export default function ListingsPage() {
             repairs,
             spread,
             roi,
-                  bedrooms: toNum(r.beds) ?? toNum(r.bedrooms),
-                  bathrooms: toNum(r.baths),
-                  home_sqft: toNum(r.sqft),
-                  year_built: toNum(r.year_built),
-                  lot_size: toNum(r.lot_size),
-                  property_type: r.property_type ?? undefined,
-                  description: r.description ?? undefined,
-                  images: r.images ?? [],
-                  latitude: toNum(r.latitude),
-                  longitude: toNum(r.longitude),
-                  created_at: r.created_at ?? undefined,
-                  updated_at: r.updated_at ?? undefined,
-                  featured: r.featured,
-                  featured_until: r.featured_until
+            beds: toNum(r.beds) ?? toNum(r.bedrooms),
+            baths: toNum(r.baths),
+            sqft: toNum(r.sqft),
+            bedrooms: toNum(r.beds) ?? toNum(r.bedrooms), // Also include for backward compatibility
+            bathrooms: toNum(r.baths), // Also include for backward compatibility
+            home_sqft: toNum(r.sqft), // Also include for backward compatibility
+            year_built: toNum(r.year_built),
+            lot_size: toNum(r.lot_size),
+            property_type: r.property_type ?? undefined,
+            description: r.description ?? undefined,
+            images: r.images ?? [],
+            latitude: toNum(r.latitude),
+            longitude: toNum(r.longitude),
+            created_at: r.created_at ?? undefined,
+            updated_at: r.updated_at ?? undefined,
+            featured: r.featured,
+            featured_until: r.featured_until
           };
         });
         
@@ -443,9 +449,12 @@ export default function ListingsPage() {
               repairs,
               spread,
               roi,
-              bedrooms: toNum(r.beds) ?? toNum(r.bedrooms),
-              bathrooms: toNum(r.baths),
-              home_sqft: toNum(r.sqft),
+              beds: toNum(r.beds) ?? toNum(r.bedrooms),
+              baths: toNum(r.baths),
+              sqft: toNum(r.sqft),
+              bedrooms: toNum(r.beds) ?? toNum(r.bedrooms), // Also include for backward compatibility
+              bathrooms: toNum(r.baths), // Also include for backward compatibility
+              home_sqft: toNum(r.sqft), // Also include for backward compatibility
               year_built: toNum(r.year_built),
               lot_size: toNum(r.lot_size),
               property_type: r.property_type ?? undefined,
