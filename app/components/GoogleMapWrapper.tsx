@@ -4,14 +4,29 @@ import dynamic from 'next/dynamic';
 import ErrorBoundary from './ErrorBoundary';
 import { Point } from './GoogleMapComponent';
 
-// Dynamically import the Google Maps component with SSR disabled
+// Dynamically import the Google Maps component with SSR disabled (per guardrails)
 const GoogleMapComponent = dynamic(() => import('./GoogleMapComponent'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-gray-600">Loading Google Maps...</p>
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#f3f4f6'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '32px',
+          height: '32px',
+          border: '3px solid #e5e7eb',
+          borderTop: '3px solid #2563eb',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 8px'
+        }}></div>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading Google Maps...</p>
       </div>
     </div>
   )

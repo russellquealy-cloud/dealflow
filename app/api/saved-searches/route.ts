@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/supabase/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 
 // GET: Fetch user's saved searches
 export async function GET() {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createSupabaseServer();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
@@ -32,27 +32,40 @@ export async function GET() {
 // POST: Create saved search
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createSupabaseServer();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, criteria } = await request.json();
+    const { name, criteria, polygon_geojson } = await request.json();
 
     if (!name || !criteria) {
       return NextResponse.json({ error: 'Name and criteria required' }, { status: 400 });
     }
 
+    const insertData: {
+      user_id: string;
+      name: string;
+      criteria: Record<string, unknown>;
+      active: boolean;
+      polygon_geojson?: Record<string, unknown>;
+    } = {
+      user_id: user.id,
+      name,
+      criteria,
+      active: true,
+    };
+
+    // Add polygon GeoJSON if provided
+    if (polygon_geojson) {
+      insertData.polygon_geojson = polygon_geojson;
+    }
+
     const { data: search, error } = await supabase
       .from('saved_searches')
-      .insert({
-        user_id: user.id,
-        name,
-        criteria,
-        active: true
-      })
+      .insert(insertData)
       .select('*')
       .single();
 
@@ -71,14 +84,14 @@ export async function POST(request: NextRequest) {
 // PUT: Update saved search
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createSupabaseServer();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, name, criteria, active } = await request.json();
+    const { id, name, criteria, active, polygon_geojson } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'Search ID required' }, { status: 400 });
@@ -88,6 +101,7 @@ export async function PUT(request: NextRequest) {
     if (name) updateData.name = name;
     if (criteria) updateData.criteria = criteria;
     if (active !== undefined) updateData.active = active;
+    if (polygon_geojson !== undefined) updateData.polygon_geojson = polygon_geojson;
 
     const { data: search, error } = await supabase
       .from('saved_searches')
@@ -112,7 +126,7 @@ export async function PUT(request: NextRequest) {
 // DELETE: Delete saved search
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createSupabaseServer();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {

@@ -1,7 +1,7 @@
 // app/api/billing/create-checkout-session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createCheckoutSession, STRIPE_PRICES } from '@/lib/stripe';
-import { createServerClient } from '@/supabase/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const supabase = await createServerClient();
+    const supabase = await createSupabaseServer();
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
     const session_url = await createCheckoutSession({
       customerId,
       priceId,
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/billing/cancel`,
+      successUrl: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL}/billing/cancel`,
     });
 
     return NextResponse.json({ url: session_url.url });

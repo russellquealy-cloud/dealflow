@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   const env = {
     siteUrl: !!process.env.NEXT_PUBLIC_SITE_URL || !!process.env.NEXT_PUBLIC_APP_URL,
+    siteUrlValue: process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'not-set',
     stripe: {
       secret: !!process.env.STRIPE_SECRET_KEY,
       publishable: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,

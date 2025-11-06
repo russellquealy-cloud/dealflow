@@ -55,7 +55,7 @@ export async function triggerAlert(
             ${metadata ? `<pre style="background: #f3f4f6; padding: 12px; border-radius: 6px; font-size: 12px;">${JSON.stringify(metadata, null, 2)}</pre>` : ''}
             <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">
             <p style="font-size: 12px; color: #6b7280;">
-              Manage your alert preferences at <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://offaxisdeals.com'}/alerts">offaxisdeals.com/alerts</a>
+              Manage your alert preferences at <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.offaxisdeals.com'}/alerts">offaxisdeals.com/alerts</a>
             </p>
           </div>
         `;

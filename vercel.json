@@ -5,6 +5,12 @@
       "destination": "/welcome",
       "permanent": false
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/daily-digest",
+      "schedule": "0 9 * * *"
+    }
   ]
 }
 

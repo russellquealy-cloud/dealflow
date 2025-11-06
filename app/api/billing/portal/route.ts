@@ -1,12 +1,12 @@
 // app/api/billing/portal/route.ts
 import { NextResponse } from 'next/server';
 import { createPortalSession } from '@/lib/stripe';
-import { createServerClient } from '@/supabase/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 
 export async function POST() {
   try {
     // Get user from session
-    const supabase = await createServerClient();
+    const supabase = await createSupabaseServer();
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -40,7 +40,7 @@ export async function POST() {
     // Create portal session
     const portalSession = await createPortalSession({
       customerId: profile.stripe_customer_id,
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+      returnUrl: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL}/billing`,
     });
 
     return NextResponse.json({ url: portalSession.url });

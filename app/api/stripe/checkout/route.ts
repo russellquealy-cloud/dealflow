@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
-
-// Stripe configuration will be checked at runtime
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
@@ -15,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const supabase = await createClient();
+    const supabase = await createSupabaseServer();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -61,8 +59,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'subscription',
-      success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/account?success=true`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
+      success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL}/account?success=true`,
+      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       metadata: {
         user_id: user.id,
       },

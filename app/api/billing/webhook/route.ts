@@ -1,7 +1,7 @@
 // app/api/billing/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature, getPlanFromPriceId } from '@/lib/stripe';
-import { createServerClient } from '@/supabase/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const supabase = await createServerClient();
+  const supabase = await createSupabaseServer();
   const customerId = session.customer;
   const subscriptionId = session.subscription;
   const priceId = session.metadata?.priceId;
@@ -101,7 +101,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const supabase = await createServerClient();
+  const supabase = await createSupabaseServer();
   const customerId = subscription.customer;
   const priceId = subscription.items.data[0]?.price.id;
 
@@ -145,7 +145,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const supabase = await createServerClient();
+  const supabase = await createSupabaseServer();
   const customerId = subscription.customer;
 
   // Get user ID
@@ -174,7 +174,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  const supabase = await createServerClient();
+  const supabase = await createSupabaseServer();
   const customerId = invoice.customer;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const subscriptionId = (invoice as any).subscription;

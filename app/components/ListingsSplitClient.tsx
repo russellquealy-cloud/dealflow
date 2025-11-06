@@ -45,12 +45,21 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
       {/* Desktop: Side by side, Mobile: Stacked with toggle */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(540px,1fr)_1fr] gap-4 flex-1 min-h-0">
         {/* MAP */}
-        <div className={`
-          border border-gray-200 rounded-xl bg-white min-w-0 flex overflow-hidden
-          h-[65vh] lg:h-full
-          ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}
-        `}>
-          <div className="flex-1 min-w-0 w-full h-full">
+        <div style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          background: '#fff',
+          minWidth: 0, // Prevent layout thrash (per guardrails)
+          display: mobileView === 'list' ? 'none' : 'flex',
+          height: '65vh',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            flex: 1,
+            minWidth: 0,
+            width: '100%',
+            height: '100%'
+          }}>
             <MapComponent points={points} onBoundsChange={onBoundsChange} />
           </div>
         </div>

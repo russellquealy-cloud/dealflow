@@ -135,7 +135,10 @@ export default function ListingsPage() {
       return;
     }
     
-    const typedBounds = bounds as { south: number; north: number; west: number; east: number };
+    const typedBounds = bounds as { south: number; north: number; west: number; east: number; polygon?: Record<string, unknown> };
+    
+    // Check if polygon search is being used
+    const hasPolygon = typedBounds.polygon && typedBounds.polygon.type === 'Polygon';
     
             // Only update state if bounds actually changed significantly to prevent flicker
             const threshold = 0.02; // About 2 kilometers - increased to reduce flicker
@@ -143,7 +146,8 @@ export default function ListingsPage() {
                 Math.abs(mapBounds.south - typedBounds.south) > threshold ||
                 Math.abs(mapBounds.north - typedBounds.north) > threshold ||
                 Math.abs(mapBounds.west - typedBounds.west) > threshold ||
-                Math.abs(mapBounds.east - typedBounds.east) > threshold) {
+                Math.abs(mapBounds.east - typedBounds.east) > threshold ||
+                hasPolygon) { // Always update if polygon is present
           
           logger.log('Bounds changed significantly, applying spatial filter for bounds:', typedBounds);
           
@@ -152,6 +156,81 @@ export default function ListingsPage() {
           setActiveMapBounds(true);
 
     try {
+      // Use polygon search if polygon is provided
+      if (hasPolygon) {
+        const response = await fetch('/api/listings/polygon-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            polygon: typedBounds.polygon,
+            filters: filtersToUse,
+          }),
+        });
+
+        if (!response.ok) {
+          logger.error('Polygon search failed:', await response.text());
+          return;
+        }
+
+        const data = await response.json();
+        const listings = data.listings || [];
+
+        const items = listings.map((r: Row) => {
+          const price = toNum(r.price);
+          const arv = toNum(r.arv);
+          const repairs = toNum(r.repairs);
+          const spread = arv && price ? arv - price : undefined;
+          const roi = arv && price ? ((arv - price) / price) * 100 : undefined;
+
+          return {
+            id: String(r.id),
+            title: r.title ?? undefined,
+            address: r.address ?? undefined,
+            city: r.city ?? undefined,
+            state: r.state ?? undefined,
+            zip: r.zip ?? undefined,
+            price,
+            arv,
+            repairs,
+            spread,
+            roi,
+            bedrooms: toNum(r.beds) ?? toNum(r.bedrooms),
+            bathrooms: toNum(r.baths),
+            home_sqft: toNum(r.sqft),
+            year_built: toNum(r.year_built),
+            lot_size: toNum(r.lot_size),
+            property_type: r.property_type ?? undefined,
+            description: r.description ?? undefined,
+            images: r.images ?? [],
+            latitude: toNum(r.latitude),
+            longitude: toNum(r.longitude),
+            created_at: r.created_at ?? undefined,
+            updated_at: r.updated_at ?? undefined,
+            featured: r.featured,
+            featured_until: r.featured_until
+          };
+        });
+
+        const pts: MapPoint[] = [];
+        for (const r of listings as Row[]) {
+          if (r.latitude && r.longitude) {
+            pts.push({
+              id: String(r.id),
+              lat: toNum(r.latitude) || 0,
+              lng: toNum(r.longitude) || 0,
+              price: toNum(r.price),
+              featured: r.featured,
+              featured_until: r.featured_until
+            });
+          }
+        }
+
+        setAllListings(items as ListItem[]);
+        setAllPoints(pts);
+        return;
+      }
+
+      // Regular bounding box search
       let query = supabase
         .from('listings')
         .select('*, latitude, longitude')

@@ -53,13 +53,16 @@ const defaultOptions = {
 export default function GoogleMapComponent({ points, onBoundsChange, onPolygonComplete, center: externalCenter, zoom: externalZoom }: Props) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<Point | null>(null);
-  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  const [polygons, setPolygons] = useState<google.maps.Polygon[]>([]);
+  // Store markers in refs to prevent re-renders (per guardrails)
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const polygonsRef = useRef<google.maps.Polygon[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const isProcessingBoundsRef = useRef<boolean>(false);
   const lastBoundsUpdateRef = useRef<number>(0);
+  const boundsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -150,10 +153,9 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
       }
       if (mapInstance && onBoundsChange && !isProcessingBoundsRef.current) {
         const now = Date.now();
-        // Prevent bounds updates more frequent than every 3 seconds to eliminate flickering
-        if (now - lastBoundsUpdateRef.current < 3000) {
-          logger.log('Bounds unchanged (within threshold), skipping update to prevent flicker');
-          return;
+        // Prevent bounds updates more frequent than every 500ms to eliminate flickering
+        if (now - lastBoundsUpdateRef.current < 500) {
+          return; // Skip duplicate bounds updates
         }
         
         isProcessingBoundsRef.current = true;
@@ -179,11 +181,12 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
       }
     };
 
-    // Debounced bounds emission with very long delay to eliminate flickering
-    let boundsTimeout: NodeJS.Timeout;
+    // Debounced bounds emission with 500ms delay (per guardrails: 300-500ms)
     const debouncedEmitBounds = () => {
-      clearTimeout(boundsTimeout);
-      boundsTimeout = setTimeout(emitBounds, 3000); // Increased to 3000ms to eliminate flickering
+      if (boundsTimeoutRef.current) {
+        clearTimeout(boundsTimeoutRef.current);
+      }
+      boundsTimeoutRef.current = setTimeout(emitBounds, 500); // 500ms debounce per guardrails
     };
 
     // Add event listeners - only use 'idle' to reduce flickering
@@ -214,34 +217,38 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     if (clustererRef.current) {
       clustererRef.current.clearMarkers();
     }
-    setMarkers([]);
-    setPolygons([]);
+    if (boundsTimeoutRef.current) {
+      clearTimeout(boundsTimeoutRef.current);
+    }
+    if (drawingManagerRef.current) {
+      drawingManagerRef.current.setMap(null);
+    }
+    markersRef.current.forEach(marker => marker.setMap(null));
+    polygonsRef.current.forEach(polygon => polygon.setMap(null));
+    markersRef.current = [];
+    polygonsRef.current = [];
   }, []);
 
-  // Handle marker creation with clustering
+  // Memoize marker creation - store in refs, not state (per guardrails)
   const createMarkers = useCallback((points: Point[]) => {
     if (!map || !clustererRef.current || !window.google?.maps || !isMapReady) {
       return;
     }
 
-    // Clear existing markers
-    markers.forEach(marker => marker.setMap(null));
+    // Clear existing markers from refs
+    markersRef.current.forEach(marker => marker.setMap(null));
     clustererRef.current.clearMarkers();
 
     const newMarkers: google.maps.Marker[] = [];
 
-    points.forEach((point, index) => {
+    points.forEach((point) => {
       // Check if listing is currently featured
       const isFeatured = point.featured && (!point.featured_until || new Date(point.featured_until) > new Date());
       
       const marker = new window.google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
-        title: point.title || `Property ${index + 1}`,
-        // Remove animation to prevent triple drop effect
-        // animation: window.google.maps.Animation.DROP,
-        // Use regular markers instead of Advanced Markers
-        optimized: true,
-        // Use different icon for featured listings
+        title: point.title || point.address || 'Property',
+        optimized: true, // Use optimized markers for performance
         icon: isFeatured ? {
           url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
             <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -256,7 +263,6 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
 
       marker.addListener('click', () => {
         setSelectedMarker(point);
-        // Navigate to listing page
         if (point.id) {
           window.location.href = `/listing/${point.id}`;
         }
@@ -265,37 +271,66 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
       newMarkers.push(marker);
     });
 
-    // Add markers to clusterer
+    // Store in refs, not state (prevents re-renders)
+    markersRef.current = newMarkers;
     clustererRef.current.addMarkers(newMarkers);
-    setMarkers(newMarkers);
-  }, [map, markers, isMapReady]);
+  }, [map, isMapReady]);
 
-  // Update markers when points change - use a ref to prevent unnecessary re-renders
+  // Memoize points array to prevent unnecessary re-renders
+  const memoizedPoints = useMemo(() => points, [JSON.stringify(points.map(p => p.id))]);
   const pointsRef = useRef<Point[]>([]);
   
   React.useEffect(() => {
-    // Only update if points actually changed and map is ready
-    if (JSON.stringify(points) !== JSON.stringify(pointsRef.current) && isMapReady) {
+    // Only update if points actually changed (by ID comparison) and map is ready
+    const pointsIds = points.map(p => p.id).join(',');
+    const prevIds = pointsRef.current.map(p => p.id).join(',');
+    
+    if (pointsIds !== prevIds && isMapReady && map) {
       pointsRef.current = points;
       if (points && points.length > 0) {
         createMarkers(points);
+      } else if (points.length === 0) {
+        // Clear markers if no points
+        markersRef.current.forEach(marker => marker.setMap(null));
+        if (clustererRef.current) {
+          clustererRef.current.clearMarkers();
+        }
+        markersRef.current = [];
       }
     }
-  }, [points, createMarkers, isMapReady]);
+  }, [memoizedPoints, createMarkers, isMapReady, map]);
 
-  // Handle drawing completion
+  // Handle drawing completion - store in refs, not state (per guardrails)
   const onDrawingComplete = useCallback((polygon: google.maps.Polygon) => {
-    setPolygons(prev => [...prev, polygon]);
-    setIsDrawing(false); // Stop drawing mode
+    // Store polygon in ref, not state
+    polygonsRef.current = [...polygonsRef.current, polygon];
+    setIsDrawing(false);
     
+    // Convert polygon to GeoJSON for saving
+    const path = polygon.getPath();
+    const coordinates: number[][] = [];
+    for (let i = 0; i < path.getLength(); i++) {
+      const latLng = path.getAt(i);
+      coordinates.push([latLng.lng(), latLng.lat()]); // GeoJSON: [lng, lat]
+    }
+    // Close the polygon
+    if (coordinates.length > 0) {
+      coordinates.push(coordinates[0]);
+    }
+
+    const geojson = {
+      type: 'Polygon',
+      coordinates: [coordinates],
+    };
+
+    // Call onPolygonComplete with both polygon and GeoJSON
     if (onPolygonComplete) {
       onPolygonComplete(polygon);
     }
 
-    // Get bounds and emit
+    // Get bounds and emit (for immediate filtering)
     if (onBoundsChange && window.google?.maps) {
       const bounds = new window.google.maps.LatLngBounds();
-      const path = polygon.getPath();
       for (let i = 0; i < path.getLength(); i++) {
         bounds.extend(path.getAt(i));
       }
@@ -304,14 +339,15 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
         south: bounds.getSouthWest().lat(),
         north: bounds.getNorthEast().lat(),
         west: bounds.getSouthWest().lng(),
-        east: bounds.getNorthEast().lng()
+        east: bounds.getNorthEast().lng(),
+        polygon: geojson, // Include GeoJSON in bounds object
       };
       
       onBoundsChange(boundsObject);
     }
   }, [onBoundsChange, onPolygonComplete]);
 
-  // Toggle drawing mode
+  // Toggle drawing mode - use refs for drawing manager
   const toggleDrawing = useCallback(() => {
     if (!map || !window.google?.maps) return;
     
@@ -334,37 +370,32 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
       });
       
       drawingManager.setMap(map);
+      drawingManagerRef.current = drawingManager;
       
       // Listen for polygon completion
       const listener = drawingManager.addListener('polygoncomplete', (polygon: google.maps.Polygon) => {
         onDrawingComplete(polygon);
         drawingManager.setDrawingMode(null);
         drawingManager.setMap(null);
+        drawingManagerRef.current = null;
       });
-      
-      // Store reference for cleanup
-      (map as unknown as { drawingManager?: google.maps.drawing.DrawingManager; drawingListener?: google.maps.MapsEventListener }).drawingManager = drawingManager;
-      (map as unknown as { drawingManager?: google.maps.drawing.DrawingManager; drawingListener?: google.maps.MapsEventListener }).drawingListener = listener;
     } else {
       // Stop drawing mode
-      const mapWithDrawing = map as unknown as { drawingManager?: google.maps.drawing.DrawingManager; drawingListener?: google.maps.MapsEventListener };
-      if (mapWithDrawing.drawingManager) {
-        mapWithDrawing.drawingManager.setMap(null);
-        if (mapWithDrawing.drawingListener) {
-          window.google.maps.event.removeListener(mapWithDrawing.drawingListener);
-        }
+      if (drawingManagerRef.current) {
+        drawingManagerRef.current.setMap(null);
+        drawingManagerRef.current = null;
       }
       
-      // Clear any existing polygons and reset bounds
-      polygons.forEach(polygon => polygon.setMap(null));
-      setPolygons([]);
+      // Clear polygons from refs
+      polygonsRef.current.forEach(polygon => polygon.setMap(null));
+      polygonsRef.current = [];
       
       // Notify parent that bounds are cleared
       if (onBoundsChange) {
         onBoundsChange(null);
       }
     }
-  }, [map, isDrawing, onDrawingComplete, onBoundsChange, polygons]);
+  }, [map, isDrawing, onDrawingComplete, onBoundsChange]);
 
   // Drawing manager options removed - using custom button instead
 
@@ -414,17 +445,37 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
 
   if (!isLoaded) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600">Loading Google Maps...</p>
+      <div style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f3f4f6'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            border: '3px solid #e5e7eb',
+            borderTop: '3px solid #2563eb',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 8px'
+          }}></div>
+          <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading Google Maps...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div style={{ 
+      width: '100%', 
+      height: '100%', 
+      position: 'relative',
+      minWidth: 0, // Prevent layout thrash (per guardrails)
+    }}>
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={mapCenter}
@@ -464,12 +515,12 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
             {isDrawing ? 'Stop Drawing' : 'Draw Area'}
           </button>
           
-          {polygons.length > 0 && (
+          {polygonsRef.current.length > 0 && (
             <button
               onClick={() => {
-                // Clear all polygons
-                polygons.forEach(polygon => polygon.setMap(null));
-                setPolygons([]);
+                // Clear all polygons from refs
+                polygonsRef.current.forEach(polygon => polygon.setMap(null));
+                polygonsRef.current = [];
                 // Reset bounds to show all listings
                 if (onBoundsChange) {
                   onBoundsChange(null);
@@ -497,9 +548,10 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
           )}
         </div>
         
-        {polygons.map((polygon, index) => (
+        {/* Render polygons from refs */}
+        {polygonsRef.current.map((polygon, index) => (
           <Polygon
-            key={index}
+            key={`polygon-${index}`}
             paths={polygon.getPath()}
             options={{
               fillColor: '#3b82f6',
