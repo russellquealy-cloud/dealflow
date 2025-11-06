@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get subscription details
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
         const activePriceId = subscription.items.data[0]?.price.id || priceId;
 
         if (!activePriceId) {
