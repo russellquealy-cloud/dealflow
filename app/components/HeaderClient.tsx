@@ -21,7 +21,7 @@ export default function HeaderClient() {
 
     // initial + keep in sync
     refresh();
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event: string) => {
       // CRITICAL: Only refresh on actual auth changes, not token refreshes
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         refresh();
