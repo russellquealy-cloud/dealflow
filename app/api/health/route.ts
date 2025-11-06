@@ -6,8 +6,7 @@ import { NextResponse } from 'next/server';
  */
 export async function GET() {
   const env = {
-    siteUrl: !!process.env.NEXT_PUBLIC_SITE_URL || !!process.env.NEXT_PUBLIC_APP_URL,
-    siteUrlValue: process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'not-set',
+    siteUrl: !!(process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL),
     stripe: {
       secret: !!process.env.STRIPE_SECRET_KEY,
       publishable: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
@@ -20,10 +19,10 @@ export async function GET() {
     },
     maps: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     email: {
-      smtpHost: !!process.env.EMAIL_SMTP_HOST,
-      smtpUser: !!process.env.EMAIL_SMTP_USER,
-      smtpPass: !!process.env.EMAIL_SMTP_PASS,
-      from: !!process.env.EMAIL_FROM,
+      smtpHost: !!process.env.SMTP_HOST,
+      smtpUser: !!process.env.SMTP_USER,
+      smtpPass: !!process.env.SMTP_PASS,
+      from: !!process.env.SMTP_FROM,
     },
   };
 

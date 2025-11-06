@@ -30,31 +30,27 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createSupabaseServer();
   
-  // Idempotency: Check if we've processed this event
+  // Idempotency: Atomically check and insert event (prevents race conditions)
   const eventId = event.id;
-  const { data: existingEvent } = await supabase
+  
+  // Try to insert first - if it fails due to unique constraint, event already processed
+  const { error: insertError } = await supabase
     .from('stripe_webhook_events')
-    .select('id')
-    .eq('stripe_event_id', eventId)
-    .single();
+    .insert({
+      stripe_event_id: eventId,
+      event_type: event.type,
+      processed_at: new Date().toISOString(),
+    });
 
-  if (existingEvent) {
-    console.log(`Webhook event ${eventId} already processed, skipping`);
-    return NextResponse.json({ received: true, duplicate: true });
-  }
-
-  // Record event for idempotency (create table if needed)
-  try {
-    await supabase
-      .from('stripe_webhook_events')
-      .insert({
-        stripe_event_id: eventId,
-        event_type: event.type,
-        processed_at: new Date().toISOString(),
-      });
-  } catch (error) {
-    // Table might not exist yet, log but continue
-    console.warn('Could not record webhook event (table may not exist):', error);
+  // If insert failed due to duplicate, event already processed
+  if (insertError) {
+    // Check if it's a duplicate key error (event already exists)
+    if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+      console.log(`Webhook event ${eventId} already processed, skipping`);
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    // If table doesn't exist, log but continue (table will be created later)
+    console.warn('Could not record webhook event (table may not exist):', insertError);
   }
 
   try {
