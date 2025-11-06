@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get subscription details
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const activePriceId = subscription.items.data[0]?.price.id || priceId;
 
         if (!activePriceId) {
@@ -93,6 +93,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Update subscriptions table
+        // Type assertion needed because retrieve() may return expanded response type
+        const sub = subscription as unknown as Stripe.Subscription;
         await supabase
           .from('subscriptions')
           .upsert({
@@ -100,10 +102,10 @@ export async function POST(request: NextRequest) {
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
             stripe_price_id: activePriceId,
-            status: subscription.status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            cancel_at_period_end: subscription.cancel_at_period_end,
+            status: sub.status,
+            current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+            cancel_at_period_end: sub.cancel_at_period_end,
             updated_at: new Date().toISOString(),
           }, {
             onConflict: 'stripe_subscription_id',
@@ -117,7 +119,7 @@ export async function POST(request: NextRequest) {
               tier: plan.tier,
               segment: plan.segment,
               active_price_id: activePriceId,
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
               updated_at: new Date().toISOString(),
             })
             .eq('id', userId);
