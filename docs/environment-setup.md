@@ -52,7 +52,7 @@ NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=optional
 #### **Step 4: Set Up Webhook**
 1. Go to Stripe Dashboard → Developers → Webhooks
 2. Click "Add endpoint"
-3. Endpoint URL: `https://your-domain.vercel.app/api/stripe/webhook`
+3. Endpoint URL: `https://offaxisdeals.com/api/stripe/webhook`
 4. Select events:
    - `checkout.session.completed`
    - `customer.subscription.updated`
@@ -156,8 +156,8 @@ BUYER_MATCHING_ENABLED=true
 NODE_ENV=development
 DEBUG=dealflow:*
 
-# App URL (for production)
-NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+# App URL (for production - REQUIRED)
+NEXT_PUBLIC_APP_URL=https://offaxisdeals.com
 ```
 
 ## 🧪 Test Your Setup
