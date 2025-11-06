@@ -1,6 +1,7 @@
 'use client';
 import { createBrowserClient } from '@supabase/ssr';
 import { logger } from '@/lib/logger';
+import type { Session } from '@supabase/supabase-js';
 
 // Debug environment variables
 logger.log('🔍 Environment variables check:', {
@@ -101,7 +102,7 @@ export const supabase = (() => {
     };
 
     // Handle auth state changes to prevent excessive refreshes
-    supabaseClient.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange((event: string, session: Session | null) => {
       // Only log significant events, not every token refresh
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
         logger.log(`🔐 Auth state changed: ${event}`);
