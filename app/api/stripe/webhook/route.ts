@@ -226,7 +226,9 @@ export async function POST(request: NextRequest) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const inv = invoice as any;
+        const subscriptionId = inv.subscription as string;
 
         if (!subscriptionId) {
           console.error('No subscription ID in payment failed invoice');
