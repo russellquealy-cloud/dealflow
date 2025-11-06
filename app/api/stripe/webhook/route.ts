@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
         // Update subscriptions table
         // Type assertion needed because retrieve() may return expanded response type
         // Use any type for property access to bypass TypeScript strict checking
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sub = subscription as any;
         await supabase
           .from('subscriptions')
