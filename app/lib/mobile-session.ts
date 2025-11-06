@@ -120,7 +120,7 @@ export class MobileSessionManager {
       await this.restoreSession();
       
       // Listen for auth state changes
-      supabase.auth.onAuthStateChange((event, session) => {
+      supabase.auth.onAuthStateChange((event: string, session) => {
         console.log('🔐 Mobile auth state changed:', event);
         
         if (event === 'SIGNED_IN' && session) {
