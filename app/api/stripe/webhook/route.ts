@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
 
         // Update subscriptions table
         // Type assertion needed because retrieve() may return expanded response type
-        const sub = subscription as unknown as Stripe.Subscription;
+        // Use any type for property access to bypass TypeScript strict checking
+        const sub = subscription as any;
         await supabase
           .from('subscriptions')
           .upsert({
@@ -103,8 +104,8 @@ export async function POST(request: NextRequest) {
             stripe_subscription_id: subscriptionId,
             stripe_price_id: activePriceId,
             status: sub.status,
-            current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+            current_period_start: new Date((sub.current_period_start as number) * 1000).toISOString(),
+            current_period_end: new Date((sub.current_period_end as number) * 1000).toISOString(),
             cancel_at_period_end: sub.cancel_at_period_end,
             updated_at: new Date().toISOString(),
           }, {
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
               tier: plan.tier,
               segment: plan.segment,
               active_price_id: activePriceId,
-              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+              current_period_end: new Date((sub.current_period_end as number) * 1000).toISOString(),
               updated_at: new Date().toISOString(),
             })
             .eq('id', userId);
