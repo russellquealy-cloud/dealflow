@@ -403,14 +403,30 @@ export default function ListingsPage() {
           .order('created_at', { ascending: false })
           .limit(retryCount === 0 ? 200 : 50); // Reduced limit: 200 for initial, 50 for retry
 
-        const { data, error } = await query;
+        // Execute query with timeout protection
+        const queryPromise = query;
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+        );
+        
+        let data, error;
+        try {
+          const result = await Promise.race([queryPromise, timeoutPromise]) as { data: unknown; error: unknown };
+          data = result.data;
+          error = result.error;
+        } catch (timeoutError) {
+          console.error('⏱️ Query timed out:', timeoutError);
+          error = timeoutError as { message: string; code?: string };
+          data = null;
+        }
         
         console.log('🏠 Query result:', { 
           hasData: !!data, 
           dataLength: data?.length || 0, 
           hasError: !!error,
           error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null,
-          firstListing: data && data.length > 0 ? data[0] : null
+          firstListing: data && data.length > 0 ? data[0] : null,
+          sampleIds: data && data.length > 0 ? data.slice(0, 3).map((l: { id: string }) => l.id) : []
         });
         
         // Also log the actual query being executed
@@ -420,6 +436,20 @@ export default function ListingsPage() {
           limit: retryCount === 0 ? 200 : 50,
           orderBy: ['featured DESC', 'created_at DESC']
         });
+        
+        // CRITICAL: Also test a simple query to verify RLS
+        try {
+          const { data: testData, error: testError } = await supabase
+            .from('listings')
+            .select('id')
+            .limit(1);
+          console.log('🧪 Simple test query:', { 
+            found: testData?.length || 0, 
+            error: testError?.message 
+          });
+        } catch (testErr) {
+          console.error('🧪 Test query failed:', testErr);
+        }
 
         // Clear timeout since we got a response
         if (timeoutId) {
