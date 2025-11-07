@@ -40,8 +40,7 @@ async function handler(req: NextRequest) {
   try {
     const supabase = await createSupabaseFromCookies();
     
-    // Sign out from Supabase
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
     
     if (error) {
       console.error('Sign out error:', error);
@@ -59,14 +58,13 @@ async function handler(req: NextRequest) {
     cookieNames.forEach(name => {
       try {
         cookieStore.delete(name);
-      } catch (e) {
+      } catch {
         // Ignore errors
       }
     });
     
-    // Redirect to welcome page
-    const url = new URL("/welcome", req.url);
-    const response = NextResponse.redirect(url, { status: 302 });
+    const response = NextResponse.redirect(new URL("/login", req.url), { status: 302 });
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     
     // Also clear cookies in response headers
     cookieNames.forEach(name => {
@@ -78,7 +76,7 @@ async function handler(req: NextRequest) {
   } catch (error) {
     console.error('Sign out handler error:', error);
     // Even if there's an error, redirect to welcome
-    return NextResponse.redirect(new URL("/welcome", req.url), { status: 302 });
+    return NextResponse.redirect(new URL("/login", req.url), { status: 302 });
   }
 }
 

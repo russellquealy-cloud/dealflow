@@ -15,6 +15,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+    return NextResponse.next();
+  }
+
   // Add paywall headers for protected routes
   if (pathname.startsWith('/analyzer') || 
       pathname.startsWith('/watchlists') || 
