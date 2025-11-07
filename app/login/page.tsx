@@ -21,18 +21,29 @@ function LoginInner() {
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic-link'>('password');
 
   // Check if user is already signed in and redirect
+  // BUT only if they're not actively trying to sign in (form not filled)
   useEffect(() => {
     let isMounted = true;
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-      if (isMounted && session) {
-        // User is already signed in, use hard redirect to clear any stale state
-        window.location.href = next;
+    let redirectTimeout: NodeJS.Timeout;
+    
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (isMounted && session && !email && !password && !loading) {
+        // User is already signed in AND not filling out form, redirect
+        console.log('🔐 Already signed in, redirecting to:', next);
+        redirectTimeout = setTimeout(() => {
+          window.location.href = next;
+        }, 500); // Small delay to prevent race conditions
       }
-    });
+    };
+    
+    checkSession();
+    
     return () => {
       isMounted = false;
+      if (redirectTimeout) clearTimeout(redirectTimeout);
     };
-  }, [next]);
+  }, [next, email, password, loading]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +65,7 @@ function LoginInner() {
           // Session is already valid from signInWithPassword - no need to call getSession() again
           // This prevents rate limiting from excessive API calls
           logger.log('🔐 Login successful:', data.session.user.email);
+          console.log('🔐 Login successful, redirecting to:', next);
           
           // Store session for mobile persistence (optional)
           try {
@@ -66,8 +78,13 @@ function LoginInner() {
             // Ignore localStorage errors
           }
           
-          // Redirect immediately - session is valid
-          window.location.href = next;
+          // Small delay to ensure session is fully set, then redirect
+          setTimeout(() => {
+            window.location.href = next;
+          }, 300);
+        } else {
+          setMessage('Login failed - no session created');
+          setLoading(false);
         }
       } else {
         // Magic link login with mobile-optimized redirect

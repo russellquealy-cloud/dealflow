@@ -13,21 +13,33 @@ export default function PostDealButton() {
     
     try {
       setIsLoading(true);
-      console.log('🔐 Post Deal button clicked');
+      console.log('🔐 Post Deal button clicked - checking auth...');
       
-      // Simple check - if we're on the page, user is likely authenticated
-      // Just redirect directly - the page will handle auth check
-      console.log('🔐 Redirecting to new listing page...');
-      router.push('/my-listings/new');
+      // Check auth BEFORE navigating to prevent redirect loop
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('🔐 Auth check error:', error);
+        router.push('/login?next=/my-listings/new');
+        return;
+      }
+      
+      if (!session || !session.user) {
+        console.log('🔐 No session, redirecting to login');
+        router.push('/login?next=/my-listings/new');
+        return;
+      }
+      
+      console.log('🔐 Valid session, navigating to new listing page');
+      // Use window.location to force full page reload and clear any stale state
+      window.location.href = '/my-listings/new';
       
     } catch (err) {
       console.error('🔐 Error in handlePostDeal:', err);
-      // Fallback to direct navigation
-      window.location.href = '/my-listings/new';
-    } finally {
-      // Don't set loading to false immediately - let navigation happen
-      setTimeout(() => setIsLoading(false), 1000);
+      // Fallback to login
+      window.location.href = '/login?next=/my-listings/new';
     }
+    // Don't set loading to false - let navigation happen
   };
 
   return (

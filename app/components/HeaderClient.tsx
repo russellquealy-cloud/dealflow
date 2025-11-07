@@ -22,11 +22,13 @@ export default function HeaderClient() {
     // initial + keep in sync
     refresh();
     const { data: sub } = supabase.auth.onAuthStateChange((event: string) => {
-      // CRITICAL: Only refresh on actual auth changes, not token refreshes
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      // CRITICAL: Only refresh on actual auth changes, NOT token refreshes
+      // TOKEN_REFRESHED causes auto re-sign-in after sign out
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         refresh();
         router.refresh();
       }
+      // Ignore TOKEN_REFRESHED
     });
 
     return () => {
