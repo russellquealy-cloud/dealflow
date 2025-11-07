@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/app/lib/createSupabaseServer';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10; // Vercel max duration
