@@ -108,44 +108,68 @@ export default function WholesalerPortal() {
         updated_at: new Date().toISOString()
       };
 
+      console.log('💾 Saving profile data:', profileData);
+      
       if (profile) {
         // Update existing profile
-        const { error } = await supabase
+        console.log('📝 Updating existing profile...');
+        const { data: updateData, error: updateError } = await supabase
           .from('profiles')
           .update(profileData)
-          .eq('id', user.id);
+          .eq('id', user.id)
+          .select();
         
-        if (error) throw error;
+        console.log('📝 Update result:', { data: updateData, error: updateError });
+        
+        if (updateError) {
+          console.error('❌ Profile update error:', updateError);
+          throw new Error(`Failed to update profile: ${updateError.message} (Code: ${updateError.code})`);
+        }
       } else {
         // Create new profile
-        const { error } = await supabase
+        console.log('➕ Creating new profile...');
+        const { data: insertData, error: insertError } = await supabase
           .from('profiles')
-          .insert(profileData);
+          .insert(profileData)
+          .select();
         
-        if (error) throw error;
+        console.log('➕ Insert result:', { data: insertData, error: insertError });
+        
+        if (insertError) {
+          console.error('❌ Profile insert error:', insertError);
+          throw new Error(`Failed to create profile: ${insertError.message} (Code: ${insertError.code})`);
+        }
       }
 
       setSaveMessage({ type: 'success', text: 'Profile updated successfully!' });
+      console.log('✅ Profile saved successfully, reloading...');
+      
       // Reload profile data
-      const { data: updatedProfile } = await supabase
+      const { data: updatedProfile, error: reloadError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
       
+      console.log('🔄 Profile reload result:', { profile: updatedProfile, error: reloadError });
+      
       if (updatedProfile) {
         setProfile(updatedProfile);
+        console.log('✅ Profile state updated:', updatedProfile);
       }
       
-      // Redirect after 1.5 seconds
+      // Redirect after 2 seconds to give user time to see success message
       setTimeout(() => {
+        console.log('🔄 Redirecting to /account...');
         router.push('/account');
-      }, 1500);
+      }, 2000);
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('❌ Error updating profile:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile. Please try again.';
+      console.error('❌ Full error details:', error);
       setSaveMessage({ 
         type: 'error', 
-        text: error instanceof Error ? error.message : 'Failed to update profile. Please try again.' 
+        text: errorMessage
       });
     } finally {
       setIsSaving(false);

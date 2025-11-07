@@ -49,36 +49,53 @@ export default function Header() {
 
   React.useEffect(() => {
     const loadUserData = async () => {
+      console.log('🔍 Header - Starting to load user data...');
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('🔍 Header - Session check:', { hasSession: !!session, email: session?.user?.email, error: sessionError?.message });
+        
         if (sessionError) {
           logger.error('Session error:', sessionError);
+          console.error('❌ Header - Session error:', sessionError);
           return;
         }
         
         if (session) {
           setEmail(session.user.email || null);
+          console.log('🔍 Header - Loading profile for user:', session.user.id);
+          
           // Load user role with timeout and error handling
           // Check both 'role' and 'segment' fields to support both naming conventions
           try {
+            const profileStart = Date.now();
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
               .select('role, segment')
               .eq('id', session.user.id)
               .single();
+            const profileTime = Date.now() - profileStart;
+            
+            console.log(`🔍 Header - Profile query took ${profileTime}ms:`, { 
+              profile, 
+              error: profileError ? { message: profileError.message, code: profileError.code } : null 
+            });
             
             if (profileError) {
               logger.error('Error loading profile:', profileError);
+              console.error('❌ Header - Profile error:', profileError);
               // Try again after a short delay
               setTimeout(async () => {
-                const { data: retryProfile } = await supabase
+                console.log('🔄 Header - Retrying profile load...');
+                const { data: retryProfile, error: retryError } = await supabase
                   .from('profiles')
                   .select('role, segment')
                   .eq('id', session.user.id)
                   .single();
+                console.log('🔄 Header - Retry result:', { profile: retryProfile, error: retryError });
                 if (retryProfile) {
                   const role = retryProfile.segment || retryProfile.role || '';
                   logger.log('Retry successful - loaded role:', role);
+                  console.log('✅ Header - Retry successful, role:', role);
                   setUserRole(role);
                 }
               }, 1000);
@@ -87,23 +104,27 @@ export default function Header() {
               // Also check email for test accounts
               const role = profile.segment || profile.role || '';
               logger.log('Loaded user role:', role, 'Profile:', { segment: profile.segment, role: profile.role, email: session.user.email });
-              console.log('🔍 Header - Loaded user role:', role, 'Profile:', { segment: profile.segment, role: profile.role, email: session.user.email });
+              console.log('✅ Header - Loaded user role:', role, 'Profile:', { segment: profile.segment, role: profile.role, email: session.user.email });
+              console.log('🔍 Header - Will show Post a Deal?', role === 'wholesaler');
               setUserRole(role);
             } else {
               console.warn('⚠️ Header - No profile found for user:', session.user.email);
             }
           } catch (error) {
             logger.error('Error in role loading:', error);
+            console.error('❌ Header - Exception loading role:', error);
           }
           // Load unread count
           loadUnreadCount();
         } else {
+          console.log('🔍 Header - No session found');
           setEmail(null);
           setUserRole('');
           setUnreadCount(0);
         }
       } catch (error) {
         logger.error('Error loading user data:', error);
+        console.error('❌ Header - Exception loading user data:', error);
       }
     };
 

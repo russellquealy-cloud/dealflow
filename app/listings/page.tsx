@@ -403,23 +403,15 @@ export default function ListingsPage() {
           .order('created_at', { ascending: false })
           .limit(retryCount === 0 ? 200 : 50); // Reduced limit: 200 for initial, 50 for retry
 
-        // Execute query with timeout protection
-        const queryPromise = query;
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
-        );
+        // Execute query - REMOVED timeout to see actual error
+        // The timeout was masking the real issue
+        console.log('🚀 Starting Supabase query NOW...');
+        const startTime = Date.now();
         
-        let data: Row[] | null = null;
-        let error: { message: string; code?: string; details?: string; hint?: string } | null = null;
-        try {
-          const result = await Promise.race([queryPromise, timeoutPromise]);
-          data = (result as { data: Row[] | null; error: unknown }).data;
-          error = (result as { data: unknown; error: { message: string; code?: string; details?: string; hint?: string } | null }).error;
-        } catch (timeoutError) {
-          console.error('⏱️ Query timed out:', timeoutError);
-          error = { message: timeoutError instanceof Error ? timeoutError.message : 'Query timeout' };
-          data = null;
-        }
+        const { data, error } = await query;
+        
+        const queryTime = Date.now() - startTime;
+        console.log(`⏱️ Query completed in ${queryTime}ms`);
         
         console.log('🏠 Query result:', { 
           hasData: !!data, 
@@ -438,15 +430,18 @@ export default function ListingsPage() {
           orderBy: ['featured DESC', 'created_at DESC']
         });
         
-        // CRITICAL: Also test a simple query to verify RLS
+        // CRITICAL: Test a simple query FIRST to verify RLS before complex query
+        console.log('🧪 Testing simple query FIRST...');
         try {
+          const testStart = Date.now();
           const { data: testData, error: testError } = await supabase
             .from('listings')
             .select('id')
             .limit(1);
-          console.log('🧪 Simple test query:', { 
+          const testTime = Date.now() - testStart;
+          console.log(`🧪 Simple test query completed in ${testTime}ms:`, { 
             found: testData?.length || 0, 
-            error: testError?.message 
+            error: testError ? { message: testError.message, code: testError.code, hint: testError.hint } : null
           });
         } catch (testErr) {
           console.error('🧪 Test query failed:', testErr);
