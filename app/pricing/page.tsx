@@ -21,9 +21,12 @@ function PricingPageInner() {
     };
     checkAuth();
     
-    // Listen for auth changes
+    // Listen for auth changes - only SIGNED_IN/SIGNED_OUT, not TOKEN_REFRESHED
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
-      setIsLoggedIn(!!session);
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setIsLoggedIn(!!session);
+      }
+      // Ignore TOKEN_REFRESHED to prevent auto re-sign-in
     });
     
     return () => {
