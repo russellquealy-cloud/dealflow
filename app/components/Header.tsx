@@ -210,20 +210,25 @@ export default function Header() {
       setUserRole('');
       setUnreadCount(0);
       
+      // CRITICAL: Disable auto token refresh BEFORE signing out
+      // This prevents TOKEN_REFRESHED from triggering re-sign-in
+      try {
+        // Clear all Supabase-related storage
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.includes('supabase') || key.includes('sb-') || key.includes('dealflow-auth')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('Could not clear localStorage:', e);
+      }
+      
       // Sign out from Supabase client-side
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
         console.error('❌ Client sign out error:', signOutError);
         logger.warn('Client-side sign out error:', signOutError);
-      }
-      
-      // Clear localStorage to prevent auto re-sign-in
-      try {
-        localStorage.removeItem('dealflow-auth-token');
-        localStorage.removeItem('sb-access-token');
-        localStorage.removeItem('sb-refresh-token');
-      } catch (e) {
-        console.warn('Could not clear localStorage:', e);
       }
       
       // Call server-side signout endpoint
@@ -235,21 +240,20 @@ export default function Header() {
         });
         
         console.log('🔐 Server sign out response:', response.status);
-        
-        // Force redirect immediately - don't wait
-        window.location.href = '/welcome';
       } catch (fetchError) {
         console.warn('Server sign out fetch error:', fetchError);
         logger.warn('Server sign out fetch error (non-critical):', fetchError);
-        // Force redirect even if fetch fails
-        window.location.href = '/welcome';
       }
+      
+      // Force redirect immediately - don't wait for anything
+      // Use replace to prevent back button from going back to signed-in state
+      window.location.replace('/welcome');
       
     } catch (error) {
       console.error('❌ Sign out error:', error);
       logger.error('🔐 Sign out error:', error);
       // Force redirect even if sign out fails
-      window.location.href = '/welcome';
+      window.location.replace('/welcome');
     }
   };
 

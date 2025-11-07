@@ -391,17 +391,14 @@ export default function ListingsPage() {
         logger.log(`Loading listings from Supabase... (attempt ${retryCount + 1})`);
         console.log('🏠 Loading listings from Supabase...', { attempt: retryCount + 1 });
         
-        // Optimized query - load essential fields only
-        // Filter out null/empty coordinates for map performance
-        // Use smaller limit and prioritize featured listings
+        // SIMPLIFIED query to diagnose timeout issue
+        // Start with minimal fields and simple filters
         const query = supabase
           .from('listings')
-          .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until')
-          .not('latitude', 'is', null) // Only get listings with coordinates
+          .select('id, title, address, city, state, price, latitude, longitude, featured, created_at')
+          .not('latitude', 'is', null)
           .not('longitude', 'is', null)
-          .order('featured', { ascending: false, nullsFirst: false })
-          .order('created_at', { ascending: false })
-          .limit(retryCount === 0 ? 200 : 50); // Reduced limit: 200 for initial, 50 for retry
+          .limit(retryCount === 0 ? 50 : 20); // Much smaller limit to test
 
         // Execute query - REMOVED timeout to see actual error
         // The timeout was masking the real issue
