@@ -389,6 +389,7 @@ export default function ListingsPage() {
         }
         
         logger.log(`Loading listings from Supabase... (attempt ${retryCount + 1})`);
+        console.log('🏠 Loading listings from Supabase...', { attempt: retryCount + 1 });
         
         // Optimized query - load essential fields only
         // Filter out null/empty coordinates for map performance
@@ -403,6 +404,13 @@ export default function ListingsPage() {
           .limit(retryCount === 0 ? 200 : 50); // Reduced limit: 200 for initial, 50 for retry
 
         const { data, error } = await query;
+        
+        console.log('🏠 Query result:', { 
+          hasData: !!data, 
+          dataLength: data?.length || 0, 
+          hasError: !!error,
+          error: error ? { message: error.message, code: error.code } : null
+        });
 
         // Clear timeout since we got a response
         if (timeoutId) {
@@ -414,7 +422,8 @@ export default function ListingsPage() {
 
         if (error) {
           logger.error('Error loading listings:', error);
-          logger.error('Error details:', {
+          console.error('❌ Error loading listings:', error);
+          console.error('Error details:', {
             message: error.message,
             code: error.code,
             details: error.details,
@@ -427,6 +436,7 @@ export default function ListingsPage() {
         }
 
         logger.log(`Listings query completed. Found ${data?.length || 0} listings.`);
+        console.log(`✅ Listings query completed. Found ${data?.length || 0} listings.`);
 
         if (data && Array.isArray(data) && data.length > 0) {
           const rows = data as unknown as Row[];
@@ -488,6 +498,23 @@ export default function ListingsPage() {
         } else {
           // No data returned - set empty arrays
           logger.log('No listings found in database');
+          console.warn('⚠️ No listings found in database. Possible reasons:');
+          console.warn('  1. No listings exist in the database');
+          console.warn('  2. All listings are missing latitude/longitude coordinates');
+          console.warn('  3. RLS (Row Level Security) is blocking the query');
+          
+          // Try a query without coordinate filter to see if listings exist
+          const { data: allListingsCheck, error: checkError } = await supabase
+            .from('listings')
+            .select('id, address, latitude, longitude')
+            .limit(10);
+          
+          console.log('🔍 Checking for listings without coordinate filter:', {
+            found: allListingsCheck?.length || 0,
+            sample: allListingsCheck?.slice(0, 3),
+            error: checkError?.message
+          });
+          
           setAllListings([]);
           setAllPoints([]);
         }
