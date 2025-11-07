@@ -409,7 +409,16 @@ export default function ListingsPage() {
           hasData: !!data, 
           dataLength: data?.length || 0, 
           hasError: !!error,
-          error: error ? { message: error.message, code: error.code } : null
+          error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null,
+          firstListing: data && data.length > 0 ? data[0] : null
+        });
+        
+        // Also log the actual query being executed
+        console.log('🔍 Query details:', {
+          table: 'listings',
+          filters: 'latitude IS NOT NULL AND longitude IS NOT NULL',
+          limit: retryCount === 0 ? 200 : 50,
+          orderBy: ['featured DESC', 'created_at DESC']
         });
 
         // Clear timeout since we got a response

@@ -87,7 +87,10 @@ export default function Header() {
               // Also check email for test accounts
               const role = profile.segment || profile.role || '';
               logger.log('Loaded user role:', role, 'Profile:', { segment: profile.segment, role: profile.role, email: session.user.email });
+              console.log('🔍 Header - Loaded user role:', role, 'Profile:', { segment: profile.segment, role: profile.role, email: session.user.email });
               setUserRole(role);
+            } else {
+              console.warn('⚠️ Header - No profile found for user:', session.user.email);
             }
           } catch (error) {
             logger.error('Error in role loading:', error);
@@ -126,7 +129,10 @@ export default function Header() {
               // Prefer 'segment' over 'role' for consistency
               const role = profile.segment || profile.role || '';
               logger.log('Auth change - loaded role:', role);
+              console.log('🔍 Header - Auth change - loaded role:', role, 'Profile:', { segment: profile.segment, role: profile.role });
               setUserRole(role);
+            } else {
+              console.warn('⚠️ Header - Auth change - No profile found for user:', session.user.email);
             }
           } catch (error) {
             logger.error('Error in role loading on auth change:', error);
@@ -235,7 +241,7 @@ export default function Header() {
         {userRole === 'admin' && (
           <Link href="/admin" style={{ textDecoration: "none", color: "#dc2626", fontWeight: 600 }}>🔒 Admin</Link>
         )}
-        {/* Only show "Post a Deal" for wholesalers, not investors */}
+        {/* Show "Post a Deal" for ALL wholesalers regardless of tier */}
         {userRole === 'wholesaler' && <PostDealButton />}
                {email ? (
                  <>

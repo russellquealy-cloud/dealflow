@@ -20,7 +20,9 @@ ORDER BY policyname;
 -- ========================================
 -- Allow anyone (authenticated or anonymous) to read/listings
 -- This is needed for the listings page to work
+-- Drop and recreate to ensure it exists and is correct
 DROP POLICY IF EXISTS listings_read_all ON listings;
+DROP POLICY IF EXISTS "listings_read_all" ON listings;
 CREATE POLICY listings_read_all ON listings
   FOR SELECT
   USING (true);  -- Allow everyone to read all listings
