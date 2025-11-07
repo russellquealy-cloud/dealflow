@@ -405,28 +405,29 @@ export default function ListingsPage() {
 
         // Execute query with timeout protection
         const queryPromise = query;
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
         );
         
-        let data, error;
+        let data: Row[] | null = null;
+        let error: { message: string; code?: string; details?: string; hint?: string } | null = null;
         try {
-          const result = await Promise.race([queryPromise, timeoutPromise]) as { data: unknown; error: unknown };
-          data = result.data;
-          error = result.error;
+          const result = await Promise.race([queryPromise, timeoutPromise]);
+          data = (result as { data: Row[] | null; error: unknown }).data;
+          error = (result as { data: unknown; error: { message: string; code?: string; details?: string; hint?: string } | null }).error;
         } catch (timeoutError) {
           console.error('⏱️ Query timed out:', timeoutError);
-          error = timeoutError as { message: string; code?: string };
+          error = { message: timeoutError instanceof Error ? timeoutError.message : 'Query timeout' };
           data = null;
         }
         
         console.log('🏠 Query result:', { 
           hasData: !!data, 
-          dataLength: data?.length || 0, 
+          dataLength: Array.isArray(data) ? data.length : 0, 
           hasError: !!error,
           error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null,
-          firstListing: data && data.length > 0 ? data[0] : null,
-          sampleIds: data && data.length > 0 ? data.slice(0, 3).map((l: { id: string }) => l.id) : []
+          firstListing: Array.isArray(data) && data.length > 0 ? data[0] : null,
+          sampleIds: Array.isArray(data) && data.length > 0 ? data.slice(0, 3).map((l: Row) => l.id) : []
         });
         
         // Also log the actual query being executed
