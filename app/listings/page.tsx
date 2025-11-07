@@ -408,17 +408,19 @@ export default function ListingsPage() {
         console.log('🚀 Starting Supabase query NOW...');
         const startTime = Date.now();
         
-        let data, error;
+        let data: Row[] | null = null;
+        let error: { message: string; code?: string; details?: string; hint?: string } | null = null;
         try {
           const result = await Promise.race([
             query,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout after 30 seconds')), 30000))
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Query timeout after 30 seconds')), 30000))
           ]);
-          data = (result as { data: unknown; error: unknown }).data;
-          error = (result as { data: unknown; error: unknown }).error;
+          const queryResult = result as { data: Row[] | null; error: { message: string; code?: string; details?: string; hint?: string } | null };
+          data = queryResult.data;
+          error = queryResult.error;
         } catch (timeoutError) {
           console.error('⏱️ Query timed out after 30 seconds:', timeoutError);
-          error = { message: 'Query timeout', code: 'TIMEOUT' };
+          error = { message: timeoutError instanceof Error ? timeoutError.message : 'Query timeout', code: 'TIMEOUT' };
           data = null;
         }
         
