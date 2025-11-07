@@ -3,40 +3,19 @@
 
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
-import { supabase } from '@/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { Session } from '@supabase/supabase-js';
+import { useAuth } from '@/providers/AuthProvider';
 
 function PricingPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { session } = useAuth();
+  const isLoggedIn = Boolean(session);
   const [userType, setUserType] = useState<'investor' | 'wholesaler'>('investor');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
-    };
-    checkAuth();
-    
-    // Listen for auth changes - only SIGNED_IN/SIGNED_OUT, not TOKEN_REFRESHED
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        setIsLoggedIn(!!session);
-      }
-      // Ignore TOKEN_REFRESHED to prevent auto re-sign-in
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
   const handleUpgrade = async (segment: 'investor' | 'wholesaler', tier: 'basic' | 'pro') => {
     // Check auth synchronously before redirecting
-    const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       router.push(`/login?next=/pricing&segment=${segment}&tier=${tier}&period=${billingPeriod}`);
       return;

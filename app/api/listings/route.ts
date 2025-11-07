@@ -18,6 +18,11 @@ interface ListingsQueryParams {
   city?: string;
   state?: string;
   search?: string;
+  sortBy?: string;
+  south?: number;
+  north?: number;
+  west?: number;
+  east?: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -43,6 +48,11 @@ export async function GET(request: NextRequest) {
       city: searchParams.get('city') || undefined,
       state: searchParams.get('state') || undefined,
       search: searchParams.get('search') || undefined,
+      sortBy: searchParams.get('sortBy') || undefined,
+      south: searchParams.get('south') ? parseFloat(searchParams.get('south')!) : undefined,
+      north: searchParams.get('north') ? parseFloat(searchParams.get('north')!) : undefined,
+      west: searchParams.get('west') ? parseFloat(searchParams.get('west')!) : undefined,
+      east: searchParams.get('east') ? parseFloat(searchParams.get('east')!) : undefined,
     };
 
     const supabase = await createSupabaseServer();
@@ -53,8 +63,20 @@ export async function GET(request: NextRequest) {
       .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until', { count: 'exact' })
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
-      .order('created_at', { ascending: false })
       .range(params.offset!, params.offset! + params.limit! - 1);
+
+    if (
+      params.south !== undefined &&
+      params.north !== undefined &&
+      params.west !== undefined &&
+      params.east !== undefined
+    ) {
+      query = query
+        .gte('latitude', params.south)
+        .lte('latitude', params.north)
+        .gte('longitude', params.west)
+        .lte('longitude', params.east);
+    }
 
     // Apply filters only when present (avoid unindexed wildcard searches)
     if (params.minPrice !== undefined) {
@@ -96,6 +118,27 @@ export async function GET(request: NextRequest) {
       const searchTerm = params.search.trim();
       // Use OR for multiple indexed fields, but keep it simple
       query = query.or(`address.ilike.${searchTerm}%,city.ilike.${searchTerm}%,state.ilike.${searchTerm}%`);
+    }
+
+    query = query.order('featured', { ascending: false, nullsFirst: false });
+
+    const sortBy = params.sortBy || 'newest';
+    switch (sortBy) {
+      case 'price_asc':
+        query = query.order('price', { ascending: true, nullsFirst: false });
+        break;
+      case 'price_desc':
+        query = query.order('price', { ascending: false, nullsFirst: false });
+        break;
+      case 'sqft_asc':
+        query = query.order('sqft', { ascending: true, nullsFirst: false });
+        break;
+      case 'sqft_desc':
+        query = query.order('sqft', { ascending: false, nullsFirst: false });
+        break;
+      default:
+        query = query.order('created_at', { ascending: false, nullsFirst: false });
+        break;
     }
 
     // Execute query with timeout

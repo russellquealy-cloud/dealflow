@@ -119,17 +119,6 @@ export class MobileSessionManager {
       
       // Try to restore existing session
       await this.restoreSession();
-      
-      // Listen for auth state changes
-      supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
-        console.log('🔐 Mobile auth state changed:', event);
-        
-        if (event === 'SIGNED_IN' && session) {
-          this.storeSession(session);
-        } else if (event === 'SIGNED_OUT') {
-          this.clearStoredSession();
-        }
-      });
     }
   }
 

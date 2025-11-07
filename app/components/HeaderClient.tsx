@@ -2,42 +2,35 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { supabase } from "@/supabase/client";
+import { useCallback } from "react";
+import { useAuth } from "@/providers/AuthProvider";
+import { logger } from "@/lib/logger";
 
 export default function HeaderClient() {
   const pathname = usePathname();
   const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
+  const { session, refreshSession } = useAuth();
 
-  useEffect(() => {
-    let mounted = true;
-
-    const refresh = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setEmail(data.session?.user?.email ?? null);
-    };
-
-    // initial + keep in sync
-    refresh();
-    const { data: sub } = supabase.auth.onAuthStateChange((event: string) => {
-      // CRITICAL: Only refresh on actual auth changes, NOT token refreshes
-      // TOKEN_REFRESHED causes auto re-sign-in after sign out
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        refresh();
-        router.refresh();
-      }
-      // Ignore TOKEN_REFRESHED
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [router]);
-
+  const email = session?.user?.email ?? null;
   const nextParam = encodeURIComponent(pathname || "/");
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      const response = await fetch("/auth/signout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        logger.warn("HeaderClient: sign-out route responded with non-OK status", { status: response.status });
+      }
+    } catch (error) {
+      logger.warn("HeaderClient: error calling sign-out route", error);
+    } finally {
+      await refreshSession();
+      router.replace("/login");
+    }
+  }, [refreshSession, router]);
 
   return (
     <header
@@ -64,9 +57,9 @@ export default function HeaderClient() {
         </span>
 
         {email ? (
-          <form action="/auth/signout" method="post" style={{ margin: 0 }}>
-            <button type="submit" className="border px-3 py-1 rounded">Sign out</button>
-          </form>
+          <button type="button" className="border px-3 py-1 rounded" onClick={handleSignOut}>
+            Sign out
+          </button>
         ) : (
           <Link href={`/login?next=${nextParam}`} className="border px-3 py-1 rounded">
             Sign in
