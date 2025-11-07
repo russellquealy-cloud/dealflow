@@ -276,17 +276,15 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     clustererRef.current.addMarkers(newMarkers);
   }, [map, isMapReady]);
 
-  // Memoize points array to prevent unnecessary re-renders
-  const memoizedPoints = useMemo(() => points, [JSON.stringify(points.map(p => p.id))]);
-  const pointsRef = useRef<Point[]>([]);
+  // Memoize points IDs array to prevent unnecessary re-renders
+  const pointsIdsArray = useMemo(() => points.map(p => p.id).sort(), [points]);
+  const pointsIdsString = useMemo(() => pointsIdsArray.join(','), [pointsIdsArray]);
+  const pointsRef = useRef<string>('');
   
   React.useEffect(() => {
     // Only update if points actually changed (by ID comparison) and map is ready
-    const pointsIds = points.map(p => p.id).join(',');
-    const prevIds = pointsRef.current.map(p => p.id).join(',');
-    
-    if (pointsIds !== prevIds && isMapReady && map) {
-      pointsRef.current = points;
+    if (pointsIdsString !== pointsRef.current && isMapReady && map) {
+      pointsRef.current = pointsIdsString;
       if (points && points.length > 0) {
         createMarkers(points);
       } else if (points.length === 0) {
@@ -298,7 +296,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
         markersRef.current = [];
       }
     }
-  }, [memoizedPoints, createMarkers, isMapReady, map]);
+  }, [pointsIdsString, points, createMarkers, isMapReady, map]);
 
   // Handle drawing completion - store in refs, not state (per guardrails)
   const onDrawingComplete = useCallback((polygon: google.maps.Polygon) => {

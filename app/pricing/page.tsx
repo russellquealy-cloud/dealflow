@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { Session } from '@supabase/supabase-js';
 
 function PricingPageInner() {
   const router = useRouter();
@@ -21,7 +22,7 @@ function PricingPageInner() {
     checkAuth();
     
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
       setIsLoggedIn(!!session);
     });
     

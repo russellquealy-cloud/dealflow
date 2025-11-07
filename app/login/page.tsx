@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import { logger } from '@/lib/logger';
+import type { Session } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ function LoginInner() {
   // Check if user is already signed in and redirect
   useEffect(() => {
     let isMounted = true;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       if (isMounted && session) {
         // User is already signed in, use hard redirect to clear any stale state
         window.location.href = next;

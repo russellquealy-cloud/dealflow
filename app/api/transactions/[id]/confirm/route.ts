@@ -7,7 +7,7 @@ import { createSupabaseServer } from '@/lib/createSupabaseServer';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createSupabaseServer();
@@ -17,7 +17,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const transactionId = params.id;
+    const { id } = await params;
+    const transactionId = id;
 
     // Get transaction
     const { data: transaction, error: fetchError } = await supabase

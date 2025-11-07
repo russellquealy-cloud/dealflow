@@ -166,7 +166,7 @@ export default function Header() {
       setUnreadCount(0);
       
       // Sign out from Supabase client-side (non-blocking)
-      supabase.auth.signOut().catch((err) => {
+      supabase.auth.signOut().catch((err: unknown) => {
         logger.warn('Client-side sign out error (non-critical):', err);
       });
       
