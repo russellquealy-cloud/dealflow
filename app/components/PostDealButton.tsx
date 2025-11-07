@@ -9,46 +9,24 @@ export default function PostDealButton() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePostDeal = async () => {
+    if (isLoading) return; // Prevent double-clicks
+    
     try {
       setIsLoading(true);
-      console.log('🔐 Post Deal button clicked - checking authentication...');
+      console.log('🔐 Post Deal button clicked');
       
-      // Get the current session
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      console.log('🔐 Session check result:', {
-        hasSession: !!session,
-        userEmail: session?.user?.email,
-        userId: session?.user?.id,
-        error: error?.message
-      });
-      
-      // Check cookies
-      const cookies = document.cookie.split(';').filter(c => c.includes('supabase'));
-      console.log('🍪 Supabase cookies found:', cookies.length > 0 ? cookies : 'None');
-      
-      if (error) {
-        console.error('🔐 Session error:', error);
-        router.push('/login?next=/my-listings/new');
-        return;
-      }
-      
-      if (!session || !session.user) {
-        console.log('🔐 No session found, redirecting to login');
-        router.push('/login?next=/my-listings/new');
-        return;
-      }
-      
-      console.log('🔐 Valid session found, redirecting to new listing page');
-      
-      // Force refresh the page to ensure server-side session is synced
-      window.location.href = '/my-listings/new';
+      // Simple check - if we're on the page, user is likely authenticated
+      // Just redirect directly - the page will handle auth check
+      console.log('🔐 Redirecting to new listing page...');
+      router.push('/my-listings/new');
       
     } catch (err) {
       console.error('🔐 Error in handlePostDeal:', err);
-      router.push('/login?next=/my-listings/new');
+      // Fallback to direct navigation
+      window.location.href = '/my-listings/new';
     } finally {
-      setIsLoading(false);
+      // Don't set loading to false immediately - let navigation happen
+      setTimeout(() => setIsLoading(false), 1000);
     }
   };
 

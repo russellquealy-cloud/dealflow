@@ -107,15 +107,19 @@ export default function Header() {
               console.log('✅ Header - Loaded user role:', role, 'Profile:', { segment: profile.segment, role: profile.role, email: session.user.email });
               console.log('🔍 Header - Will show Post a Deal?', role === 'wholesaler');
               setUserRole(role);
+              // Load unread count AFTER role is set
+              loadUnreadCount();
             } else {
               console.warn('⚠️ Header - No profile found for user:', session.user.email);
+              // Still load unread count even if no profile
+              loadUnreadCount();
             }
           } catch (error) {
             logger.error('Error in role loading:', error);
             console.error('❌ Header - Exception loading role:', error);
+            // Still try to load unread count
+            loadUnreadCount();
           }
-          // Load unread count
-          loadUnreadCount();
         } else {
           console.log('🔍 Header - No session found');
           setEmail(null);
@@ -131,10 +135,22 @@ export default function Header() {
     loadUserData();
     
     const { data: sub } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      // CRITICAL: Only update on actual auth changes, not token refreshes
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        setEmail(session?.user?.email || null);
-        if (session) {
+      // CRITICAL: Only update on actual auth changes, NOT token refreshes
+      // TOKEN_REFRESHED causes auto re-sign-in after sign out
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        console.log('🔍 Header - Auth state changed:', event);
+        
+        if (event === 'SIGNED_OUT') {
+          // Clear state immediately on sign out
+          console.log('🔍 Header - Signed out, clearing state');
+          setEmail(null);
+          setUserRole('');
+          setUnreadCount(0);
+          return; // Don't reload profile on sign out
+        }
+        
+        if (session && event === 'SIGNED_IN') {
+          setEmail(session.user.email || null);
           // Load user role with error handling
           // Check both 'role' and 'segment' fields to support both naming conventions
           try {
@@ -146,25 +162,25 @@ export default function Header() {
             
             if (profileError) {
               logger.error('Error loading profile on auth change:', profileError);
+              console.error('❌ Header - Auth change profile error:', profileError);
             } else if (profile) {
               // Prefer 'segment' over 'role' for consistency
               const role = profile.segment || profile.role || '';
               logger.log('Auth change - loaded role:', role);
-              console.log('🔍 Header - Auth change - loaded role:', role, 'Profile:', { segment: profile.segment, role: profile.role });
+              console.log('✅ Header - Auth change - loaded role:', role, 'Profile:', { segment: profile.segment, role: profile.role });
               setUserRole(role);
             } else {
               console.warn('⚠️ Header - Auth change - No profile found for user:', session.user.email);
             }
           } catch (error) {
             logger.error('Error in role loading on auth change:', error);
+            console.error('❌ Header - Auth change exception:', error);
           }
           // Load unread count
           loadUnreadCount();
-        } else {
-          setUserRole('');
-          setUnreadCount(0);
         }
       }
+      // Ignore TOKEN_REFRESHED to prevent auto re-sign-in
     });
     
     // Poll for unread count every 30 seconds if logged in
@@ -186,42 +202,51 @@ export default function Header() {
 
   const signOut = async () => {
     try {
+      console.log('🔐 Signing out...');
       logger.log('🔐 Signing out...');
       
-      // Clear local state immediately
+      // Clear local state immediately FIRST
       setEmail(null);
       setUserRole('');
       setUnreadCount(0);
       
-      // Sign out from Supabase client-side (non-blocking)
-      supabase.auth.signOut().catch((err: unknown) => {
-        logger.warn('Client-side sign out error (non-critical):', err);
-      });
+      // Sign out from Supabase client-side
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        console.error('❌ Client sign out error:', signOutError);
+        logger.warn('Client-side sign out error:', signOutError);
+      }
       
-      // Call server-side signout endpoint and wait for redirect
+      // Clear localStorage to prevent auto re-sign-in
+      try {
+        localStorage.removeItem('dealflow-auth-token');
+        localStorage.removeItem('sb-access-token');
+        localStorage.removeItem('sb-refresh-token');
+      } catch (e) {
+        console.warn('Could not clear localStorage:', e);
+      }
+      
+      // Call server-side signout endpoint
       try {
         const response = await fetch('/auth/signout', { 
           method: 'POST',
           credentials: 'include',
-          redirect: 'manual' // Handle redirect manually
+          redirect: 'manual'
         });
         
-        // If we get a redirect response, follow it
-        if (response.type === 'opaqueredirect' || response.status === 302) {
-          window.location.href = '/welcome';
-        } else {
-          // Fallback: redirect after short delay
-          setTimeout(() => {
-            window.location.href = '/welcome';
-          }, 100);
-        }
+        console.log('🔐 Server sign out response:', response.status);
+        
+        // Force redirect immediately - don't wait
+        window.location.href = '/welcome';
       } catch (fetchError) {
+        console.warn('Server sign out fetch error:', fetchError);
         logger.warn('Server sign out fetch error (non-critical):', fetchError);
         // Force redirect even if fetch fails
         window.location.href = '/welcome';
       }
       
     } catch (error) {
+      console.error('❌ Sign out error:', error);
       logger.error('🔐 Sign out error:', error);
       // Force redirect even if sign out fails
       window.location.href = '/welcome';
