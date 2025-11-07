@@ -146,15 +146,22 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     clustererRef.current = new MarkerClusterer({ map: mapInstance });
 
     // Set up bounds change listener with aggressive anti-flickering
+    // CRITICAL: Only emit bounds on 'idle' event, not on every drag/zoom
+    // This prevents flickering when drawing polygons or changing filters
     const emitBounds = () => {
       // Don't emit bounds if we're panning from an external source (like geocoding)
       if (isPanningRef.current) {
         return;
       }
-      if (mapInstance && onBoundsChange && !isProcessingBoundsRef.current) {
+      // Don't emit if already processing
+      if (isProcessingBoundsRef.current) {
+        return;
+      }
+      
+      if (mapInstance && onBoundsChange) {
         const now = Date.now();
-        // Prevent bounds updates more frequent than every 500ms to eliminate flickering
-        if (now - lastBoundsUpdateRef.current < 500) {
+        // Prevent bounds updates more frequent than every 1000ms to eliminate flickering
+        if (now - lastBoundsUpdateRef.current < 1000) {
           return; // Skip duplicate bounds updates
         }
         
@@ -169,31 +176,30 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
             west: bounds.getSouthWest().lng(),
             east: bounds.getNorthEast().lng()
           };
-          logger.log('Bounds changed significantly, applying spatial filter for bounds:', boundsObject);
+          logger.log('Bounds changed, applying spatial filter:', boundsObject);
           onBoundsChange(boundsObject);
         }
-        // Reset the flag after a longer delay
+        // Reset the flag after delay
         setTimeout(() => {
           isProcessingBoundsRef.current = false;
-        }, 1000);
-      } else if (isProcessingBoundsRef.current) {
-        logger.log('Already processing bounds, ignoring duplicate call');
+        }, 1500);
       }
     };
 
-    // Debounced bounds emission with 500ms delay (per guardrails: 300-500ms)
+    // Debounced bounds emission with 1000ms delay to prevent flickering
     const debouncedEmitBounds = () => {
       if (boundsTimeoutRef.current) {
         clearTimeout(boundsTimeoutRef.current);
       }
-      boundsTimeoutRef.current = setTimeout(emitBounds, 500); // 500ms debounce per guardrails
+      boundsTimeoutRef.current = setTimeout(emitBounds, 1000); // 1s debounce to prevent flickering
     };
 
-    // Add event listeners - only use 'idle' to reduce flickering
+    // CRITICAL: Only listen to 'idle' event, not 'bounds_changed' or 'center_changed'
+    // 'idle' fires only when map stops moving, preventing flickering
     mapInstance.addListener('idle', debouncedEmitBounds);
 
-    // Emit initial bounds
-    setTimeout(emitBounds, 500);
+    // Emit initial bounds after map is fully loaded
+    setTimeout(emitBounds, 1000);
 
     // Save map position on changes
     const savePosition = () => {

@@ -6,6 +6,7 @@ import FiltersBar, { type Filters } from '@/components/FiltersBar';
 import ListingsSplitClient from '@/components/ListingsSplitClient';
 import GoogleMapWrapper from '@/components/GoogleMapWrapper';
 import SearchBarClient from '@/components/SearchBarClient';
+import ListingsSkeleton from '@/components/ListingsSkeleton';
 import { toNum } from '@/lib/format';
 import { logger } from '@/lib/logger';
 import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
@@ -70,6 +71,8 @@ export default function ListingsPage() {
   const [allListings, setAllListings] = useState<ListItem[]>([]);
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<{ message: string; code?: string } | null>(null);
+  const [showSkeleton, setShowSkeleton] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
   const [activeMapBounds, setActiveMapBounds] = useState(false);
@@ -358,131 +361,62 @@ export default function ListingsPage() {
     return handleMapBoundsChangeWithFilters(bounds, filters);
   }, [handleMapBoundsChangeWithFilters, filters]);
 
-  // Load all listings on mount
-  useEffect(() => {
+  // Load listings function (can be called from retry button)
+  const loadListings = useCallback(async () => {
     let isMounted = true;
-    let timeoutId: NodeJS.Timeout | null = null;
 
-    const loadListings = async (retryCount = 0) => {
+    const loadListingsInner = async () => {
       if (!isMounted) return;
 
-      // Clear any existing timeout
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-
-      // Add timeout to prevent infinite loading (15 seconds)
-      timeoutId = setTimeout(() => {
-        if (!isMounted) return;
-        logger.warn('Listings load timeout - setting loading to false');
-        setLoading(false);
-        // Retry once after timeout with simpler query
-        if (retryCount === 0) {
-          logger.log('Retrying listings load with simplified query...');
-          setTimeout(() => loadListings(1), 1000);
-        }
-      }, 15000); // 15 second timeout
-      
       try {
-        if (retryCount === 0) {
-          setLoading(true);
-        }
+        setLoading(true);
+        setError(null);
+        setShowSkeleton(true);
         
-        logger.log(`Loading listings from Supabase... (attempt ${retryCount + 1})`);
-        console.log('🏠 Loading listings from Supabase...', { attempt: retryCount + 1 });
+        // Show skeleton for minimum 800ms
+        const skeletonTimeout = setTimeout(() => {
+          if (isMounted) setShowSkeleton(false);
+        }, 800);
         
-        // SIMPLIFIED query to diagnose timeout issue
-        // Start with minimal fields and simple filters
-        const query = supabase
-          .from('listings')
-          .select('id, title, address, city, state, price, latitude, longitude, featured, created_at')
-          .not('latitude', 'is', null)
-          .not('longitude', 'is', null)
-          .limit(retryCount === 0 ? 50 : 20); // Much smaller limit to test
-
-        // Execute query - REMOVED timeout to see actual error
-        // The timeout was masking the real issue
-        console.log('🚀 Starting Supabase query NOW...');
+        logger.log('Loading listings from API...');
+        console.log('🏠 Loading listings from API...');
+        
+        // Use API endpoint with timeout and error handling
         const startTime = Date.now();
-        
-        let data: Row[] | null = null;
-        let error: { message: string; code?: string; details?: string; hint?: string } | null = null;
-        try {
-          const result = await Promise.race([
-            query,
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Query timeout after 30 seconds')), 30000))
-          ]);
-          const queryResult = result as { data: Row[] | null; error: { message: string; code?: string; details?: string; hint?: string } | null };
-          data = queryResult.data;
-          error = queryResult.error;
-        } catch (timeoutError) {
-          console.error('⏱️ Query timed out after 30 seconds:', timeoutError);
-          error = { message: timeoutError instanceof Error ? timeoutError.message : 'Query timeout', code: 'TIMEOUT' };
-          data = null;
-        }
-        
-        const queryTime = Date.now() - startTime;
-        console.log(`⏱️ Query completed in ${queryTime}ms`);
-        
-        console.log('🏠 Query result:', { 
-          hasData: !!data, 
-          dataLength: Array.isArray(data) ? data.length : 0, 
-          hasError: !!error,
-          error: error ? { message: error.message, code: error.code, details: error.details, hint: error.hint } : null,
-          firstListing: Array.isArray(data) && data.length > 0 ? data[0] : null,
-          sampleIds: Array.isArray(data) && data.length > 0 ? data.slice(0, 3).map((l: Row) => l.id) : []
+        const response = await fetch('/api/listings?limit=40&offset=0', {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(10000) // 10s client timeout
         });
-        
-        // Also log the actual query being executed
-        console.log('🔍 Query details:', {
-          table: 'listings',
-          filters: 'latitude IS NOT NULL AND longitude IS NOT NULL',
-          limit: retryCount === 0 ? 200 : 50,
-          orderBy: ['featured DESC', 'created_at DESC']
-        });
-        
-        // CRITICAL: Test a simple query FIRST to verify RLS before complex query
-        console.log('🧪 Testing simple query FIRST...');
-        try {
-          const testStart = Date.now();
-          const { data: testData, error: testError } = await supabase
-            .from('listings')
-            .select('id')
-            .limit(1);
-          const testTime = Date.now() - testStart;
-          console.log(`🧪 Simple test query completed in ${testTime}ms:`, { 
-            found: testData?.length || 0, 
-            error: testError ? { message: testError.message, code: testError.code, hint: testError.hint } : null
-          });
-        } catch (testErr) {
-          console.error('🧪 Test query failed:', testErr);
+
+        const elapsed = Date.now() - startTime;
+        console.log(`⏱️ API response received in ${elapsed}ms`);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}` } }));
+          throw new Error(errorData.error?.message || `HTTP ${response.status}`);
         }
 
-        // Clear timeout since we got a response
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-
-        if (!isMounted) return;
-
-        if (error) {
-          logger.error('Error loading listings:', error);
-          console.error('❌ Error loading listings:', error);
-          console.error('Error details:', {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint
-          });
-          setAllListings([]);
-          setAllPoints([]);
-          setLoading(false);
+        const result = await response.json();
+        
+        if (result.error) {
+          console.error('❌ API returned error:', result.error);
+          if (isMounted) {
+            setError({ message: result.error.message, code: result.error.code });
+            setAllListings([]);
+            setAllPoints([]);
+            setLoading(false);
+          }
           return;
         }
 
-        logger.log(`Listings query completed. Found ${data?.length || 0} listings.`);
-        console.log(`✅ Listings query completed. Found ${data?.length || 0} listings.`);
+        console.log(`✅ Loaded ${result.items?.length || 0} listings in ${elapsed}ms`);
+        
+        clearTimeout(skeletonTimeout);
+        if (isMounted) setShowSkeleton(false);
+
+        if (!isMounted) return;
+
+        const data = result.items as Row[] | null;
 
         if (data && Array.isArray(data) && data.length > 0) {
           const rows = data as unknown as Row[];
@@ -508,20 +442,20 @@ export default function ListingsPage() {
               beds: toNum(r.beds) ?? toNum(r.bedrooms),
               baths: toNum(r.baths),
               sqft: toNum(r.sqft),
-              bedrooms: toNum(r.beds) ?? toNum(r.bedrooms), // Also include for backward compatibility
-              bathrooms: toNum(r.baths), // Also include for backward compatibility
-              home_sqft: toNum(r.sqft), // Also include for backward compatibility
+              bedrooms: toNum(r.beds) ?? toNum(r.bedrooms),
+              bathrooms: toNum(r.baths),
+              home_sqft: toNum(r.sqft),
               year_built: toNum(r.year_built),
               lot_size: toNum(r.lot_size),
               property_type: r.property_type ?? undefined,
               description: r.description ?? undefined,
-              images: r.images ?? [],
+              images: Array.isArray(r.images) ? r.images : r.images ? [r.images] : [],
               latitude: toNum(r.latitude),
               longitude: toNum(r.longitude),
               created_at: r.created_at ?? undefined,
               updated_at: r.updated_at ?? undefined,
-              featured: r.featured,
-              featured_until: r.featured_until
+              featured: r.featured ?? false,
+              featured_until: r.featured_until ?? undefined
             };
           });
 
@@ -539,67 +473,46 @@ export default function ListingsPage() {
             }
           }
 
-          setAllListings(items as ListItem[]);
-          setAllPoints(pts);
+          if (isMounted) {
+            setAllListings(items as ListItem[]);
+            setAllPoints(pts);
+            setLoading(false);
+          }
         } else {
-          // No data returned - set empty arrays
-          logger.log('No listings found in database');
-          console.warn('⚠️ No listings found in database. Possible reasons:');
-          console.warn('  1. No listings exist in the database');
-          console.warn('  2. All listings are missing latitude/longitude coordinates');
-          console.warn('  3. RLS (Row Level Security) is blocking the query');
-          
-          // Try a query without coordinate filter to see if listings exist
-          const { data: allListingsCheck, error: checkError } = await supabase
-            .from('listings')
-            .select('id, address, latitude, longitude')
-            .limit(10);
-          
-          console.log('🔍 Checking for listings without coordinate filter:', {
-            found: allListingsCheck?.length || 0,
-            sample: allListingsCheck?.slice(0, 3),
-            error: checkError?.message
-          });
-          
-          setAllListings([]);
-          setAllPoints([]);
+          if (isMounted) {
+            setAllListings([]);
+            setAllPoints([]);
+            setLoading(false);
+          }
         }
-        
-        setLoading(false);
       } catch (err) {
         if (!isMounted) return;
         logger.error('Error loading listings:', err);
+        console.error('❌ Error loading listings:', err);
         
-        // Retry once on error
-        if (retryCount === 0) {
-          logger.log('Retrying listings load after error...');
-          setTimeout(() => loadListings(1), 2000);
-          return;
-        }
-        
-        setAllListings([]);
-        setAllPoints([]);
-      } finally {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load listings';
         if (isMounted) {
+          setError({ message: errorMessage, code: 'FETCH_ERROR' });
+          setAllListings([]);
+          setAllPoints([]);
           setLoading(false);
+          setShowSkeleton(false);
         }
       }
     };
 
-    loadListings();
+    loadListingsInner();
 
     // Cleanup function
     return () => {
       isMounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
     };
   }, []);
+
+  // Load listings on mount
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
 
   // Handle geocoding events from search bar
   useEffect(() => {
@@ -712,10 +625,60 @@ export default function ListingsPage() {
     return MapComponentInner;
   }, [allPoints, handleMapBoundsChange, mapCenter, mapZoom]);
 
-  if (loading) {
+  // Show skeleton or error state
+  if (showSkeleton || (loading && !error)) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Loading listings...</div>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)' }}>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Find Deals</h1>
+          <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center">
+            <div className="flex-1 lg:w-80">
+              <SearchBarClient
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search by address, city, or state..."
+              />
+            </div>
+          </div>
+        </div>
+        <div className="px-4 lg:px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white z-20 relative shadow-sm">
+          <FiltersBar value={filters} onChange={setFilters} />
+        </div>
+        <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+          <ListingsSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+        <div style={{ textAlign: 'center', maxWidth: 500 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, color: '#dc2626' }}>Failed to Load Listings</h2>
+          <p style={{ fontSize: 16, color: '#6b7280', marginBottom: 24 }}>
+            {error.message}
+            {error.code && <span style={{ display: 'block', fontSize: 14, marginTop: 8 }}>Error code: {error.code}</span>}
+          </p>
+          <button
+            onClick={() => {
+              setError(null);
+              loadListings();
+            }}
+            style={{
+              padding: '12px 24px',
+              background: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
