@@ -1,7 +1,9 @@
 'use client';
 
+import * as React from 'react';
 import Image from 'next/image';
 import WatchlistButton from './WatchlistButton';
+import { isSupabaseStorageUrl, supabaseImageLoader } from '@/lib/images';
 
 export type ListingLike = {
   id: string | number;
@@ -62,8 +64,9 @@ export default function ListingCard({ listing }: Props) {
       .join(', ');
 
   const img = listing.cover_image_url ?? (listing.images && listing.images[0]) ?? null;
-  
-  
+  const [imageErrored, setImageErrored] = React.useState(false);
+
+
   const arv = toNum(listing.arv);
   const repairs = toNum(listing.repairs);
   const spread = toNum(listing.spread);
@@ -71,6 +74,9 @@ export default function ListingCard({ listing }: Props) {
 
   // Check if listing is currently featured
   const isFeatured = listing.featured && (!listing.featured_until || new Date(listing.featured_until) > new Date());
+
+  const showImage = img && !imageErrored;
+  const isSupabaseImage = showImage ? isSupabaseStorageUrl(img) : false;
 
   return (
     <div style={{ 
@@ -93,26 +99,19 @@ export default function ListingCard({ listing }: Props) {
     >
       {/* Image Section */}
       <div style={{ position: 'relative', width: '100%', height: '200px', overflow: 'hidden', background: '#f3f4f6' }}>
-        {img ? (
+        {showImage ? (
           <Image 
             src={img} 
             alt={address || 'Property image'} 
             fill 
             style={{ objectFit: 'cover' }} 
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            onError={(e) => {
-              console.error('Image failed to load:', img, e);
-              // Try to reload the image after a short delay
-              setTimeout(() => {
-                const imgElement = e.target as HTMLImageElement;
-                if (imgElement) {
-                  imgElement.src = img;
-                }
-              }, 1000);
+            onError={() => {
+              console.warn('ListingCard image failed to load, falling back to placeholder', img);
+              setImageErrored(true);
             }}
-            onLoad={() => {
-              console.log('Image loaded successfully:', img);
-            }}
+            loader={isSupabaseImage ? supabaseImageLoader : undefined}
+            unoptimized={!isSupabaseImage}
           />
         ) : (
           <div style={{ 

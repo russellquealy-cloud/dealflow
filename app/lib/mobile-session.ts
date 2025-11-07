@@ -132,6 +132,20 @@ export class MobileSessionManager {
       });
     }
   }
+
+  handleAuthEvent(event: string, session: Session | null) {
+    if (!this.isMobileDevice()) {
+      return;
+    }
+
+    if (event === 'SIGNED_IN' && session) {
+      this.storeSession(session);
+    }
+
+    if (event === 'SIGNED_OUT') {
+      this.clearStoredSession();
+    }
+  }
 }
 
 // Export singleton instance
