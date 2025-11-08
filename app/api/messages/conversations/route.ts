@@ -35,8 +35,10 @@ async function buildConversationFallback(
     throw error;
   }
 
+  const typedMessages = (messages ?? []) as RawMessage[];
+
   const userIds = new Set<string>();
-  messages?.forEach((message: RawMessage) => {
+  typedMessages.forEach((message) => {
     userIds.add(message.from_id);
     userIds.add(message.to_id);
   });
@@ -70,7 +72,7 @@ async function buildConversationFallback(
     }
   >();
 
-  messages?.forEach((message: RawMessage) => {
+  typedMessages.forEach((message) => {
     const isFromUser = message.from_id === userId;
     const otherUserId = isFromUser ? message.to_id : message.from_id;
     const existing = conversationMap.get(message.thread_id);
