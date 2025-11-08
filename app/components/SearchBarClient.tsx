@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useJsApiLoader } from '@react-google-maps/api';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SearchBarClientProps {
   value?: string;
@@ -27,26 +26,12 @@ export default function SearchBarClient({
     setQ(value);
   }, [value]);
 
-  const shouldLoadPlaces = useMemo(
-    () => Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY),
-    []
-  );
-
-  const { isLoaded } = useJsApiLoader({
-    id: 'dealflow-google-places-search',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
-    libraries: ['places'],
-    preventGoogleFontsLoading: true,
-    // Avoid loading when key missing to keep CSR stable
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    enableScripts: shouldLoadPlaces,
-  });
-
   useEffect(() => {
-    if (!isLoaded || serviceRef.current || !window.google?.maps?.places) return;
+    if (serviceRef.current) return;
+    if (typeof window === 'undefined') return;
+    if (!window.google?.maps?.places?.AutocompleteService) return;
     serviceRef.current = new google.maps.places.AutocompleteService();
-  }, [isLoaded]);
+  }, []);
 
   useEffect(() => () => {
     if (debounceRef.current) {
@@ -61,6 +46,10 @@ export default function SearchBarClient({
 
   const fetchSuggestions = useCallback(
     (input: string) => {
+      if (!serviceRef.current && typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
+        serviceRef.current = new google.maps.places.AutocompleteService();
+      }
+
       if (!serviceRef.current) {
         clearSuggestions();
         return;
@@ -113,7 +102,7 @@ export default function SearchBarClient({
     if (onChange) {
       onChange(newValue);
     }
-    if (shouldLoadPlaces && newValue.length >= 3) {
+    if (serviceRef.current && newValue.length >= 3) {
       debouncedFetch(newValue);
     } else {
       clearSuggestions();
@@ -178,22 +167,4 @@ export default function SearchBarClient({
                 key={prediction.place_id}
                 className={`cursor-pointer px-3 py-2 text-sm ${
                   index === activeIndex ? 'bg-blue-100 text-blue-700' : 'text-gray-700'
-                }`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSuggestionSelect(prediction);
-                }}
-                onMouseEnter={() => setActiveIndex(index)}
-              >
-                {prediction.description}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <button type="submit" className="rounded-md bg-black px-3 py-2 text-white hover:opacity-90">
-        Search
-      </button>
-    </form>
-  );
-}
+                }`
