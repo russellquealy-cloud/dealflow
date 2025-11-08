@@ -19,7 +19,7 @@ export default function SearchBarClient({
   const [q, setQ] = useState(value);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLFormElement | null>(null);
   const debounceRef = useRef<number | null>(null);
   const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
 
