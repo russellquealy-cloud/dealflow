@@ -1,143 +1,150 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/supabase/server';
+import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { getAuthUser } from "@/lib/auth/server";
 
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createServerClient();
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+export const runtime = "nodejs";
 
-    if (sessionError) {
-      console.error('Session error in messages API:', sessionError);
-      return NextResponse.json({ error: 'Authentication error' }, { status: 401 });
-    }
+type RawMessage = {
+  thread_id: string;
+  listing_id: string;
+  from_id: string;
+  to_id: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+  listing?: { title?: string | null; address?: string | null } | null;
+};
 
-    if (!session || !session.user) {
-      console.log('No session found in messages API');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+type ProfileSummary = {
+  id: string;
+  full_name?: string | null;
+};
 
-    const user = session.user;
+async function buildConversationFallback(
+  supabase: SupabaseClient,
+  userId: string
+) {
+  const { data: messages, error } = await supabase
+    .from("messages")
+    .select("thread_id, listing_id, from_id, to_id, body, created_at, read_at, listing:listings(id, title, address)")
+    .or(`from_id.eq.${userId},to_id.eq.${userId}`)
+    .order("created_at", { ascending: false })
+    .limit(500);
 
-    // Get all messages for this user
-    // Optimize query by using index-friendly filters
-    console.log('Fetching messages for user:', user.id);
-    
-    const { data: messages, error } = await supabase
-      .from('messages')
-      .select('*, listing:listings(id, title, address)')
-      .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
-      .order('created_at', { ascending: false })
-      .limit(500); // Reduced limit for better performance
+  if (error) {
+    throw error;
+  }
 
-    if (error) {
-      console.error('Error fetching messages:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
-      return NextResponse.json({ 
-        error: 'Failed to fetch messages',
-        details: error.message 
-      }, { status: 500 });
-    }
+  const userIds = new Set<string>();
+  messages?.forEach((message: RawMessage) => {
+    userIds.add(message.from_id);
+    userIds.add(message.to_id);
+  });
 
-    console.log(`Found ${messages?.length || 0} messages`);
-
-    // Get user profiles for sender/recipient names
-    const userIds = new Set<string>();
-    messages?.forEach((msg: { from_id: string; to_id: string }) => {
-      userIds.add(msg.from_id);
-      userIds.add(msg.to_id);
-    });
-
-    let profiles: Array<{ id: string; full_name?: string }> = [];
-    if (userIds.size > 0) {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', Array.from(userIds));
-      
-      if (profileError) {
-        console.error('Error fetching profiles:', profileError);
-        // Continue without profile names
-      } else {
-        profiles = profileData || [];
+  const profileMap = new Map<string, string>();
+  if (userIds.size > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", Array.from(userIds));
+    profiles?.forEach((profile: ProfileSummary) => {
+      if (profile.full_name) {
+        profileMap.set(profile.id, profile.full_name);
       }
-    }
-
-    const profileMap = new Map<string, string>();
-    profiles.forEach((p: { id: string; full_name?: string }) => {
-      if (p.full_name) profileMap.set(p.id, p.full_name);
     });
+  }
 
-    // Group messages by thread_id
-    const conversationMap = new Map<string, {
+  const conversationMap = new Map<
+    string,
+    {
       thread_id: string;
       listing_id: string;
-      listing_title?: string;
-      listing_address?: string;
+      listing_title?: string | null;
+      listing_address?: string | null;
       other_user_id: string;
       other_user_name?: string;
       last_message?: string;
       last_message_at?: string;
       unread_count: number;
       is_unread: boolean;
-    }>();
+    }
+  >();
 
-    messages?.forEach((msg: {
-      thread_id: string;
-      listing_id: string;
-      from_id: string;
-      to_id: string;
-      body: string;
-      created_at: string;
-      read_at: string | null;
-      listing?: { title?: string; address?: string };
-    }) => {
-      const threadId = msg.thread_id;
-      const isFromMe = msg.from_id === user.id;
-      const otherUserId = isFromMe ? msg.to_id : msg.from_id;
-      const otherUserName = profileMap.get(otherUserId);
+  messages?.forEach((message: RawMessage) => {
+    const isFromUser = message.from_id === userId;
+    const otherUserId = isFromUser ? message.to_id : message.from_id;
+    const existing = conversationMap.get(message.thread_id);
 
-      if (!conversationMap.has(threadId)) {
-        conversationMap.set(threadId, {
-          thread_id: threadId,
-          listing_id: msg.listing_id,
-          listing_title: msg.listing?.title,
-          listing_address: msg.listing?.address,
-          other_user_id: otherUserId,
-          other_user_name: otherUserName,
-          last_message: msg.body,
-          last_message_at: msg.created_at,
-          unread_count: !isFromMe && !msg.read_at ? 1 : 0,
-          is_unread: !isFromMe && !msg.read_at
-        });
-      } else {
-        const conv = conversationMap.get(threadId)!;
-        if (new Date(msg.created_at) > new Date(conv.last_message_at || 0)) {
-          conv.last_message = msg.body;
-          conv.last_message_at = msg.created_at;
-        }
-        if (!isFromMe && !msg.read_at) {
-          conv.unread_count += 1;
-          conv.is_unread = true;
+    if (!existing) {
+      conversationMap.set(message.thread_id, {
+        thread_id: message.thread_id,
+        listing_id: message.listing_id,
+        listing_title: message.listing?.title,
+        listing_address: message.listing?.address,
+        other_user_id: otherUserId,
+        other_user_name: profileMap.get(otherUserId),
+        last_message: message.body,
+        last_message_at: message.created_at,
+        unread_count: !isFromUser && !message.read_at ? 1 : 0,
+        is_unread: !isFromUser && !message.read_at,
+      });
+      return;
+    }
+
+    if (
+      message.created_at &&
+      (!existing.last_message_at ||
+        new Date(message.created_at).getTime() >
+          new Date(existing.last_message_at).getTime())
+    ) {
+      existing.last_message = message.body;
+      existing.last_message_at = message.created_at;
+    }
+
+    if (!isFromUser && !message.read_at) {
+      existing.unread_count += 1;
+      existing.is_unread = true;
+    }
+  });
+
+  return Array.from(conversationMap.values()).sort((a, b) => {
+    const timeA = new Date(a.last_message_at ?? 0).getTime();
+    const timeB = new Date(b.last_message_at ?? 0).getTime();
+    return timeB - timeA;
+  });
+}
+
+export async function GET() {
+  try {
+    const { user, supabase } = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data, error } = await supabase
+      .from("messages_conversations_view")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("last_message_at", { ascending: false });
+
+    if (error) {
+      if (error.code === "42P01" || error.code === "PGRST116") {
+        try {
+          const fallback = await buildConversationFallback(supabase, user.id);
+          return NextResponse.json({ conversations: fallback });
+        } catch (fallbackError) {
+          console.error("Fallback conversations error", fallbackError);
+          return NextResponse.json({ error: "Server error" }, { status: 500 });
         }
       }
-    });
 
-    const conversations = Array.from(conversationMap.values())
-      .sort((a, b) => {
-        const timeA = new Date(a.last_message_at || 0).getTime();
-        const timeB = new Date(b.last_message_at || 0).getTime();
-        return timeB - timeA;
-      });
+      console.error("Error fetching conversations", error);
+      return NextResponse.json({ error: "Server error" }, { status: 500 });
+    }
 
-    console.log(`Returning ${conversations.length} conversations`);
-    return NextResponse.json({ conversations });
+    return NextResponse.json({ conversations: data ?? [] });
   } catch (error) {
-    console.error('Error in conversations GET:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error("Error in conversations GET", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

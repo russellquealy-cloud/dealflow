@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import Link from 'next/link';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface Message {
   id: string;
@@ -29,44 +30,35 @@ export default function MessagesPage() {
   const params = useParams();
   const router = useRouter();
   const listingId = params?.listingId as string;
+  const { session, loading: authLoading } = useAuth();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [listing, setListing] = useState<Listing | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
-  const redirectAttemptedRef = useRef(false);
-  const loadingRef = useRef(false);
+  const redirectRef = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple simultaneous loads
-    if (loadingRef.current) return;
-    loadingRef.current = true;
+    if (!listingId || authLoading) {
+      return;
+    }
     
-    const loadData = async (retryCount = 0) => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          setLoading(false);
-          return;
-        }
-        
-        if (!session) {
-          redirectAttemptedRef.current = true;
-          const currentPath = window.location.pathname;
-          if (!currentPath.includes('/login')) {
-            router.push(`/login?next=/messages/${listingId}`);
-          }
-          return;
-        }
-        
-        setUserId(session.user.id);
+    if (!session) {
+      setLoading(false);
+      if (!redirectRef.current) {
+        redirectRef.current = true;
+        router.push(`/login?next=/messages/${listingId}`);
+      }
+      return;
+    }
 
-        // Load listing
+    let cancelled = false;
+    setLoading(true);
+
+    const loadData = async () => {
+      try {
         const { data: listingData, error: listingError } = await supabase
           .from('listings')
           .select('id, title, address, price, owner_id')
@@ -75,149 +67,108 @@ export default function MessagesPage() {
 
         if (listingError || !listingData) {
           console.error('Error loading listing:', listingError);
-          setLoading(false);
+          if (!cancelled) {
+            setLoading(false);
+          }
           return;
         }
 
-        console.log('Listing loaded:', listingData);
         setListing(listingData);
         const ownerId = listingData.owner_id || null;
-        console.log('Owner ID:', ownerId);
-        setOtherUserId(ownerId);
-        
-        if (!ownerId) {
-          console.warn('No owner_id found for listing:', listingId);
-          // Try to get owner from listing directly - maybe it's stored differently
-          const { data: listingCheck } = await supabase
-            .from('listings')
-            .select('owner_id, user_id')
-            .eq('id', listingId)
-            .single();
-          
-          if (listingCheck) {
-            const actualOwnerId = listingCheck.owner_id || (listingCheck as unknown as { user_id?: string }).user_id;
-            if (actualOwnerId) {
-              console.log('Found owner_id via alternative method:', actualOwnerId);
-              setOtherUserId(actualOwnerId);
-            }
-          }
-        }
+        setOtherUserId(ownerId ?? null);
 
-        // Load messages with retry logic
-        let messagesLoaded = false;
-        for (let attempt = 0; attempt < 2 && !messagesLoaded; attempt++) {
-          try {
-            const response = await fetch(`/api/messages?listingId=${listingId}`, {
-              credentials: 'include',
-              cache: 'no-store', // Don't cache to ensure fresh data
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              setMessages(data.messages || []);
-              messagesLoaded = true;
-            } else if (response.status === 401 && attempt === 0) {
-              // Retry once on 401 - might be cookie timing issue
-              console.warn('Got 401, retrying in 500ms...');
-              await new Promise(resolve => setTimeout(resolve, 500));
-              continue;
-            } else if (response.status === 401) {
-              console.error('Unauthorized response from API after retry');
-            } else {
-              const errorData = await response.json().catch(() => ({}));
-              console.error('Error loading messages:', response.status, response.statusText, errorData);
-            }
-          } catch (fetchError) {
-            if (attempt === 0) {
-              console.warn('Fetch error, retrying...', fetchError);
-              await new Promise(resolve => setTimeout(resolve, 500));
-              continue;
-            }
-            console.error('Error loading messages after retry:', fetchError);
-          }
-        }
-
-        setLoading(false);
-        loadingRef.current = false;
-      } catch (error) {
-        console.error('Error loading messages:', error);
-        setLoading(false);
-        loadingRef.current = false;
-        
-        // Retry once on error
-        if (retryCount === 0) {
-          console.log('Retrying loadData after error...');
-          setTimeout(() => {
-            loadingRef.current = false;
-            loadData(1);
-          }, 2000);
-          return;
-        }
-      }
-    };
-
-    if (listingId) {
-      loadData();
-    }
-    
-    // Cleanup
-    return () => {
-      loadingRef.current = false;
-    };
-  }, [listingId, router]);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !otherUserId || sending) return;
-
-    const messageText = newMessage.trim();
-    setSending(true);
-    
-    // Try sending with retry logic for 401 errors
-    let messageSent = false;
-    for (let attempt = 0; attempt < 2 && !messageSent; attempt++) {
-      try {
-        const response = await fetch('/api/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            listingId,
-            recipientId: otherUserId,
-            message: messageText
-          }),
+        const response = await fetch(`/api/messages?listingId=${listingId}`, {
           credentials: 'include',
           cache: 'no-store',
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          setMessages([...messages, data.message]);
-          setNewMessage('');
-          messageSent = true;
-        } else if (response.status === 401 && attempt === 0) {
-          // Retry once on 401 - might be cookie timing issue
-          console.warn('Got 401 when sending, retrying in 500ms...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          continue;
-        } else {
+        if (response.status === 401) {
+          if (!redirectRef.current) {
+            redirectRef.current = true;
+            router.push(`/login?next=/messages/${listingId}`);
+          }
+          if (!cancelled) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          console.error('Message send error:', errorData);
-          alert(errorData.error || 'Failed to send message. Please try again.\n' + (errorData.details || '') + (errorData.code ? `\nCode: ${errorData.code}` : ''));
-          break;
+          console.error('Error loading messages:', response.status, response.statusText, errorData);
+          if (!cancelled) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        if (!cancelled) {
+          setMessages(data.messages || []);
+          setLoading(false);
         }
       } catch (error) {
-        if (attempt === 0) {
-          console.warn('Error sending message, retrying...', error);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          continue;
+        console.error('Error loading messages:', error);
+        if (!cancelled) {
+          setLoading(false);
         }
-        console.error('Error sending message after retry:', error);
-        alert('Error sending message. Please try again.');
-        break;
       }
+    };
+
+    loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, session, listingId, router]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !otherUserId || sending) return;
+    if (!session) {
+      router.push(`/login?next=/messages/${listingId}`);
+      return;
     }
-    
-    setSending(false);
+
+    const messageText = newMessage.trim();
+    setSending(true);
+
+    try {
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId,
+          recipientId: otherUserId,
+          message: messageText
+        }),
+        credentials: 'include',
+        cache: 'no-store',
+      });
+
+      if (response.status === 401) {
+        if (!redirectRef.current) {
+          redirectRef.current = true;
+          router.push(`/login?next=/messages/${listingId}`);
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Message send error:', errorData);
+        alert(errorData.error || 'Failed to send message. Please try again.');
+        return;
+      }
+
+      const data = await response.json();
+      setMessages((prev) => [...prev, data.message]);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Error sending message. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   if (loading) {
@@ -303,7 +254,7 @@ export default function MessagesPage() {
           </div>
         ) : (
           messages.map((msg) => {
-            const isOwn = msg.from_id === userId;
+            const isOwn = msg.from_id === session?.user.id;
             return (
               <div
                 key={msg.id}

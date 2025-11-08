@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabase/client';
 import { logger } from '@/lib/logger';
 import Link from 'next/link';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface Conversation {
   thread_id: string;
@@ -22,49 +22,31 @@ interface Conversation {
 
 export default function MessagesPage() {
   const router = useRouter();
-      const [conversations, setConversations] = useState<Conversation[]>([]);
-      const [loading, setLoading] = useState(true);
-  const loadingRef = useRef(false);
+  const { session, loading: authLoading } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const redirectRef = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple simultaneous loads
-    if (loadingRef.current) return;
-    loadingRef.current = true;
+    if (authLoading) {
+      return;
+    }
 
-    // Add timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      logger.warn('Messages load timeout - setting loading to false');
+    if (!session) {
+      setConversations([]);
       setLoading(false);
-      loadingRef.current = false;
-    }, 15000); // 15 second timeout
+      if (!redirectRef.current) {
+        redirectRef.current = true;
+        router.push('/login?next=/messages');
+      }
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
 
     const loadConversations = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          logger.error('Session error:', sessionError);
-          clearTimeout(timeoutId);
-          setLoading(false);
-          loadingRef.current = false;
-          return;
-        }
-
-        if (!session) {
-          clearTimeout(timeoutId);
-          setLoading(false);
-          loadingRef.current = false;
-          // Only redirect if we're not already on the login page and not already redirecting
-          const currentPath = window.location.pathname;
-          if (!currentPath.includes('/login') && !sessionStorage.getItem('redirecting')) {
-            sessionStorage.setItem('redirecting', 'true');
-            setTimeout(() => sessionStorage.removeItem('redirecting'), 2000);
-            router.push('/login?next=' + encodeURIComponent('/messages'));
-          }
-          return;
-        }
-
-        // Use API endpoint instead of direct database query for better error handling
         logger.log('Fetching conversations from API...');
         const response = await fetch('/api/messages/conversations', {
           credentials: 'include',
@@ -77,19 +59,17 @@ export default function MessagesPage() {
         logger.log('API response status:', response.status);
 
         if (!response.ok) {
-          clearTimeout(timeoutId);
           const errorText = await response.text();
           logger.error('API error response:', errorText);
           
           if (response.status === 401) {
-            // Only redirect once to prevent loops
-            if (!sessionStorage.getItem('redirecting')) {
-              sessionStorage.setItem('redirecting', 'true');
-              setTimeout(() => sessionStorage.removeItem('redirecting'), 2000);
-              router.push('/login?next=' + encodeURIComponent('/messages'));
+            if (!redirectRef.current) {
+              redirectRef.current = true;
+              router.push('/login?next=/messages');
             }
-            setLoading(false);
-            loadingRef.current = false;
+            if (!cancelled) {
+              setLoading(false);
+            }
             return;
           }
           throw new Error(`Failed to load conversations: ${response.status} - ${errorText}`);
@@ -99,20 +79,23 @@ export default function MessagesPage() {
         logger.log('Received conversations data:', data);
         const conversationsList = data.conversations || [];
 
-        clearTimeout(timeoutId);
-        setConversations(conversationsList);
-        setLoading(false);
-        loadingRef.current = false;
+        if (!cancelled) {
+          setConversations(conversationsList);
+          setLoading(false);
+        }
       } catch (error) {
         logger.error('Error loading conversations:', error);
-        clearTimeout(timeoutId);
-        setLoading(false);
-        loadingRef.current = false;
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadConversations();
-  }, [router]);
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, session, router]);
 
   if (loading) {
     return (

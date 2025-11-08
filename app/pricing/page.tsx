@@ -17,7 +17,7 @@ function PricingPageInner() {
   const handleUpgrade = async (segment: 'investor' | 'wholesaler', tier: 'basic' | 'pro') => {
     // Check auth synchronously before redirecting
     if (!session) {
-      router.push(`/login?next=/pricing&segment=${segment}&tier=${tier}&period=${billingPeriod}`);
+      router.push(`/login?next=${encodeURIComponent(`/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`)}`);
       return;
     }
 
@@ -30,6 +30,11 @@ function PricingPageInner() {
       });
       
       if (!response.ok) {
+        if (response.status === 401) {
+          alert('Please sign in to upgrade your plan.');
+          router.push(`/login?next=${encodeURIComponent(`/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`)}`);
+          return;
+        }
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Checkout error:', errorData);
         alert(`Error: ${errorData.error || 'Failed to create checkout session'}`);

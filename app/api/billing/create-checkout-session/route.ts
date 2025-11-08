@@ -1,102 +1,144 @@
-// app/api/billing/create-checkout-session/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { createCheckoutSession, STRIPE_PRICES } from '@/lib/stripe';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
+import { getAuthUser } from "@/lib/auth/server";
+import { STRIPE_PRICES } from "@/lib/stripe";
 
-export async function POST(request: NextRequest) {
+export const runtime = "nodejs";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+});
+
+function resolvePriceId(
+  segment: "investor" | "wholesaler",
+  tier: "basic" | "pro",
+  period: "monthly" | "yearly"
+) {
+  if (segment === "investor") {
+    if (tier === "basic") {
+      return period === "yearly"
+        ? STRIPE_PRICES.INVESTOR_BASIC_YEARLY
+        : STRIPE_PRICES.INVESTOR_BASIC;
+    }
+    return period === "yearly"
+      ? STRIPE_PRICES.INVESTOR_PRO_YEARLY
+      : STRIPE_PRICES.INVESTOR_PRO;
+  }
+
+  if (tier === "basic") {
+    return period === "yearly"
+      ? STRIPE_PRICES.WHOLESALER_BASIC_YEARLY
+      : STRIPE_PRICES.WHOLESALER_BASIC;
+  }
+  return period === "yearly"
+    ? STRIPE_PRICES.WHOLESALER_PRO_YEARLY
+    : STRIPE_PRICES.WHOLESALER_PRO;
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const { segment, tier, period = 'monthly' } = await request.json();
+    const { user, supabase } = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
-    if (!segment || !tier) {
+    const body = await req.json();
+    const segment = body?.segment as string | undefined;
+    const tier = body?.tier as string | undefined;
+    const period = (body?.period as string | undefined) ?? "monthly";
+
+    if (
+      !segment ||
+      !tier ||
+      !["investor", "wholesaler"].includes(segment) ||
+      !["basic", "pro"].includes(tier) ||
+      !["monthly", "yearly"].includes(period)
+    ) {
       return NextResponse.json(
-        { error: 'Missing segment or tier' },
+        { error: "Missing or invalid segment, tier, or period" },
         { status: 400 }
       );
     }
 
-    // Get user from session
-    const supabase = await createSupabaseServer();
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('Session error:', sessionError);
-      return NextResponse.json(
-        { error: 'Authentication error' },
-        { status: 401 }
-      );
-    }
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
-
-    // Get price ID based on segment, tier, and period
-    let priceId: string;
-    if (segment === 'investor') {
-      if (tier === 'basic') {
-        priceId = period === 'yearly' ? STRIPE_PRICES.INVESTOR_BASIC_YEARLY : STRIPE_PRICES.INVESTOR_BASIC;
-      } else {
-        priceId = period === 'yearly' ? STRIPE_PRICES.INVESTOR_PRO_YEARLY : STRIPE_PRICES.INVESTOR_PRO;
-      }
-    } else {
-      if (tier === 'basic') {
-        priceId = period === 'yearly' ? STRIPE_PRICES.WHOLESALER_BASIC_YEARLY : STRIPE_PRICES.WHOLESALER_BASIC;
-      } else {
-        priceId = period === 'yearly' ? STRIPE_PRICES.WHOLESALER_PRO_YEARLY : STRIPE_PRICES.WHOLESALER_PRO;
-      }
-    }
+    const priceId = resolvePriceId(segment, tier, period);
 
     if (!priceId) {
       return NextResponse.json(
-        { error: 'Price ID not configured' },
+        { error: "Price ID not configured" },
         { status: 500 }
       );
     }
 
-    // Get or create Stripe customer
-    let customerId: string;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('stripe_customer_id')
-      .eq('id', session.user.id)
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id, role, tier")
+      .eq("id", user.id)
       .single();
 
-    if (profile?.stripe_customer_id) {
-      customerId = profile.stripe_customer_id;
-    } else {
-      // Create Stripe customer
-      const Stripe = (await import('stripe')).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-      const customer = await stripe.customers.create({
-        email: session.user.email,
-        metadata: {
-          supabase_user_id: session.user.id,
-        },
-      });
-      customerId = customer.id;
-
-      // Update profile with customer ID
-      await supabase
-        .from('profiles')
-        .update({ stripe_customer_id: customerId })
-        .eq('id', session.user.id);
+    if (profileError && profileError.code !== "PGRST116") {
+      console.error("create-checkout-session profile error", profileError);
+      return NextResponse.json(
+        { error: "Failed to load profile" },
+        { status: 500 }
+      );
     }
 
-    // Create checkout session
-    const session_url = await createCheckoutSession({
-      customerId,
-      priceId,
-      successUrl: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL}/billing/cancel`,
+    let stripeCustomerId = profile?.stripe_customer_id ?? null;
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        metadata: {
+          supabase_user_id: user.id,
+          requested_segment: segment,
+          requested_tier: tier,
+        },
+      });
+
+      stripeCustomerId = customer.id;
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Failed to update stripe_customer_id", updateError);
+      }
+    }
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!baseUrl) {
+      console.error("Missing NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL");
+      return NextResponse.json(
+        { error: "Configuration error" },
+        { status: 500 }
+      );
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      customer_email: user.email ?? undefined,
+      customer: stripeCustomerId ?? undefined,
+      metadata: {
+        supabase_user_id: user.id,
+        requested_segment: segment,
+        requested_tier: tier,
+        profile_role: profile?.role ?? "",
+        profile_tier: profile?.tier ?? "",
+      },
+      success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/pricing`,
     });
 
-    return NextResponse.json({ url: session_url.url });
+    return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('Error creating checkout session:', error);
+    console.error("Error creating checkout session", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

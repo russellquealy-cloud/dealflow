@@ -86,5 +86,35 @@ body {
   overflow-x: hidden;
 }
 
+/* --- Responsive navigation --- */
+.nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-toggle {
+  display: none;
+  color: #111;
+}
+
+.nav-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .nav-desktop {
+    display: none;
+  }
+
+  .nav-toggle {
+    display: block;
+  }
+
+  .nav-mobile {
+    display: flex;
+  }
+}
+
 
 

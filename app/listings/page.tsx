@@ -387,7 +387,7 @@ export default function ListingsPage() {
         if (data.location) {
           // Move map to geocoded location
           setMapCenter({ lat: data.location.lat, lng: data.location.lng });
-          setMapZoom(12); // Zoom to city level
+          setMapZoom(14);
           // Also update search query to show the formatted address
           setSearchQuery(data.formatted_address || query);
         }

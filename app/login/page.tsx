@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import { logger } from '@/lib/logger';
-import type { Session } from '@supabase/supabase-js';
+import { useAuth } from '@/providers/AuthProvider';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,37 +13,25 @@ function LoginInner() {
   const params = useSearchParams();
   const next = params?.get('next') ?? '/listings';
   const error = params?.get('error');
+  const { session, loading: authLoading, refreshSession } = useAuth();
+  const [autoRedirected, setAutoRedirected] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(error || null);
   const [loading, setLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic-link'>('password');
+  const [resetting, setResetting] = useState(false);
 
-  // Check if user is already signed in and redirect
-  // BUT only if they're not actively trying to sign in (form not filled)
   useEffect(() => {
-    let isMounted = true;
-    let redirectTimeout: NodeJS.Timeout;
-    
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (isMounted && session && !email && !password && !loading) {
-        // User is already signed in AND not filling out form, redirect
-        console.log('🔐 Already signed in, redirecting to:', next);
-        redirectTimeout = setTimeout(() => {
-          window.location.href = next;
-        }, 500); // Small delay to prevent race conditions
-      }
-    };
-    
-    checkSession();
-    
-    return () => {
-      isMounted = false;
-      if (redirectTimeout) clearTimeout(redirectTimeout);
-    };
-  }, [next, email, password, loading]);
+    if (authLoading || !session || autoRedirected) {
+      return;
+    }
+
+    setAutoRedirected(true);
+    console.log('🔐 Already signed in, redirecting to:', next);
+    router.replace(next);
+  }, [authLoading, session, next, router, autoRedirected]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +67,9 @@ function LoginInner() {
           }
           
           // Small delay to ensure session is fully set, then redirect
-          setTimeout(() => {
-            window.location.href = next;
+          setTimeout(async () => {
+            await refreshSession();
+            router.replace(next);
           }, 300);
         } else {
           setMessage('Login failed - no session created');
@@ -110,6 +99,36 @@ function LoginInner() {
       logger.error('Login error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email.trim()) {
+      setMessage('Please enter your email to receive a reset link.');
+      return;
+    }
+
+    try {
+      setResetting(true);
+      setMessage(null);
+
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/auth/callback`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo,
+      });
+
+      if (error) {
+        setMessage(error.message || 'Unable to send reset email.');
+        return;
+      }
+
+      setMessage('🔑 Check your email for a password reset link.');
+    } catch (error) {
+      logger.error('Password reset error:', error);
+      setMessage('Unable to send reset email. Please try again later.');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -294,20 +313,37 @@ function LoginInner() {
               textAlign: 'center',
               paddingTop: '8px'
             }}>
-              <p style={{ 
-                fontSize: '14px', 
-                color: '#6b7280', 
-                margin: '0'
-              }}>
-                Don&apos;t have an account?{' '}
-                <a href="/signup" style={{ 
-                  color: '#3b82f6',
-                  textDecoration: 'none',
-                  fontWeight: '500'
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={resetting}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#3b82f6',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    cursor: resetting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {resetting ? 'Sending reset email…' : 'Forgot password?'}
+                </button>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: '#6b7280', 
+                  margin: '0'
                 }}>
-                  Sign up here
-                </a>
-              </p>
+                  Don&apos;t have an account?{' '}
+                  <a href="/signup" style={{ 
+                    color: '#3b82f6',
+                    textDecoration: 'none',
+                    fontWeight: '500'
+                  }}>
+                    Sign up here
+                  </a>
+                </p>
+              </div>
             </div>
           )}
         </form>
