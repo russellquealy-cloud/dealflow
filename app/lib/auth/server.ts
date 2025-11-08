@@ -48,7 +48,7 @@ export async function getAuthUser(request?: NextRequest | Request) {
   }
   if (!accessToken) {
     try {
-      const headerStore = headers();
+      const headerStore = await headers();
       accessToken = extractBearerToken(headerStore);
     } catch {
       // headers() may throw if not in a request context; ignore
