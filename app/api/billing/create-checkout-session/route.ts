@@ -32,7 +32,7 @@ function resolvePriceId(
 
 export async function POST(req: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser();
+    const { user, supabase } = await getAuthUser(req);
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }

@@ -77,9 +77,15 @@ export default function MessagesPage() {
         const ownerId = listingData.owner_id || null;
         setOtherUserId(ownerId ?? null);
 
+        const headers: HeadersInit = {};
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         const response = await fetch(`/api/messages?listingId=${listingId}`, {
           credentials: 'include',
           cache: 'no-store',
+          headers,
         });
 
         if (response.status === 401) {
@@ -133,9 +139,14 @@ export default function MessagesPage() {
     setSending(true);
 
     try {
+      const postHeaders: HeadersInit = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        postHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: postHeaders,
         body: JSON.stringify({
           listingId,
           recipientId: otherUserId,

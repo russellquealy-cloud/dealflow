@@ -106,9 +106,15 @@ export default function Header() {
     }
 
     try {
+      const headers: HeadersInit = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch("/api/messages/unread-count", {
         cache: "no-store",
         credentials: "include",
+        headers,
       });
       if (response.status === 401) {
         setUnreadCount(0);
@@ -122,7 +128,7 @@ export default function Header() {
     } catch (error) {
       logger.error("Header: error loading unread count", error);
     }
-  }, [userId, refreshSession]);
+  }, [userId, refreshSession, session?.access_token]);
 
   React.useEffect(() => {
     loadProfile();

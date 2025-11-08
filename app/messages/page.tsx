@@ -48,12 +48,17 @@ export default function MessagesPage() {
     const loadConversations = async () => {
       try {
         logger.log('Fetching conversations from API...');
+        const headers: HeadersInit = {
+          'Cache-Control': 'no-cache',
+        };
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         const response = await fetch('/api/messages/conversations', {
           credentials: 'include',
           cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
+          headers,
         });
 
         logger.log('API response status:', response.status);

@@ -22,9 +22,14 @@ function PricingPageInner() {
     }
 
     try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/billing/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ segment, tier, period: billingPeriod }),
         credentials: 'include', // Include cookies for authentication
       });
