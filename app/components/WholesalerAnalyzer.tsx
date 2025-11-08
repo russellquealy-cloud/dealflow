@@ -486,28 +486,33 @@ function generateMockResult(
     });
   }
 
-  return {
-    questionType: questionType,
-    result: {
-      answer: questionType === 'mao_calculation'
-        ? mao
-        : 5000,
-      calculations: {
-        arv,
-        repairs,
-        mao: questionType === 'mao_calculation' ? mao : undefined,
-        targetMargin: targetMargin * 100,
-        carrying: (formData.carryingCost || 500) * (formData.monthsHold || 3),
-      },
-      notes: [
-        'Sample output shown while the analysis service is offline.',
-        'Connect your full AI plan to enable live analyses.',
-      ].filter(Boolean) as string[],
-    },
-    cached: false,
-    aiCost: 0,
-    timestamp: new Date().toISOString()
+  const calculations: Record<string, number> = {
+    arv,
+    repairs,
+    targetMargin: targetMargin * 100,
+    carrying: (formData.carryingCost || 500) * (formData.monthsHold || 3),
   };
+
+  if (questionType === 'mao_calculation') {
+    calculations.mao = mao;
+  }
+ 
+   return {
+     questionType: questionType,
+     result: {
+       answer: questionType === 'mao_calculation'
+         ? mao
+         : 5000,
+       calculations,
+       notes: [
+         'Sample output shown while the analysis service is offline.',
+         'Connect your full AI plan to enable live analyses.',
+       ].filter(Boolean) as string[],
+     },
+     cached: false,
+     aiCost: 0,
+     timestamp: new Date().toISOString()
+   };
 }
 
 function formatCalculationLabel(key: string): string {
