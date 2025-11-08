@@ -65,7 +65,7 @@ export const supabaseClient = (() => {
               if (cookieOptions.sameSite) cookieString += `; sameSite=${cookieOptions.sameSite}`;
               
               document.cookie = cookieString;
-            } catch (error) {
+            } catch (_error) {
               // Silent fail on cookie setting errors
             }
           },
@@ -73,7 +73,7 @@ export const supabaseClient = (() => {
             if (typeof document === 'undefined') return;
             try {
               document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-            } catch (error) {
+            } catch (_error) {
               // Silent fail on cookie removal errors
             }
           }

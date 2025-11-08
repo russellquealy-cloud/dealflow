@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
     let result;
     try {
       result = await Promise.race([queryPromise, timeoutPromise]);
-    } catch (timeoutError) {
+    } catch (error) {
       clearTimeout(timeoutId);
       const elapsed = Date.now() - startTime;
       console.error(`⏱️ Listings query timed out after ${elapsed}ms`);

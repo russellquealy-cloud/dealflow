@@ -62,7 +62,7 @@ function LoginInner() {
               refresh_token: data.session.refresh_token,
               expires_at: data.session.expires_at
             }));
-          } catch (err) {
+          } catch (_error) {
             // Ignore localStorage errors
           }
           
@@ -94,9 +94,9 @@ function LoginInner() {
           setMessage('📧 Check your email for the sign-in link. It may take a few minutes to arrive.');
         }
       }
-    } catch (err) {
+    } catch (error) {
       setMessage('An unexpected error occurred. Please try again.');
-      logger.error('Login error:', err);
+      logger.error('Login error:', error);
     } finally {
       setLoading(false);
     }

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
-import ListingCard from '@/components/ListingCard';
 import Image from 'next/image';
 
 export type ListingLike = {

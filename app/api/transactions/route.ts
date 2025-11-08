@@ -5,7 +5,7 @@ import { createSupabaseServer } from '@/lib/createSupabaseServer';
  * GET /api/transactions
  * Fetch transactions for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createSupabaseServer();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

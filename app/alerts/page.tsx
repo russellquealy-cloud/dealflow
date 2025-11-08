@@ -212,7 +212,7 @@ export default function AlertsPage() {
                   {alertType}
                 </div>
                 <div style={{ fontSize: 14, color: '#6b7280' }}>
-                  {getAlertDescription(alertType, userRole || 'investor')}
+                  {getAlertDescription(alertType)}
                 </div>
               </div>
               <label style={{
@@ -263,7 +263,7 @@ export default function AlertsPage() {
   );
 }
 
-function getAlertDescription(alertType: string, role: 'investor' | 'wholesaler'): string {
+function getAlertDescription(alertType: string): string {
   const descriptions: Record<string, string> = {
     'New Off-Market Property': 'Get notified when new properties match your saved search criteria',
     'Price Drop': 'Alert when a property you\'re tracking reduces its price',

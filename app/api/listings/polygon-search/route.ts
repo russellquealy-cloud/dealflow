@@ -26,9 +26,6 @@ export async function POST(request: NextRequest) {
     // GeoJSON: [[lng, lat], [lng, lat], ...]
     // PostGIS: POLYGON((lng lat, lng lat, ...))
     const coordinates = polygon.coordinates[0]; // First ring (exterior)
-    const postgisCoords = coordinates
-      .map((coord: number[]) => `${coord[0]} ${coord[1]}`)
-      .join(', ');
 
     // Build query with PostGIS spatial filter
     let query = supabase
