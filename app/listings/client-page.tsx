@@ -321,17 +321,6 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
     }
   }, [activeMapBounds, mapBounds, handleMapBoundsChange]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="text-lg mb-2">Loading listings...</div>
-          <div className="text-sm text-gray-500">Connecting to database...</div>
-        </div>
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -348,6 +337,17 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
       console.error('Failed to persist current search state', err);
     }
   }, [filters, searchQuery, mapBounds, activeMapBounds]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="text-lg mb-2">Loading listings...</div>
+          <div className="text-sm text-gray-500">Connecting to database...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">

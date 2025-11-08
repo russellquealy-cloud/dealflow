@@ -472,6 +472,23 @@ export default function ListingsPage() {
     }
   }, [activeMapBounds, mapBounds, handleMapBoundsChange]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const state = {
+        filters,
+        searchQuery,
+        bounds: activeMapBounds ? mapBounds : null,
+      };
+      localStorage.setItem('currentFilters', JSON.stringify(state));
+    } catch (err) {
+      logger.error('Failed to persist current search state', err);
+    }
+  }, [filters, searchQuery, mapBounds, activeMapBounds]);
+
   // Memoize map component to prevent re-renders
   if (showSkeleton || (loading && !error)) {
     return (
@@ -544,23 +561,6 @@ export default function ListingsPage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    try {
-      const state = {
-        filters,
-        searchQuery,
-        bounds: activeMapBounds ? mapBounds : null,
-      };
-      localStorage.setItem('currentFilters', JSON.stringify(state));
-    } catch (err) {
-      logger.error('Failed to persist current search state', err);
-    }
-  }, [filters, searchQuery, mapBounds, activeMapBounds]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden', position: 'relative' }}>

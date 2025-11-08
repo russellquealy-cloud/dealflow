@@ -470,8 +470,8 @@ function generateMockResult(
   const repairs = formData.repairs || (repairChecklist && repairChecklist.length > 0 
     ? repairChecklist.filter(item => item.status !== 'good').length * 5000 // Rough estimate per item
     : 25000);
-  const targetMargin = formData.targetMargin || 20;
-  const mao = arv * (1 - targetMargin / 100) - repairs;
+  const targetMargin = formData.targetMargin ?? 0.2;
+  const mao = Math.round(arv * (1 - targetMargin) - repairs);
 
   // Create breakdown from repairChecklist (mock estimates)
   const breakdown: Record<string, number> = {};
@@ -490,13 +490,13 @@ function generateMockResult(
     questionType: questionType,
     result: {
       answer: questionType === 'mao_calculation'
-        ? Math.round((formData.arv || 300000) * 0.7 - (formData.repairs || 35000))
+        ? mao
         : 5000,
       calculations: {
-        arv: formData.arv || 300000,
-        repairs: formData.repairs || 35000,
-        mao: questionType === 'mao_calculation' ? Math.round((formData.arv || 300000) * 0.7 - (formData.repairs || 35000)) : undefined,
-        targetMargin: (formData.targetMargin || 0.2) * 100,
+        arv,
+        repairs,
+        mao: questionType === 'mao_calculation' ? mao : undefined,
+        targetMargin: targetMargin * 100,
         carrying: (formData.carryingCost || 500) * (formData.monthsHold || 3),
       },
       notes: [
