@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { getAuthUser } from "@/lib/auth/server";
-import { STRIPE_PRICES } from "@/lib/stripe";
+import { STRIPE_PRICES, getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
-});
 
 function resolvePriceId(
   segment: "investor" | "wholesaler",
@@ -84,6 +79,8 @@ export async function POST(req: NextRequest) {
     }
 
     let stripeCustomerId = profile?.stripe_customer_id ?? null;
+
+    const stripe = getStripe();
 
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({

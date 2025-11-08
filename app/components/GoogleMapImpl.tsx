@@ -374,7 +374,7 @@ export default function GoogleMapImpl({
     window.setTimeout(() => {
       geocodePanRef.current = false;
     }, 150);
-  }, [center?.lat, center?.lng, zoom]);
+  }, [center, zoom]);
 
   useEffect(() => () => {
     if (debounceRef.current) {
