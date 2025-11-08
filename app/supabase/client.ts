@@ -18,6 +18,32 @@ let refreshInProgress = false;
 let lastRefreshTime = 0;
 const MIN_REFRESH_INTERVAL = 60000; // 60 seconds minimum between refreshes
 
+const getCookieDomain = () => {
+  const envDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+  if (envDomain) return envDomain;
+
+  if (typeof window === 'undefined') return undefined;
+
+  const hostname = window.location.hostname;
+
+  // Skip localhost or IP addresses
+  if (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
+  ) {
+    return undefined;
+  }
+
+  const parts = hostname.split('.');
+  if (parts.length <= 2) {
+    return `.${hostname}`;
+  }
+
+  const baseDomain = parts.slice(-2).join('.');
+  return `.${baseDomain}`;
+};
+
 export const supabase = (() => {
   if (!supabaseClient) {
     supabaseClient = createBrowserClient(
@@ -47,12 +73,13 @@ export const supabase = (() => {
             if (typeof document === 'undefined') return;
             
             try {
-              const hostname = window.location.hostname;
+              const domain = options.domain ?? getCookieDomain();
               const cookieOptions: Record<string, unknown> = {
                 path: '/',
                 secure: window.location.protocol === 'https:',
                 sameSite: 'lax' as const,
                 maxAge: 60 * 60 * 24 * 7, // 7 days
+                ...(domain ? { domain } : {}),
                 ...options
               };
               
@@ -64,8 +91,9 @@ export const supabase = (() => {
               }
               
               if (cookieOptions.path) cookieString += `; path=${cookieOptions.path}`;
-              if (cookieOptions.secure) cookieString += `; secure`;
-              if (cookieOptions.sameSite) cookieString += `; sameSite=${cookieOptions.sameSite}`;
+              if (cookieOptions.secure) cookieString += `; Secure`;
+              if (cookieOptions.sameSite) cookieString += `; SameSite=${cookieOptions.sameSite}`;
+              if (cookieOptions.domain) cookieString += `; Domain=${cookieOptions.domain}`;
               
               document.cookie = cookieString;
             } catch (error) {
@@ -75,7 +103,12 @@ export const supabase = (() => {
           remove(name: string) {
             if (typeof document === 'undefined') return;
             try {
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              const domain = getCookieDomain();
+              let cookieString = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              if (domain) {
+                cookieString += `; Domain=${domain}`;
+              }
+              document.cookie = cookieString;
             } catch (error) {
               // Silent fail on cookie removal errors
             }

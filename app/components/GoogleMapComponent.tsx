@@ -54,7 +54,7 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<Point | null>(null);
   // Store markers in refs to prevent re-renders (per guardrails)
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -223,7 +223,9 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     if (drawingManagerRef.current) {
       drawingManagerRef.current.setMap(null);
     }
-    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current.forEach(marker => {
+      marker.map = null;
+    });
     polygonsRef.current.forEach(polygon => polygon.setMap(null));
     markersRef.current = [];
     polygonsRef.current = [];
@@ -236,32 +238,43 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     }
 
     // Clear existing markers from refs
-    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current.forEach(marker => {
+      marker.map = null;
+    });
     clustererRef.current.clearMarkers();
 
-    const newMarkers: google.maps.Marker[] = [];
+    const newMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
 
     points.forEach((point) => {
       // Check if listing is currently featured
       const isFeatured = point.featured && (!point.featured_until || new Date(point.featured_until) > new Date());
       
-      const marker = new window.google.maps.Marker({
+      let content: HTMLElement | undefined;
+      if (isFeatured) {
+        const featuredElement = document.createElement('div');
+        featuredElement.style.width = '40px';
+        featuredElement.style.height = '40px';
+        featuredElement.style.borderRadius = '20px';
+        featuredElement.style.background = '#f59e0b';
+        featuredElement.style.border = '2px solid #d97706';
+        featuredElement.style.display = 'flex';
+        featuredElement.style.alignItems = 'center';
+        featuredElement.style.justifyContent = 'center';
+        featuredElement.style.color = '#ffffff';
+        featuredElement.style.fontSize = '20px';
+        featuredElement.style.fontWeight = 'bold';
+        featuredElement.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+        featuredElement.textContent = '★';
+        content = featuredElement;
+      }
+
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
         position: { lat: point.lat, lng: point.lng },
         title: point.title || point.address || 'Property',
-        optimized: true, // Use optimized markers for performance
-        icon: isFeatured ? {
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20" cy="20" r="18" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
-              <text x="20" y="26" text-anchor="middle" fill="white" font-size="16" font-weight="bold">⭐</text>
-            </svg>
-          `),
-          scaledSize: new window.google.maps.Size(40, 40),
-          anchor: new window.google.maps.Point(20, 20)
-        } : undefined
+        content,
       });
 
-      marker.addListener('click', () => {
+      marker.addListener('gmp-click', () => {
         setSelectedMarker(point);
         if (point.id) {
           window.location.href = `/listing/${point.id}`;
@@ -285,16 +298,21 @@ export default function GoogleMapComponent({ points, onBoundsChange, onPolygonCo
     // Only update if points actually changed (by ID comparison) and map is ready
     if (pointsIdsString !== pointsRef.current && isMapReady && map) {
       pointsRef.current = pointsIdsString;
-      if (points && points.length > 0) {
-        createMarkers(points);
-      } else if (points.length === 0) {
-        // Clear markers if no points
-        markersRef.current.forEach(marker => marker.setMap(null));
-        if (clustererRef.current) {
-          clustererRef.current.clearMarkers();
+      
+      // Use requestAnimationFrame to batch marker updates and prevent flickering
+      requestAnimationFrame(() => {
+        if (points && points.length > 0) {
+          createMarkers(points);
+        } else if (points.length === 0) {
+          // Clear markers if no points
+          markersRef.current.forEach(marker => {
+            marker.map = null;
+          });
+          if (clustererRef.current) {
+            clustererRef.current.clearMarkers();
+          }
         }
-        markersRef.current = [];
-      }
+      });
     }
   }, [pointsIdsString, points, createMarkers, isMapReady, map]);
 
