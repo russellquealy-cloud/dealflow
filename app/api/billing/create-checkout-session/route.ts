@@ -38,22 +38,26 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const segment = body?.segment as string | undefined;
-    const tier = body?.tier as string | undefined;
-    const period = (body?.period as string | undefined) ?? "monthly";
+    const rawSegment = body?.segment as string | undefined;
+    const rawTier = body?.tier as string | undefined;
+    const rawPeriod = (body?.period as string | undefined) ?? "monthly";
 
     if (
-      !segment ||
-      !tier ||
-      !["investor", "wholesaler"].includes(segment) ||
-      !["basic", "pro"].includes(tier) ||
-      !["monthly", "yearly"].includes(period)
+      !rawSegment ||
+      !rawTier ||
+      !["investor", "wholesaler"].includes(rawSegment) ||
+      !["basic", "pro"].includes(rawTier) ||
+      !["monthly", "yearly"].includes(rawPeriod)
     ) {
       return NextResponse.json(
         { error: "Missing or invalid segment, tier, or period" },
         { status: 400 }
       );
     }
+
+    const segment = rawSegment as "investor" | "wholesaler";
+    const tier = rawTier as "basic" | "pro";
+    const period = rawPeriod as "monthly" | "yearly";
 
     const priceId = resolvePriceId(segment, tier, period);
 
