@@ -167,4 +167,22 @@ export default function SearchBarClient({
                 key={prediction.place_id}
                 className={`cursor-pointer px-3 py-2 text-sm ${
                   index === activeIndex ? 'bg-blue-100 text-blue-700' : 'text-gray-700'
-                }`
+                }`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSuggestionSelect(prediction);
+                }}
+                onMouseEnter={() => setActiveIndex(index)}
+              >
+                {prediction.description}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <button type="submit" className="rounded-md bg-black px-3 py-2 text-white hover:opacity-90">
+        Search
+      </button>
+    </form>
+  );
+}
