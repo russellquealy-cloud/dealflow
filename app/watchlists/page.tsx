@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabase/client';
 import Link from 'next/link';
 import ListingCard from '@/components/ListingCard';
 import type { ListingLike } from '@/components/ListingCard';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface WatchlistItem {
   id: string;
@@ -16,42 +16,57 @@ interface WatchlistItem {
 
 export default function WatchlistsPage() {
   const router = useRouter();
-      const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
-      const [loading, setLoading] = useState(true);
+  const { session, loading: authLoading } = useAuth();
+  const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const authToken = useMemo(() => session?.access_token ?? null, [session]);
 
   useEffect(() => {
-    const loadWatchlists = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        router.push('/login?next=/watchlists');
-        return;
-      }
+    if (authLoading) {
+      return;
+    }
 
-        try {
-        const response = await fetch('/api/watchlists', {
-          credentials: 'include',
-        });
+    if (!session) {
+      router.push('/login?next=/watchlists');
+      return;
+    }
 
-        if (response.ok) {
-          const data = await response.json();
-          setWatchlists(data.watchlists || []);
+    const headers: HeadersInit = {};
+    if (session.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    fetch('/api/watchlists', {
+      credentials: 'include',
+      headers,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          throw new Error(`Failed to load watchlists: ${response.status} ${errorText}`);
         }
-      } catch (error) {
+        const data = await response.json();
+        setWatchlists(data.watchlists || []);
+      })
+      .catch((error) => {
         console.error('Error loading watchlists:', error);
-      } finally {
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    };
-
-    loadWatchlists();
-  }, [router]);
+      });
+  }, [authLoading, session, router]);
 
   const handleRemove = async (watchlistId: string, listingId: string) => {
     try {
+      const headers: HeadersInit = {};
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/watchlists?listingId=${listingId}`, {
         method: 'DELETE',
         credentials: 'include',
+        headers,
       });
 
       if (response.ok) {
@@ -62,12 +77,16 @@ export default function WatchlistsPage() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div>Loading watchlists...</div>
       </div>
     );
+  }
+
+  if (!session) {
+    return null;
   }
 
   return (

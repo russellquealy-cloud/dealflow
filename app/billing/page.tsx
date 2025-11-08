@@ -22,6 +22,7 @@ export default function BillingPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isManagingBilling, setIsManagingBilling] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -31,6 +32,7 @@ export default function BillingPage() {
           router.push('/login?next=/billing');
           return;
         }
+        setAuthToken(session.access_token ?? null);
 
         const { data } = await supabase
           .from('profiles')
@@ -57,9 +59,25 @@ export default function BillingPage() {
 
     setIsManagingBilling(true);
     try {
+      if (!authToken) {
+        alert('Please sign in again to manage billing.');
+        return;
+      }
+
+      const headers: HeadersInit = {
+        Authorization: `Bearer ${authToken}`,
+      };
+
       const response = await fetch('/api/billing/portal', {
         method: 'POST',
+        headers,
+        credentials: 'include',
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to access billing portal.');
+      }
       
       const { url } = await response.json();
       if (url) {
@@ -75,11 +93,27 @@ export default function BillingPage() {
 
   const handleUpgrade = async (segment: 'investor' | 'wholesaler', tier: 'basic' | 'pro') => {
     try {
+      if (!authToken) {
+        alert('Please sign in again to upgrade.');
+        return;
+      }
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      };
+
       const response = await fetch('/api/billing/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ segment, tier }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to start checkout.');
+      }
       
       const { url } = await response.json();
       if (url) {

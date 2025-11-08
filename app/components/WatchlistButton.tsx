@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/supabase/client';
+import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
   listingId: string | number;
@@ -12,39 +12,47 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const { session, loading: authLoading } = useAuth();
+  const userId = session?.user?.id ?? null;
+  const authToken = session?.access_token ?? null;
 
   useEffect(() => {
-    const checkWatchlist = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setLoading(false);
-        return;
-      }
+    if (authLoading) {
+      return;
+    }
 
-      setUserId(session.user.id);
+    if (!session) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const response = await fetch(`/api/watchlists?listingId=${listingId}`, {
-          credentials: 'include',
-        });
+    const headers: HeadersInit = {};
+    if (session.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
 
-        if (response.ok) {
-          const data = await response.json();
-          setIsInWatchlist(data.isInWatchlist || false);
+    fetch(`/api/watchlists?listingId=${listingId}`, {
+      credentials: 'include',
+      headers,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const text = await response.text().catch(() => '');
+          throw new Error(`Failed to check watchlist: ${response.status} ${text}`);
         }
-      } catch (error) {
+        const data = await response.json();
+        setIsInWatchlist(data.isInWatchlist || false);
+      })
+      .catch((error) => {
         console.error('Error checking watchlist:', error);
-      } finally {
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    };
-
-    checkWatchlist();
-  }, [listingId]);
+      });
+  }, [authLoading, session, listingId]);
 
   const toggleWatchlist = async () => {
-    if (!userId || updating) return;
+    if (!userId || updating || !authToken) return;
 
     setUpdating(true);
     try {
@@ -53,6 +61,9 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
         const response = await fetch(`/api/watchlists?listingId=${listingId}`, {
           method: 'DELETE',
           credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
         });
 
         if (response.ok) {
@@ -62,7 +73,10 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
         // Add to watchlist
         const response = await fetch('/api/watchlists', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
           body: JSON.stringify({ listingId }),
           credentials: 'include',
         });
@@ -78,7 +92,7 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <button
         disabled

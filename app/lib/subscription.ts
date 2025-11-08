@@ -1,8 +1,16 @@
 import { createClient } from '@/lib/supabase/server';
 import { STRIPE_PLANS, type SubscriptionTier, type PlanLimits } from '@/lib/stripe';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getUserSubscription(userId: string) {
-  const supabase = await createClient();
+async function resolveClient(existing?: SupabaseClient) {
+  if (existing) {
+    return existing;
+  }
+  return createClient();
+}
+
+export async function getUserSubscription(userId: string, client?: SupabaseClient) {
+  const supabase = await resolveClient(client);
   
   const { data: subscription, error } = await supabase
     .from('subscriptions')
@@ -20,8 +28,8 @@ export async function getUserSubscription(userId: string) {
   return subscription;
 }
 
-export async function getUserSubscriptionTier(userId: string): Promise<SubscriptionTier> {
-  const supabase = await createClient();
+export async function getUserSubscriptionTier(userId: string, client?: SupabaseClient): Promise<SubscriptionTier> {
+  const supabase = await resolveClient(client);
   
   const { data, error } = await supabase.rpc('get_user_subscription_tier', {
     user_uuid: userId
@@ -38,9 +46,10 @@ export async function getUserSubscriptionTier(userId: string): Promise<Subscript
 export async function canUserPerformAction(
   userId: string,
   actionType: 'contacts' | 'ai_analyses' | 'listings',
-  actionCount: number = 1
+  actionCount: number = 1,
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const supabase = await createClient();
+  const supabase = await resolveClient(client);
   
   const { data, error } = await supabase.rpc('can_user_perform_action', {
     user_uuid: userId,
@@ -59,9 +68,10 @@ export async function canUserPerformAction(
 export async function incrementUsage(
   userId: string,
   actionType: 'contacts' | 'ai_analyses' | 'listings',
-  actionCount: number = 1
+  actionCount: number = 1,
+  client?: SupabaseClient
 ): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await resolveClient(client);
   
   const { error } = await supabase.rpc('increment_subscription_usage', {
     user_uuid: userId,
@@ -74,8 +84,8 @@ export async function incrementUsage(
   }
 }
 
-export async function getUserUsage(userId: string) {
-  const supabase = await createClient();
+export async function getUserUsage(userId: string, client?: SupabaseClient) {
+  const supabase = await resolveClient(client);
   
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
   
@@ -109,9 +119,10 @@ export async function logContactAction(
   userId: string,
   listingId: string,
   contactType: 'call' | 'email' | 'text',
-  contactData: Record<string, unknown>
+  contactData: Record<string, unknown>,
+  client?: SupabaseClient
 ) {
-  const supabase = await createClient();
+  const supabase = await resolveClient(client);
   
   const { error } = await supabase
     .from('contact_logs')
@@ -133,9 +144,10 @@ export async function logAIAnalysis(
   analysisType: 'arv' | 'repairs' | 'mao' | 'comps',
   inputData: Record<string, unknown>,
   outputData: Record<string, unknown>,
-  costCents: number = 0
+  costCents: number = 0,
+  client?: SupabaseClient
 ) {
-  const supabase = await createClient();
+  const supabase = await resolveClient(client);
   
   const { error } = await supabase
     .from('ai_analysis_logs')

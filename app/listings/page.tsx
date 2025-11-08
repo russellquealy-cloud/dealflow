@@ -9,6 +9,7 @@ import ListingsSkeleton from '@/components/ListingsSkeleton';
 import { toNum } from '@/lib/format';
 import { logger } from '@/lib/logger';
 import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
+import type { BoundsPayload } from '@/components/GoogleMapImpl';
 
 interface ListingData {
   id: string;
@@ -73,7 +74,7 @@ export default function ListingsPage() {
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
+  const [mapBounds, setMapBounds] = useState<BoundsPayload | null>(null);
   const [activeMapBounds, setActiveMapBounds] = useState(false);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
   const [mapZoom, setMapZoom] = useState<number | undefined>(undefined);
@@ -150,7 +151,7 @@ export default function ListingsPage() {
     async (
       filtersToUse: Filters,
       options?: {
-        bounds?: { south: number; north: number; west: number; east: number };
+        bounds?: BoundsPayload;
         limit?: number;
       }
     ) => {
@@ -173,10 +174,14 @@ export default function ListingsPage() {
       }
 
       if (options?.bounds) {
-        params.set('south', String(options.bounds.south));
-        params.set('north', String(options.bounds.north));
-        params.set('west', String(options.bounds.west));
-        params.set('east', String(options.bounds.east));
+        const { south, north, west, east, polygon } = options.bounds;
+        params.set('south', String(south));
+        params.set('north', String(north));
+        params.set('west', String(west));
+        params.set('east', String(east));
+        if (polygon) {
+          params.set('polygon', JSON.stringify(polygon));
+        }
       }
 
       const response = await fetch(`/api/listings?${params.toString()}`, { cache: 'no-store' });
@@ -237,7 +242,7 @@ export default function ListingsPage() {
           return;
         }
 
-        const typedBounds = bounds as { south: number; north: number; west: number; east: number };
+        const typedBounds = bounds as BoundsPayload;
 
         if (
           Number.isNaN(typedBounds.south) ||
@@ -249,20 +254,28 @@ export default function ListingsPage() {
           return;
         }
 
+        const normalizedBounds: BoundsPayload = {
+          south: typedBounds.south,
+          north: typedBounds.north,
+          west: typedBounds.west,
+          east: typedBounds.east,
+          ...(typedBounds.polygon ? { polygon: typedBounds.polygon } : {}),
+        };
+
         const threshold = 0.02;
         if (
           !mapBounds ||
-          Math.abs(mapBounds.south - typedBounds.south) > threshold ||
-          Math.abs(mapBounds.north - typedBounds.north) > threshold ||
-          Math.abs(mapBounds.west - typedBounds.west) > threshold ||
-          Math.abs(mapBounds.east - typedBounds.east) > threshold
+          Math.abs(mapBounds.south - normalizedBounds.south) > threshold ||
+          Math.abs(mapBounds.north - normalizedBounds.north) > threshold ||
+          Math.abs(mapBounds.west - normalizedBounds.west) > threshold ||
+          Math.abs(mapBounds.east - normalizedBounds.east) > threshold
         ) {
-          logger.log('Bounds changed significantly, applying spatial filter for bounds:', typedBounds);
-          setMapBounds(typedBounds);
+          logger.log('Bounds changed significantly, applying spatial filter for bounds:', normalizedBounds);
+          setMapBounds(normalizedBounds);
           setActiveMapBounds(true);
 
           const { items, points } = await requestListings(filtersToUse, {
-            bounds: typedBounds,
+            bounds: normalizedBounds,
             limit: 200,
           });
 
@@ -460,20 +473,6 @@ export default function ListingsPage() {
   }, [activeMapBounds, mapBounds, handleMapBoundsChange]);
 
   // Memoize map component to prevent re-renders
-  const MapComponent = useMemo(() => {
-    const MapComponentInner = (props: Record<string, unknown>) => (
-      <GoogleMapWrapper
-        {...props}
-        points={allPoints}
-        onBoundsChange={handleMapBoundsChange}
-        center={mapCenter}
-        zoom={mapZoom}
-      />
-    );
-    MapComponentInner.displayName = 'MapComponent';
-    return MapComponentInner;
-  }, [allPoints, handleMapBoundsChange, mapCenter, mapZoom]);
-
   if (showSkeleton || (loading && !error)) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)' }}>
@@ -546,6 +545,23 @@ export default function ListingsPage() {
     );
   }
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const state = {
+        filters,
+        searchQuery,
+        bounds: activeMapBounds ? mapBounds : null,
+      };
+      localStorage.setItem('currentFilters', JSON.stringify(state));
+    } catch (err) {
+      logger.error('Failed to persist current search state', err);
+    }
+  }, [filters, searchQuery, mapBounds, activeMapBounds]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden', position: 'relative' }}>
       {/* header + search */}
@@ -576,7 +592,9 @@ export default function ListingsPage() {
           points={allPoints} 
           listings={filteredListings as ListItem[]}
           onBoundsChange={handleMapBoundsChange}
-          MapComponent={MapComponent}
+          MapComponent={GoogleMapWrapper}
+          mapCenter={mapCenter}
+          mapZoom={mapZoom}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useAuth } from '@/providers/AuthProvider';
 
 type AnalyzeRequest = {
   price: number;
@@ -27,10 +28,16 @@ export default function AIAnalyzer() {
   });
   const [out, setOut] = React.useState<AnalyzeResponse | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const { session } = useAuth();
 
   const run = async () => {
     setBusy(true);
     setOut(null);
+    if (!session?.access_token) {
+      alert('Please sign in to run the analyzer.');
+      setBusy(false);
+      return;
+    }
     const payload: AnalyzeRequest = {
       price: Number(form.price) || 0,
       arv: Number(form.arv) || 0,
@@ -38,7 +45,21 @@ export default function AIAnalyzer() {
       sqft: Number(form.sqft) || 0,
       lot_sqft: Number(form.lot_sqft) || 0,
     };
-    const res = await fetch('/api/analyze', { method: 'POST', body: JSON.stringify(payload) });
+    const res = await fetch('/api/analyze', { 
+      method: 'POST', 
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload) 
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      alert(errorData.error || 'Analysis failed. Please try again.');
+      setBusy(false);
+      return;
+    }
     const data: AnalyzeResponse = await res.json();
     setOut(data);
     setBusy(false);

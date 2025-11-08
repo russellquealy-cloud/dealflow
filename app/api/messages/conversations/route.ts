@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthUser } from "@/lib/auth/server";
 
@@ -116,9 +116,9 @@ async function buildConversationFallback(
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser();
+    const { user, supabase } = await getAuthUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -130,18 +130,14 @@ export async function GET() {
       .order("last_message_at", { ascending: false });
 
     if (error) {
-      if (error.code === "42P01" || error.code === "PGRST116") {
-        try {
-          const fallback = await buildConversationFallback(supabase, user.id);
-          return NextResponse.json({ conversations: fallback });
-        } catch (fallbackError) {
-          console.error("Fallback conversations error", fallbackError);
-          return NextResponse.json({ error: "Server error" }, { status: 500 });
-        }
+      console.error("Error fetching conversations view, attempting fallback", error);
+      try {
+        const fallback = await buildConversationFallback(supabase, user.id);
+        return NextResponse.json({ conversations: fallback });
+      } catch (fallbackError) {
+        console.error("Fallback conversations error", fallbackError);
+        return NextResponse.json({ error: "Server error" }, { status: 500 });
       }
-
-      console.error("Error fetching conversations", error);
-      return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 
     return NextResponse.json({ conversations: data ?? [] });

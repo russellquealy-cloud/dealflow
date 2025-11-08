@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PaywallReason, getPaywallMessage } from '@/lib/paywall';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface UpgradeModalProps {
   reason: PaywallReason;
@@ -19,17 +20,35 @@ export default function UpgradeModal({
   currentSegment = 'investor' 
 }: UpgradeModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { session } = useAuth();
 
   if (!isOpen) return null;
 
   const handleUpgrade = async (segment: 'investor' | 'wholesaler', tier: 'basic' | 'pro') => {
     setIsLoading(true);
     try {
+      if (!session?.access_token) {
+        alert('Please sign in to upgrade your plan.');
+        return;
+      }
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      };
+
       const response = await fetch('/api/billing/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ segment, tier }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Failed to start checkout. Please try again.');
+        return;
+      }
       
       const { url } = await response.json();
       if (url) {

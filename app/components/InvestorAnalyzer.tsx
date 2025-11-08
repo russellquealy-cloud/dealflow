@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import type { InvestorQuestionType, InvestorQuestionInput, AnalysisResult } from '@/lib/ai-analyzer-structured';
+import { useAuth } from '@/providers/AuthProvider';
 
 type QuestionOption = {
   value: InvestorQuestionType;
@@ -43,6 +44,7 @@ export default function InvestorAnalyzer() {
   const [result, setResult] = React.useState<AnalysisResult | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const { session } = useAuth();
 
   const updateFormData = (key: keyof InvestorQuestionInput, value: unknown) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -54,36 +56,55 @@ export default function InvestorAnalyzer() {
     setResult(null);
 
     try {
+      if (!session?.access_token) {
+        setError('Please sign in to run analyses.');
+        return;
+      }
+
       const input: InvestorQuestionInput = {
         questionType,
         ...formData,
       };
 
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      };
+
       const response = await fetch('/api/analyze-structured', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ role: 'investor', input }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        // If API fails, show mock data so user can see the UI
-        if (errorData.error?.includes('API') || errorData.error?.includes('key') || response.status === 500) {
-          console.warn('API not available, showing mock data');
-          setResult(generateMockResult(questionType, formData));
-          setError(null);
+        if (response.status === 401) {
+          setError('Your session expired. Please sign in again.');
           return;
         }
-        throw new Error(errorData.error || 'Analysis failed');
+        if (response.status === 403 && errorData?.upgrade_required) {
+          setError(errorData.error || 'Upgrade your plan to access AI analyses.');
+          return;
+        }
+        if (response.status === 429) {
+          setError(errorData.error || 'Rate limit reached. Try again shortly.');
+          return;
+        }
+
+        console.warn('Analysis failed, showing sample output:', errorData);
+        setResult(generateMockResult(questionType, formData));
+        setError(errorData.error ? `Showing sample output: ${errorData.error}` : 'Showing sample output due to analysis error.');
+        return;
       }
 
       const data: AnalysisResult = await response.json();
       setResult(data);
     } catch (err) {
-      // On any error, show mock data so UI is visible
-      console.warn('Analysis error, showing mock data:', err);
+      console.warn('Analysis error, showing sample output:', err);
       setResult(generateMockResult(questionType, formData));
-      setError(null);
+      setError(err instanceof Error ? `Showing sample output: ${err.message}` : 'Showing sample output due to analysis error.');
     } finally {
       setLoading(false);
     }
@@ -382,24 +403,29 @@ export default function InvestorAnalyzer() {
                 Calculations:
               </div>
               <div style={{ display: 'grid', gap: 8 }}>
-                {Object.entries(result.result.calculations).map(([key, value]) => (
-                  <div key={key} style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    padding: 8,
-                    background: 'white',
-                    borderRadius: 6,
-                  }}>
-                    <span style={{ textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
-                    <strong>
-                      {typeof value === 'number' 
-                        ? (value > 1000 ? `$${value.toLocaleString()}` : `${value}%`)
-                        : String(value)
-                      }
-                    </strong>
-                  </div>
-                ))}
-              </div>
+                {Object.entries(result.result.calculations)
+                  .filter(([, value]) => value !== undefined && value !== null)
+                  .map(([key, value]) => {
+                    const label = formatCalculationLabel(key);
+                    return (
+                      <div key={key} style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        padding: 8,
+                        background: 'white',
+                        borderRadius: 6,
+                      }}>
+                      <span>{label}:</span>
+                      <strong>
+                        {typeof value === 'number' 
+                          ? (value > 1000 ? `$${value.toLocaleString()}` : `${value}%`)
+                          : String(value)
+                        }
+                      </strong>
+                      </div>
+                    );
+                  })}
+                </div>
             </div>
           )}
 
@@ -457,7 +483,7 @@ function generateMockResult(questionType: InvestorQuestionType, formData: Partia
         purchasePrice: purchasePrice
       },
       notes: [
-        'This is a mock analysis. Connect OpenAI API key to get real analysis.',
+        'Sample output shown while the analysis service is offline.',
         `Estimated spread: $${spread.toLocaleString()}`,
         `Estimated ROI: ${purchasePrice > 0 ? ((spread / purchasePrice) * 100).toFixed(1) : 0}%`
       ]
@@ -466,6 +492,12 @@ function generateMockResult(questionType: InvestorQuestionType, formData: Partia
     aiCost: 0,
     timestamp: new Date().toISOString()
   };
+}
+
+function formatCalculationLabel(key: string): string {
+  const spaced = key.replace(/([A-Z])/g, ' $1').trim();
+  if (!spaced) return key;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function InputField({ 

@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabase/client';
 import Link from 'next/link';
+import type { Filters } from '@/components/FiltersBar';
+import type { BoundsPayload } from '@/components/GoogleMapImpl';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface SavedSearch {
   id: string;
@@ -14,57 +16,94 @@ interface SavedSearch {
   updated_at: string;
 }
 
+type SavedSearchCriteria = {
+  filters?: Partial<Filters> | null;
+  searchQuery?: string | null;
+  bounds?: BoundsPayload | null;
+};
+
 export default function SavedSearchesPage() {
   const router = useRouter();
+  const { session, loading: authLoading } = useAuth();
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSearchName, setNewSearchName] = useState('');
+  const [criteriaPreview, setCriteriaPreview] = useState<string>('');
+
+  const authToken = useMemo(() => session?.access_token ?? null, [session]);
 
   useEffect(() => {
-    const loadSearches = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        router.push('/login?next=/saved-searches');
-        return;
-      }
+    if (authLoading) {
+      return;
+    }
 
-      try {
-        const response = await fetch('/api/saved-searches', {
-          credentials: 'include',
-        });
+    if (!session) {
+      router.push('/login?next=/saved-searches');
+      return;
+    }
 
-        if (response.ok) {
-          const data = await response.json();
-          setSearches(data.searches || []);
+    const headers: HeadersInit = {};
+    if (session.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    fetch('/api/saved-searches', {
+      credentials: 'include',
+      headers,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const text = await response.text().catch(() => '');
+          throw new Error(`Failed to load saved searches: ${response.status} ${text}`);
         }
-      } catch (error) {
+        const data = await response.json();
+        setSearches(data.searches || []);
+      })
+      .catch((error) => {
         console.error('Error loading saved searches:', error);
-      } finally {
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    };
+      });
+  }, [authLoading, session, router]);
 
-    loadSearches();
-  }, [router]);
+  useEffect(() => {
+    if (!showCreateForm) {
+      setCriteriaPreview('');
+      return;
+    }
+
+    const currentState = readCurrentSearchState();
+    setCriteriaPreview(summarizeCriteria(currentState));
+    setNewSearchName(generateSearchName(currentState));
+  }, [showCreateForm]);
 
   const handleCreateFromCurrent = async () => {
-    // Get current filters from URL or localStorage
-    const currentFilters = JSON.parse(localStorage.getItem('currentFilters') || '{}');
-    
+    if (!authToken) {
+      alert('Please sign in to save searches.');
+      return;
+    }
+
+    const currentState = readCurrentSearchState();
+
     if (!newSearchName.trim()) {
       alert('Please enter a name for this search');
       return;
     }
 
     try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      };
+
       const response = await fetch('/api/saved-searches', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           name: newSearchName,
-          criteria: currentFilters,
+          criteria: currentState,
         }),
         credentials: 'include',
       });
@@ -85,9 +124,17 @@ export default function SavedSearchesPage() {
     if (!confirm('Delete this saved search?')) return;
 
     try {
+      if (!authToken) {
+        alert('Please sign in to modify saved searches.');
+        return;
+      }
+
       const response = await fetch(`/api/saved-searches?id=${id}`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
       });
 
       if (response.ok) {
@@ -100,9 +147,19 @@ export default function SavedSearchesPage() {
 
   const handleToggleActive = async (search: SavedSearch) => {
     try {
+      if (!authToken) {
+        alert('Please sign in to modify saved searches.');
+        return;
+      }
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      };
+
       const response = await fetch('/api/saved-searches', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           id: search.id,
           active: !search.active,
@@ -125,12 +182,16 @@ export default function SavedSearchesPage() {
     router.push('/listings');
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div>Loading saved searches...</div>
       </div>
     );
+  }
+
+  if (!session) {
+    return null;
   }
 
   return (
@@ -143,7 +204,7 @@ export default function SavedSearchesPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
+          onClick={() => setShowCreateForm((prev) => !prev)}
           style={{
             padding: '12px 24px',
             background: '#3b82f6',
@@ -197,6 +258,11 @@ export default function SavedSearchesPage() {
               Save
             </button>
           </div>
+          {criteriaPreview && (
+            <p style={{ margin: '12px 0 0 0', fontSize: 13, color: '#4b5563' }}>
+              {criteriaPreview}
+            </p>
+          )}
           <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#6b7280' }}>
             Go to the listings page, apply your filters, then come back here to save them.
           </p>
@@ -264,8 +330,8 @@ export default function SavedSearchesPage() {
                 <div style={{ fontSize: 14, color: '#6b7280' }}>
                   Created {new Date(search.created_at).toLocaleDateString()}
                 </div>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
-                  {JSON.stringify(search.criteria).substring(0, 100)}...
+                <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
+                  {summarizeCriteria(search.criteria as SavedSearchCriteria)}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -321,5 +387,107 @@ export default function SavedSearchesPage() {
       )}
     </main>
   );
+}
+
+function readCurrentSearchState(): SavedSearchCriteria {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem('currentFilters');
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as SavedSearchCriteria | null;
+    return parsed || {};
+  } catch (error) {
+    console.warn('Unable to read currentFilters from storage', error);
+    return {};
+  }
+}
+
+function generateSearchName(state: SavedSearchCriteria): string {
+  if (!state) return 'New Search';
+  const parts: string[] = [];
+  const filters = state.filters || {};
+
+  if (state.searchQuery) {
+    parts.push(state.searchQuery.trim());
+  }
+
+  if (filters.minPrice || filters.maxPrice) {
+    const min = filters.minPrice ? `$${Number(filters.minPrice).toLocaleString()}` : 'Any';
+    const max = filters.maxPrice ? `$${Number(filters.maxPrice).toLocaleString()}` : 'Any';
+    parts.push(`Price ${min}–${max}`);
+  }
+
+  if (filters.minBeds || filters.maxBeds) {
+    const label = filters.minBeds && filters.maxBeds && filters.minBeds === filters.maxBeds
+      ? `${filters.minBeds} beds`
+      : `${filters.minBeds ?? '0'}-${filters.maxBeds ?? '∞'} beds`;
+    parts.push(label);
+  }
+
+  if (filters.minBaths || filters.maxBaths) {
+    const label = filters.minBaths && filters.maxBaths && filters.minBaths === filters.maxBaths
+      ? `${filters.minBaths} baths`
+      : `${filters.minBaths ?? '0'}-${filters.maxBaths ?? '∞'} baths`;
+    parts.push(label);
+  }
+
+  if (state.bounds) {
+    parts.push('Map area');
+  }
+
+  if (parts.length === 0) {
+    return 'New Search';
+  }
+
+  return parts.join(' · ');
+}
+
+function summarizeCriteria(criteria: SavedSearchCriteria | Record<string, unknown> | null): string {
+  if (!criteria || typeof criteria !== 'object') {
+    return 'All listings';
+  }
+
+  const normalized = criteria as SavedSearchCriteria;
+  const filters = normalized.filters || {};
+  const details: string[] = [];
+
+  if (normalized.searchQuery) {
+    details.push(`Keyword: ${normalized.searchQuery}`);
+  }
+
+  if (filters.minPrice || filters.maxPrice) {
+    const min = filters.minPrice ? `$${Number(filters.minPrice).toLocaleString()}` : 'Any';
+    const max = filters.maxPrice ? `$${Number(filters.maxPrice).toLocaleString()}` : 'Any';
+    details.push(`Price ${min} – ${max}`);
+  }
+
+  if (filters.minBeds || filters.maxBeds) {
+    details.push(`Beds ${filters.minBeds ?? 'Any'} – ${filters.maxBeds ?? 'Any'}`);
+  }
+
+  if (filters.minBaths || filters.maxBaths) {
+    details.push(`Baths ${filters.minBaths ?? 'Any'} – ${filters.maxBaths ?? 'Any'}`);
+  }
+
+  if (filters.minSqft || filters.maxSqft) {
+    details.push(`Sqft ${filters.minSqft ?? 'Any'} – ${filters.maxSqft ?? 'Any'}`);
+  }
+
+  if (filters.sortBy) {
+    const sortMap: Record<string, string> = {
+      newest: 'Newest first',
+      price_asc: 'Price low → high',
+      price_desc: 'Price high → low',
+      sqft_asc: 'Sqft low → high',
+      sqft_desc: 'Sqft high → low',
+    };
+    details.push(sortMap[filters.sortBy] ?? filters.sortBy);
+  }
+
+  if (normalized.bounds) {
+    details.push('Saved map area');
+  }
+
+  return details.join(' · ') || 'All listings';
 }
 

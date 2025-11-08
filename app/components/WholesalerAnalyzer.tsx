@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { WholesalerQuestionType, WholesalerQuestionInput, AnalysisResult } from '@/lib/ai-analyzer-structured';
 import RepairChecklist from './RepairChecklist';
+import { useAuth } from '@/providers/AuthProvider';
 
 type QuestionOption = {
   value: WholesalerQuestionType;
@@ -40,6 +41,7 @@ export default function WholesalerAnalyzer() {
   const [result, setResult] = React.useState<AnalysisResult | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const { session } = useAuth();
 
   const updateFormData = (key: keyof WholesalerQuestionInput, value: unknown) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -51,40 +53,56 @@ export default function WholesalerAnalyzer() {
     setResult(null);
 
     try {
+      if (!session?.access_token) {
+        setError('Please sign in to run analyses.');
+        return;
+      }
+
       const input: WholesalerQuestionInput = {
         questionType,
         ...formData,
         ...(questionType === 'repair_estimate' && { repairChecklist }),
       };
 
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      };
+
       const response = await fetch('/api/analyze-structured', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ role: 'wholesaler', input }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        // If API fails, show mock data so user can see the UI
-        if (errorData.error?.includes('API') || errorData.error?.includes('key') || response.status === 500) {
-          // API not available, using mock data (expected in development)
-          setResult(generateMockResult(questionType, formData, repairChecklist));
-          setError(null);
+        if (response.status === 401) {
+          setError('Your session expired. Please sign in again.');
           return;
         }
-        throw new Error(errorData.error || 'Analysis failed');
+        if (response.status === 403 && errorData?.upgrade_required) {
+          setError(errorData.error || 'Upgrade your plan to access AI analyses.');
+          return;
+        }
+        if (response.status === 429) {
+          setError(errorData.error || 'Rate limit reached. Try again shortly.');
+          return;
+        }
+
+        console.warn('Analysis failed, showing sample output:', errorData);
+        setResult(generateMockResult(questionType, formData, repairChecklist));
+        setError(errorData.error ? `Showing sample output: ${errorData.error}` : 'Showing sample output due to analysis error.');
+        return;
       }
 
       const data: AnalysisResult = await response.json();
       setResult(data);
     } catch (err) {
-      // On any error, show mock data so UI is visible
-      // Analysis error, showing mock data (expected in development)
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Analysis error, showing mock data:', err);
-      }
+      console.warn('Analysis error, showing sample output:', err);
       setResult(generateMockResult(questionType, formData, repairChecklist));
-      setError(null);
+      setError(err instanceof Error ? `Showing sample output: ${err.message}` : 'Showing sample output due to analysis error.');
     } finally {
       setLoading(false);
     }
@@ -360,7 +378,9 @@ export default function WholesalerAnalyzer() {
                 Breakdown:
               </div>
               <div style={{ display: 'grid', gap: 8 }}>
-                {Object.entries(result.result.calculations).map(([key, value]) => (
+                {Object.entries(result.result.calculations || {})
+                  .filter(([, value]) => value !== undefined && value !== null)
+                  .map(([key, value]) => (
                   <div key={key} style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between',
@@ -368,14 +388,10 @@ export default function WholesalerAnalyzer() {
                     background: 'white',
                     borderRadius: 6,
                   }}>
-                    <span style={{ textTransform: 'capitalize' }}>
-                      {key.replace(/([A-Z])/g, ' $1').trim()}:
-                    </span>
+                    <span>{formatCalculationLabel(key)}:</span>
                     <strong>
                       {typeof value === 'number' 
-                        ? (key.includes('Margin') || key.includes('ROI') || key.includes('Return')
-                          ? `${value}%`
-                          : `$${value.toLocaleString()}`)
+                        ? formatNumericValue(key, value)
                         : String(value)
                       }
                     </strong>
@@ -444,9 +460,9 @@ export default function WholesalerAnalyzer() {
 }
 
 function generateMockResult(
-  questionType: WholesalerQuestionType, 
+  questionType: WholesalerQuestionType,
   formData: Partial<WholesalerQuestionInput>,
-  repairChecklist?: WholesalerQuestionInput['repairChecklist']
+  repairChecklist: WholesalerQuestionInput['repairChecklist']
 ): AnalysisResult {
   const arv = formData.arv || 300000;
   // If repairChecklist exists but no repairs value, use a simple estimate based on items
@@ -473,29 +489,39 @@ function generateMockResult(
   return {
     questionType: questionType,
     result: {
-      answer: questionType === 'mao_calculation' 
-        ? mao
-        : questionType === 'arv_quick_comps'
-        ? arv
-        : repairs,
+      answer: questionType === 'mao_calculation'
+        ? Math.round((formData.arv || 300000) * 0.7 - (formData.repairs || 35000))
+        : 5000,
       calculations: {
-        mao: mao,
-        arv: arv,
-        repairs: repairs,
-        targetMargin: targetMargin,
-        wholesaleFee: formData.yourFee || 5000,
-        breakdown: breakdown
+        arv: formData.arv || 300000,
+        repairs: formData.repairs || 35000,
+        mao: questionType === 'mao_calculation' ? Math.round((formData.arv || 300000) * 0.7 - (formData.repairs || 35000)) : undefined,
+        targetMargin: (formData.targetMargin || 0.2) * 100,
+        carrying: (formData.carryingCost || 500) * (formData.monthsHold || 3),
       },
       notes: [
-        'This is a mock analysis. Connect OpenAI API key to get real analysis.',
-        `Estimated MAO: $${mao.toLocaleString()}`,
-        `Total repair cost: $${repairs.toLocaleString()}`
-      ]
+        'Sample output shown while the analysis service is offline.',
+        'Connect your full AI plan to enable live analyses.',
+      ].filter(Boolean) as string[],
     },
     cached: false,
     aiCost: 0,
     timestamp: new Date().toISOString()
   };
+}
+
+function formatCalculationLabel(key: string): string {
+  const spaced = key.replace(/([A-Z])/g, ' $1').trim();
+  if (!spaced) return key;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function formatNumericValue(key: string, value: number): string {
+  const percentKeys = ['Margin', 'ROI', 'Return'];
+  if (percentKeys.some((k) => key.toLowerCase().includes(k.toLowerCase()))) {
+    return `${value}%`;
+  }
+  return `$${value.toLocaleString()}`;
 }
 
 function InputField({ 

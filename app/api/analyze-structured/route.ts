@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { analyzeStructured, type UserRole, type InvestorQuestionInput, type WholesalerQuestionInput } from '@/lib/ai-analyzer-structured';
 import { getUserSubscriptionTier } from '@/lib/subscription';
+import { getAuthUser } from '@/lib/auth/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,10 +17,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthUser(request);
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Perform structured analysis
-    const result = await analyzeStructured(user.id, role, input);
+    const result = await analyzeStructured(user.id, role, input, supabase);
 
     return NextResponse.json(result);
 
@@ -54,9 +53,8 @@ export async function POST(request: NextRequest) {
       }
       if (error.message.includes('limit reached') || error.message.includes('Upgrade')) {
         // Get user ID properly
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        const tier = user ? await getUserSubscriptionTier(user.id) : 'FREE';
+        const { user, supabase } = await getAuthUser(request);
+        const tier = user ? await getUserSubscriptionTier(user.id, supabase) : 'FREE';
         return NextResponse.json({ 
           error: error.message,
           upgrade_required: true,

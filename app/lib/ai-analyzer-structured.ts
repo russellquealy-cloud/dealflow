@@ -11,6 +11,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { canUserPerformAction, incrementUsage } from '@/lib/subscription';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -370,7 +371,8 @@ function calculateSensitivity(
 export async function analyzeStructured(
   userId: string,
   role: UserRole,
-  input: InvestorQuestionInput | WholesalerQuestionInput
+  input: InvestorQuestionInput | WholesalerQuestionInput,
+  supabaseClient?: SupabaseClient
 ): Promise<AnalysisResult> {
   // 1. Check rate limits
   const rateLimit = checkRateLimit(userId);
@@ -379,14 +381,14 @@ export async function analyzeStructured(
   }
   
   // 2. Check subscription limits
-  const canAnalyze = await canUserPerformAction(userId, 'ai_analyses', 1);
+  const canAnalyze = await canUserPerformAction(userId, 'ai_analyses', 1, supabaseClient);
   if (!canAnalyze) {
     throw new Error('AI analysis limit reached. Upgrade your plan.');
   }
   
   // 3. Check cache first (store question signature as key)
   const questionKey = generateQuestionKey(role, input);
-  const cached = await getCachedAnalysis(userId, questionKey);
+  const cached = await getCachedAnalysis(userId, questionKey, supabaseClient);
   if (cached) {
     return { ...cached, cached: true };
   }
@@ -429,7 +431,7 @@ export async function analyzeStructured(
   }
   
   // 6. Increment usage
-  await incrementUsage(userId, 'ai_analyses', 1);
+  await incrementUsage(userId, 'ai_analyses', 1, supabaseClient);
   
   // 7. Cache result
   const analysisResult: AnalysisResult = {
@@ -440,7 +442,7 @@ export async function analyzeStructured(
     timestamp: new Date().toISOString(),
   };
   
-  await cacheAnalysis(userId, questionKey, analysisResult);
+  await cacheAnalysis(userId, questionKey, analysisResult, supabaseClient);
   
   return analysisResult;
 }
@@ -661,9 +663,13 @@ function generateQuestionKey(role: UserRole, input: InvestorQuestionInput | Whol
   return `${role}_${input.questionType}_${JSON.stringify(input)}`;
 }
 
-async function getCachedAnalysis(userId: string, questionKey: string): Promise<AnalysisResult | null> {
+async function getCachedAnalysis(
+  userId: string,
+  questionKey: string,
+  supabaseClient?: SupabaseClient
+): Promise<AnalysisResult | null> {
   try {
-    const supabase = await createClient();
+    const supabase = supabaseClient ?? (await createClient());
     
     // Store cache key in question signature format
     const { data, error } = await supabase
@@ -691,10 +697,11 @@ async function getCachedAnalysis(userId: string, questionKey: string): Promise<A
 async function cacheAnalysis(
   userId: string,
   questionKey: string,
-  result: AnalysisResult
+  result: AnalysisResult,
+  supabaseClient?: SupabaseClient
 ): Promise<void> {
   try {
-    const supabase = await createClient();
+    const supabase = supabaseClient ?? (await createClient());
     
     await supabase.from('ai_analysis_logs').insert({
       user_id: userId,

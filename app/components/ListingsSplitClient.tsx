@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import ListingCard from './ListingCard';
 
 export type MapPoint = { id: string; lat: number; lng: number; price?: number; featured?: boolean; featured_until?: string };
@@ -9,12 +9,31 @@ export type ListItem = { id: string } & Record<string, unknown>;
 type Props = {
   points: MapPoint[];
   listings: ListItem[];
-  MapComponent: React.ComponentType<{ points: MapPoint[]; onBoundsChange?: (bounds: unknown) => void }>;
+  MapComponent: React.ComponentType<{
+    points: MapPoint[];
+    onBoundsChange?: (bounds: unknown) => void;
+    center?: { lat: number; lng: number };
+    zoom?: number;
+  }>;
   onBoundsChange?: (bounds: unknown) => void;
+  mapCenter?: { lat: number; lng: number } | undefined;
+  mapZoom?: number | undefined;
 };
 
-export default function ListingsSplitClient({ points, listings, MapComponent, onBoundsChange }: Props) {
+export default function ListingsSplitClient({ points, listings, MapComponent, onBoundsChange, mapCenter, mapZoom }: Props) {
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
+  const mapContainerStyle = useMemo(() => ({
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    background: '#fff',
+    minWidth: 0,
+    display: mobileView === 'list' ? 'none' : 'flex',
+    flexDirection: 'column' as const,
+    flex: 1,
+    height: '100%',
+    minHeight: '420px',
+    overflow: 'hidden',
+  }), [mobileView]);
   
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -45,22 +64,19 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
       {/* Desktop: Side by side, Mobile: Stacked with toggle */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(540px,1fr)_1fr] gap-4 flex-1 min-h-0">
         {/* MAP */}
-        <div style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: '12px',
-          background: '#fff',
-          minWidth: 0, // Prevent layout thrash (per guardrails)
-          display: mobileView === 'list' ? 'none' : 'flex',
-          height: '65vh',
-          overflow: 'hidden'
-        }}>
+        <div style={mapContainerStyle}>
           <div style={{
             flex: 1,
             minWidth: 0,
             width: '100%',
             height: '100%'
           }}>
-            <MapComponent points={points} onBoundsChange={onBoundsChange} />
+            <MapComponent
+              points={points}
+              onBoundsChange={onBoundsChange}
+              center={mapCenter}
+              zoom={mapZoom}
+            />
           </div>
         </div>
 

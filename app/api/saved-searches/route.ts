@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { getAuthUser } from '@/lib/auth/server';
 
 // GET: Fetch user's saved searches
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthUser(request);
 
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -32,10 +31,9 @@ export async function GET() {
 // POST: Create saved search
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthUser(request);
 
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -84,10 +82,9 @@ export async function POST(request: NextRequest) {
 // PUT: Update saved search
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthUser(request);
 
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -126,10 +123,9 @@ export async function PUT(request: NextRequest) {
 // DELETE: Delete saved search
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthUser(request);
 
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

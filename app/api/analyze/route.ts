@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeProperty, type AIAnalysisInput } from '@/lib/ai-analyzer';
-import { createClient } from '@/lib/supabase/server';
 import { canUserPerformAction, getUserSubscriptionTier } from '@/lib/subscription';
+import { getAuthUser } from '@/lib/auth/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,17 +12,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const { user, supabase } = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user can perform AI analysis
-    const canAnalyze = await canUserPerformAction(user.id, 'ai_analyses', 1);
+    const canAnalyze = await canUserPerformAction(user.id, 'ai_analyses', 1, supabase);
     if (!canAnalyze) {
-      const tier = await getUserSubscriptionTier(user.id);
+      const tier = await getUserSubscriptionTier(user.id, supabase);
       return NextResponse.json({ 
         error: 'AI analysis not available on your plan',
         tier,
@@ -75,10 +73,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from session
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const { user, supabase } = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

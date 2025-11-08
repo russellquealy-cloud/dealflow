@@ -1,22 +1,14 @@
 // app/api/billing/portal/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createPortalSession } from '@/lib/stripe';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { getAuthUser } from '@/lib/auth/server';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     // Get user from session
-    const supabase = await createSupabaseServer();
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('Session error:', sessionError);
-      return NextResponse.json(
-        { error: 'Authentication error' },
-        { status: 401 }
-      );
-    }
-    if (!session) {
+    const { user, supabase } = await getAuthUser(request);
+
+    if (!user) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -27,7 +19,7 @@ export async function POST() {
     const { data: profile } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     if (!profile?.stripe_customer_id) {

@@ -9,6 +9,7 @@ import SearchBarClient from '@/components/SearchBarClient';
 import PostDealButton from '@/components/PostDealButton';
 import { toNum } from '@/lib/format';
 import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
+import type { BoundsPayload } from '@/components/GoogleMapImpl';
 
 interface Props {
   initialListings?: ListItem[];
@@ -68,7 +69,7 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
   const [allPoints, setAllPoints] = useState<MapPoint[]>(initialPoints);
   const [loading, setLoading] = useState(initialListings.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapBounds, setMapBounds] = useState<{ south: number; north: number; west: number; east: number } | null>(null);
+  const [mapBounds, setMapBounds] = useState<BoundsPayload | null>(null);
   const [activeMapBounds, setActiveMapBounds] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     minPrice: null,
@@ -120,18 +121,25 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
           return;
         }
 
-        const typedBounds = bounds as { south: number; north: number; west: number; east: number };
+        const typedBounds = bounds as BoundsPayload;
         
         // Only update state if bounds actually changed to prevent infinite loops
         const threshold = 0.005; // About 500 meters - more sensitive
+        const normalizedBounds: BoundsPayload = {
+          south: typedBounds.south,
+          north: typedBounds.north,
+          west: typedBounds.west,
+          east: typedBounds.east,
+          ...(typedBounds.polygon ? { polygon: typedBounds.polygon } : {}),
+        };
         if (!mapBounds || 
-            Math.abs(mapBounds.south - typedBounds.south) > threshold ||
-            Math.abs(mapBounds.north - typedBounds.north) > threshold ||
-            Math.abs(mapBounds.west - typedBounds.west) > threshold ||
-            Math.abs(mapBounds.east - typedBounds.east) > threshold) {
+            Math.abs(mapBounds.south - normalizedBounds.south) > threshold ||
+            Math.abs(mapBounds.north - normalizedBounds.north) > threshold ||
+            Math.abs(mapBounds.west - normalizedBounds.west) > threshold ||
+            Math.abs(mapBounds.east - normalizedBounds.east) > threshold) {
           
           // Update bounds state - this will trigger the filteredListings useMemo
-          setMapBounds(typedBounds);
+          setMapBounds(normalizedBounds);
           setActiveMapBounds(true);
         }
       } catch (err) {
@@ -313,19 +321,6 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
     }
   }, [activeMapBounds, mapBounds, handleMapBoundsChange]);
 
-  // Memoize map component to prevent re-renders
-  const MapComponent = useMemo(() => {
-    const MapComponentInner = (props: Record<string, unknown>) => (
-      <GoogleMapWrapper
-        {...props}
-        onBoundsChange={handleMapBoundsChange}
-        points={allPoints}
-      />
-    );
-    MapComponentInner.displayName = 'MapComponent';
-    return MapComponentInner;
-  }, [handleMapBoundsChange, allPoints]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -336,6 +331,23 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
       </div>
     );
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const state = {
+        filters,
+        searchQuery,
+        bounds: activeMapBounds ? mapBounds : null,
+      };
+      localStorage.setItem('currentFilters', JSON.stringify(state));
+    } catch (err) {
+      console.error('Failed to persist current search state', err);
+    }
+  }, [filters, searchQuery, mapBounds, activeMapBounds]);
 
   return (
     <div className="h-full flex flex-col">
@@ -365,7 +377,8 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
         <ListingsSplitClient
           points={allPoints}
           listings={filteredListings}
-          MapComponent={MapComponent}
+          onBoundsChange={handleMapBoundsChange}
+          MapComponent={GoogleMapWrapper}
         />
       </div>
 
