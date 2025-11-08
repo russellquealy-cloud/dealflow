@@ -436,16 +436,18 @@ export default function GoogleMapImpl({
         </div>
 
         <MarkerClusterer>
-          {(clusterer) =>
-            markerData.map((point) => (
-              <Marker
-                key={point.id}
-                position={point.position}
-                clusterer={clusterer}
-                onClick={() => setActiveMarkerId(point.id)}
-              />
-            ))
-          }
+          {(clusterer) => (
+            <>
+              {markerData.map((point) => (
+                <Marker
+                  key={point.id}
+                  position={point.position}
+                  clusterer={clusterer}
+                  onClick={() => setActiveMarkerId(point.id)}
+                />
+              ))}
+            </>
+          )}
         </MarkerClusterer>
 
         {activePoint && (
