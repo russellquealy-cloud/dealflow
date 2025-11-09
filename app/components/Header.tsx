@@ -440,7 +440,7 @@ export default function Header() {
           key="admin"
           href="/admin"
           onClick={closeMobile}
-          style={{ ...mobileLinkStyle, borderColor: "#dc2626", color: "#dc2626" }}
+          style={{ ...baseMobileLinkStyle, borderColor: "#dc2626", color: "#dc2626" }}
         >
           🔒 Admin
         </Link>
