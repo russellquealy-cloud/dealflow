@@ -134,7 +134,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    const items = (watchlists ?? []) as WatchlistRow[];
+    const items = (watchlists ?? []) as Array<
+      WatchlistRow & { listing?: ListingSummary | ListingSummary[] | null }
+    >;
     const propertyIds = Array.from(new Set(items.map((item) => item.property_id).filter(Boolean)));
 
     let listingsMap = new Map<string, ReturnType<typeof sanitizeListing>>();
@@ -181,7 +183,10 @@ export async function GET(request: NextRequest) {
     }
 
     const enriched = items.map((item) => {
-      const joinedListing = item.listing ? sanitizeListing(item.listing) : null;
+      const listingData = Array.isArray(item.listing)
+        ? item.listing[0]
+        : item.listing;
+      const joinedListing = listingData ? sanitizeListing(listingData) : null;
       return {
         id: item.id,
         user_id: item.user_id,

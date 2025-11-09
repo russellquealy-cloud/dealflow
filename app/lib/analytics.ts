@@ -45,8 +45,6 @@ export interface WholesalerStats extends CoreStats {
 
 export type UserAnalytics = InvestorStats | WholesalerStats;
 
-type CountResult = { count: number; error: null } | { count: null; error: unknown };
-
 const DEFAULT_CORE_STATS: CoreStats = {
   savedListings: 0,
   contactsMade: 0,

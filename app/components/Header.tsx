@@ -350,31 +350,30 @@ export default function Header() {
     return links;
   }, [email, userRole, unreadCount, notificationCount]);
 
-  const mobileLinkStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "12px 14px",
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-    color: "#1f2937",
-    textDecoration: "none",
-    fontWeight: 600,
-    background: "#f9fafb",
-  };
-
   const mobileLinks = React.useMemo(() => {
+    const baseMobileLinkStyle: React.CSSProperties = {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "12px 14px",
+      border: "1px solid #e5e7eb",
+      borderRadius: 10,
+      color: "#1f2937",
+      textDecoration: "none",
+      fontWeight: 600,
+      background: "#f9fafb",
+    };
     const items: React.ReactNode[] = [];
 
     items.push(
-      <Link key="pricing" href="/pricing" onClick={closeMobile} style={mobileLinkStyle}>
+      <Link key="pricing" href="/pricing" onClick={closeMobile} style={baseMobileLinkStyle}>
         Pricing
       </Link>
     );
 
     if (email && userRole === "wholesaler") {
       items.push(
-        <Link key="my-listings" href="/my-listings" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="my-listings" href="/my-listings" onClick={closeMobile} style={baseMobileLinkStyle}>
           My Listings
         </Link>
       );
@@ -382,17 +381,17 @@ export default function Header() {
 
     if (email && userRole && userRole !== "wholesaler") {
       items.push(
-        <Link key="watchlists" href="/watchlists" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="watchlists" href="/watchlists" onClick={closeMobile} style={baseMobileLinkStyle}>
           ⭐ Watchlist
         </Link>
       );
       items.push(
-        <Link key="saved" href="/saved-searches" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="saved" href="/saved-searches" onClick={closeMobile} style={baseMobileLinkStyle}>
           🔍 Saved
         </Link>
       );
       items.push(
-        <Link key="alerts" href="/alerts" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="alerts" href="/alerts" onClick={closeMobile} style={baseMobileLinkStyle}>
           🔔 Alerts
         </Link>
       );
@@ -400,7 +399,7 @@ export default function Header() {
 
     if (email && userRole === "wholesaler") {
       items.push(
-        <Link key="alerts-wholesaler" href="/alerts" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="alerts-wholesaler" href="/alerts" onClick={closeMobile} style={baseMobileLinkStyle}>
           🔔 Alerts
         </Link>
       );
@@ -408,12 +407,12 @@ export default function Header() {
 
     if (email) {
       items.push(
-        <Link key="analyzer" href="/tools/analyzer" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="analyzer" href="/tools/analyzer" onClick={closeMobile} style={baseMobileLinkStyle}>
           <span>🔧 Analyzer</span>
         </Link>
       );
       items.push(
-        <Link key="notifications" href="/notifications" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="notifications" href="/notifications" onClick={closeMobile} style={baseMobileLinkStyle}>
           <span>🔔 Notifications</span>
           {notificationCount > 0 && (
             <span style={{ fontSize: 12, color: "#2563eb" }}>{notificationCount > 99 ? "99+" : notificationCount}</span>
@@ -421,7 +420,7 @@ export default function Header() {
         </Link>
       );
       items.push(
-        <Link key="messages" href="/messages" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="messages" href="/messages" onClick={closeMobile} style={baseMobileLinkStyle}>
           <span>💬 Messages</span>
           {unreadCount > 0 && (
             <span style={{ fontSize: 12, color: "#dc2626" }}>{unreadCount > 99 ? "99+" : unreadCount}</span>
@@ -429,7 +428,7 @@ export default function Header() {
         </Link>
       );
       items.push(
-        <Link key="account" href="/account" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="account" href="/account" onClick={closeMobile} style={baseMobileLinkStyle}>
           Account
         </Link>
       );
@@ -455,7 +454,7 @@ export default function Header() {
           type="button"
           onClick={signOut}
           style={{
-            ...mobileLinkStyle,
+            ...baseMobileLinkStyle,
             borderColor: "#dc2626",
             background: "#dc2626",
             color: "white",
@@ -469,14 +468,14 @@ export default function Header() {
       );
     } else {
       items.push(
-        <Link key="sign-in" href="/login" onClick={closeMobile} style={mobileLinkStyle}>
+        <Link key="sign-in" href="/login" onClick={closeMobile} style={baseMobileLinkStyle}>
           Sign in
         </Link>
       );
     }
 
     return items;
-  }, [email, userRole, unreadCount, notificationCount, closeMobile, signOut, signingOut, mobileLinkStyle]);
+  }, [email, userRole, unreadCount, notificationCount, closeMobile, signOut, signingOut]);
 
   return (
     <header style={wrap}>

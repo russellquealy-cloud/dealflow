@@ -260,7 +260,6 @@ function renderInvestorSection(stats: InvestorStats) {
 function renderListingBreakdown(breakdown: WholesalerStats['listingStatusBreakdown']) {
   const total = breakdown.total || 1;
   const activePercent = breakdown.active / total;
-  const soldPercent = breakdown.sold / total;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
