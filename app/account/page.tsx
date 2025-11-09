@@ -195,8 +195,8 @@ export default function AccountPage() {
               ]);
 
               const uniqueContacts = new Set<string>();
-              (messagesRes.data || []).forEach((row) => {
-                const record = row as { listing_id?: string | null };
+              (messagesRes.data || []).forEach((row: { listing_id?: string | null }) => {
+                const record = row;
                 if (record.listing_id) {
                   uniqueContacts.add(record.listing_id);
                 }
@@ -228,8 +228,8 @@ export default function AccountPage() {
               ]);
 
               const uniqueContacts = new Set<string>();
-              (messagesRes.data || []).forEach((row) => {
-                const record = row as { from_id?: string | null };
+              (messagesRes.data || []).forEach((row: { from_id?: string | null }) => {
+                const record = row;
                 if (record.from_id) {
                   uniqueContacts.add(record.from_id);
                 }
