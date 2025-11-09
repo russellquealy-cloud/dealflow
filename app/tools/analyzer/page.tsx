@@ -7,9 +7,12 @@ import { logger } from '@/lib/logger';
 import InvestorAnalyzer from '@/components/InvestorAnalyzer';
 import WholesalerAnalyzer from '@/components/WholesalerAnalyzer';
 
+type AnalyzerRole = 'investor' | 'wholesaler' | 'admin' | null;
+
 export default function AnalyzerPage() {
   const router = useRouter();
-  const [userRole, setUserRole] = React.useState<'investor' | 'wholesaler' | null>(null);
+  const [userRole, setUserRole] = React.useState<AnalyzerRole>(null);
+  const [adminView, setAdminView] = React.useState<'investor' | 'wholesaler'>('investor');
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -37,7 +40,10 @@ export default function AnalyzerPage() {
         // Prefer 'segment' over 'role' for consistency with Header component
         const role = profile?.segment || profile?.role;
         
-        if (role === 'investor' || role === 'wholesaler') {
+        if (role === 'admin') {
+          setUserRole('admin');
+          setAdminView('investor');
+        } else if (role === 'investor' || role === 'wholesaler') {
           setUserRole(role);
         } else {
           // Default to investor if role not set
@@ -73,13 +79,57 @@ export default function AnalyzerPage() {
     return null; // Will redirect
   }
 
+  const effectiveRole = userRole === 'admin' ? adminView : userRole;
+
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-      {userRole === 'investor' ? (
-        <InvestorAnalyzer />
-      ) : (
-        <WholesalerAnalyzer />
+      {userRole === 'admin' && (
+        <div
+          style={{
+            maxWidth: 960,
+            margin: '0 auto',
+            padding: '24px 20px 0',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setAdminView('investor')}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 8,
+              border: adminView === 'investor' ? '2px solid #2563eb' : '1px solid #d1d5db',
+              background: adminView === 'investor' ? '#2563eb' : '#ffffff',
+              color: adminView === 'investor' ? '#ffffff' : '#1f2937',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+            }}
+          >
+            Investor View
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdminView('wholesaler')}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 8,
+              border: adminView === 'wholesaler' ? '2px solid #2563eb' : '1px solid #d1d5db',
+              background: adminView === 'wholesaler' ? '#2563eb' : '#ffffff',
+              color: adminView === 'wholesaler' ? '#ffffff' : '#1f2937',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+            }}
+          >
+            Wholesaler View
+          </button>
+        </div>
       )}
+
+      {effectiveRole === 'investor' ? <InvestorAnalyzer /> : <WholesalerAnalyzer />}
     </div>
   );
 }

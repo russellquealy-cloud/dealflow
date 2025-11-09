@@ -372,18 +372,25 @@ export async function analyzeStructured(
   userId: string,
   role: UserRole,
   input: InvestorQuestionInput | WholesalerQuestionInput,
-  supabaseClient?: SupabaseClient
+  supabaseClient?: SupabaseClient,
+  options?: { bypassLimits?: boolean }
 ): Promise<AnalysisResult> {
+  const bypassLimits = options?.bypassLimits === true;
+
   // 1. Check rate limits
-  const rateLimit = checkRateLimit(userId);
-  if (!rateLimit.allowed) {
-    throw new Error(`Rate limit exceeded. Retry after ${rateLimit.retryAfter} seconds.`);
+  if (!bypassLimits) {
+    const rateLimit = checkRateLimit(userId);
+    if (!rateLimit.allowed) {
+      throw new Error(`Rate limit exceeded. Retry after ${rateLimit.retryAfter} seconds.`);
+    }
   }
   
   // 2. Check subscription limits
-  const canAnalyze = await canUserPerformAction(userId, 'ai_analyses', 1, supabaseClient);
-  if (!canAnalyze) {
-    throw new Error('AI analysis limit reached. Upgrade your plan.');
+  if (!bypassLimits) {
+    const canAnalyze = await canUserPerformAction(userId, 'ai_analyses', 1, supabaseClient);
+    if (!canAnalyze) {
+      throw new Error('AI analysis limit reached. Upgrade your plan.');
+    }
   }
   
   // 3. Check cache first (store question signature as key)
@@ -431,7 +438,9 @@ export async function analyzeStructured(
   }
   
   // 6. Increment usage
-  await incrementUsage(userId, 'ai_analyses', 1, supabaseClient);
+  if (!bypassLimits) {
+    await incrementUsage(userId, 'ai_analyses', 1, supabaseClient);
+  }
   
   // 7. Cache result
   const analysisResult: AnalysisResult = {

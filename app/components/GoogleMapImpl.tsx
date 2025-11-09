@@ -66,6 +66,28 @@ const polygonOptions: google.maps.PolygonOptions = {
   draggable: false,
 };
 
+const FEATURED_MARKER_SVG = `
+<svg width="64" height="88" viewBox="0 0 64 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g filter="url(#dropShadow)">
+    <path d="M32 6C19.2975 6 8.99996 16.3458 9 29.125C9.00005 46.875 32 76 32 76C32 76 54.9999 46.875 55 29.125C55 16.3458 44.7025 6 32 6Z" fill="#F59E0B"/>
+    <path d="M32 14.5C24.1929 14.5 17.875 20.9056 17.875 28.8438C17.875 36.782 24.1929 43.1875 32 43.1875C39.8071 43.1875 46.125 36.782 46.125 28.8438C46.125 20.9056 39.8071 14.5 32 14.5Z" fill="url(#innerGradient)"/>
+  </g>
+  <defs>
+    <filter id="dropShadow" x="0" y="0" width="64" height="88" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset dy="2"/>
+      <feGaussianBlur stdDeviation="4"/>
+      <feComposite in2="SourceAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.24 0"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow"/>
+    </filter>
+    <linearGradient id="innerGradient" x1="32" y1="14.5" x2="32" y2="43.1875" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+</svg>
+`;
+
 function pathsToBounds(path: google.maps.LatLngLiteral[]): google.maps.LatLngBoundsLiteral {
   const bounds = new google.maps.LatLngBounds();
   path.forEach((point) => bounds.extend(point));
@@ -181,6 +203,19 @@ export default function GoogleMapImpl({
     }),
     []
   );
+
+  const featuredMarkerIcon = useMemo<google.maps.Icon | undefined>(() => {
+    if (!isLoaded || typeof window === 'undefined' || !window.google?.maps) {
+      return undefined;
+    }
+    const url = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(FEATURED_MARKER_SVG)}`;
+    return {
+      url,
+      scaledSize: new window.google.maps.Size(48, 64),
+      anchor: new window.google.maps.Point(24, 60),
+      labelOrigin: new window.google.maps.Point(24, 26),
+    };
+  }, [isLoaded]);
 
   const markerData = useMemo(
     () =>
@@ -443,6 +478,20 @@ export default function GoogleMapImpl({
                   key={point.id}
                   position={point.position}
                   clusterer={clusterer}
+                  icon={
+                    point.featured && featuredMarkerIcon ? featuredMarkerIcon : undefined
+                  }
+                  label={
+                    point.featured
+                      ? {
+                          text: '★',
+                          color: '#1f2937',
+                          fontWeight: '700',
+                          fontSize: '20px',
+                        }
+                      : undefined
+                  }
+                  zIndex={point.featured ? 200 : undefined}
                   onClick={() => setActiveMarkerId(point.id)}
                 />
               ))}

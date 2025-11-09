@@ -1,334 +1,226 @@
 # Off Axis Deals - Project Status Report
-**Generated:** $(date)  
-**Last Updated:** $(date)
+**Generated:** November 8, 2025  
+**Last Updated:** November 8, 2025
 
-## Overall Completion: **~65%**
+## Overall Completion: **~78%**
 
 ---
 
 ## Feature Completion Breakdown
 
-### 🔐 Authentication & User Management: **75%**
+### 🔐 Authentication & User Management: **80%**
 - ✅ User registration
 - ✅ Email/password login
 - ✅ Magic link login
 - ✅ Session management
-- ❌ **Sign out broken** - Auto re-signs in immediately
-- ✅ Profile creation
-- ⚠️ Profile updates - Works but has timeout issues
-- ✅ Role-based access (wholesaler/investor)
-- ✅ Account page
+- ⚠️ Wholesaler “Post Deal” loop intermittently forces re-auth
+- ✅ Profile creation & updates
+- ✅ Role-based access (wholesaler / investor / admin)
+- ✅ Password reset (link surfaced on login)
 
 **Issues:**
-- Sign out triggers `TOKEN_REFRESHED` which auto re-signs user in
-- Multiple auth listeners conflicting
-- Account page times out after 10 seconds
+- Post-a-deal redirect loop for wholesalers (needs root cause + fix)
+- Session refresh race conditions still visible in rare cases on mobile
 
 ---
 
-### 🏠 Listings Management: **60%**
-- ✅ Create listings (wholesalers)
-- ✅ View listings (all users)
-- ❌ **Listings not loading** - Query starts but never completes
-- ✅ Listing detail page
-- ❌ **Images not loading** - 400 errors from Unsplash URLs
-- ✅ Filter by beds/baths/price/sqft
-- ⚠️ Search by address - Works but slow
-- ✅ Map view with markers
-- ⚠️ **Map flickering** - Still occurs on pan/zoom
-- ✅ Polygon area search
-- ✅ Featured listings
-- ✅ My Listings page (wholesalers)
+### 🏠 Listings Management & Map: **72%**
+- ✅ Create / edit / delete listings (wholesalers)
+- ✅ View listings (all users) with filters
+- ✅ Listing detail page + media gallery
+- ✅ Featured listings (including map/star styling)
+- ✅ Polygon draw & persistence
+- ⚠️ Search autocomplete connects but misses recentering UX polish
+- ⚠️ Map flicker reduced but still noticeable under heavy marker redraws
+- ✅ My Listings management view
 
 **Issues:**
-- Supabase query hangs - no timeout, no error returned
-- Image optimization blocking Unsplash URLs (partially fixed)
-- Map re-renders on every bounds change
+- Map viewport height good, but drawn shapes still briefly disappear on dataset refresh
+- Need final pass on search UX + mobile map layout breathing room
 
 ---
 
-### 💰 Payments & Subscriptions: **70%**
-- ✅ Stripe integration
-- ✅ Checkout flow
-- ✅ Webhook handling
-- ✅ Subscription management
-- ✅ Tier enforcement (free/basic/pro)
-- ⚠️ Usage tracking - Implemented but not fully tested
-- ✅ Pricing page
+### 💰 Payments & Subscriptions: **75%**
+- ✅ Stripe integration end-to-end
+- ✅ Pricing page + tier gating
+- ✅ Billing history + plan metadata
+- ⚠️ Upgrade checkout fails when both `customer` & `customer_email` sent
+- ⚠️ Usage tracking per plan exists but quota resets not automated
 
 **Issues:**
-- Webhook idempotency working but needs monitoring
-- Subscription status sync can be delayed
+- Investor Basic → Pro upgrade blocked by Stripe parameter conflict
+- Monthly AI allowance logic needs enforcement + admin override tooling
 
 ---
 
-### 📧 Messaging: **50%**
-- ✅ Message creation
-- ✅ Conversation list
-- ⚠️ Real-time updates - Partial
-- ✅ Unread count
-- ❌ **Unread count timeout** - Header shows timeout
-- ⚠️ Message notifications - Basic only
+### 💬 Messaging: **68%**
+- ✅ Conversation list (with fallback when view missing)
+- ✅ Message send/receive with RLS
+- ✅ Unread badge in header
+- ⚠️ Notification hookup for message events partially complete
+- ⚠️ Wholesaler read-only rules not enforced everywhere
 
 **Issues:**
-- Unread count query times out
-- Real-time subscriptions not always working
+- RLS still failing for some investor watchlist/message writes (401/500 reports)
+- Need regression sweep for auth headers on all message endpoints
 
 ---
 
-### 🔔 Alerts & Notifications: **40%**
-- ✅ Alert creation
-- ✅ Saved searches
-- ⚠️ Email notifications - Configured but not tested
-- ❌ Push notifications - Not implemented
-- ⚠️ Alert matching - Basic only
+### 🔔 Notifications & Alerts: **70%**
+- ✅ Supabase tables + RLS for preferences & notifications
+- ✅ API routes: preferences, list, unread count
+- ✅ Settings UI with optimistic toggles
+- ✅ In-app notifications page + header badge
+- ⚠️ Event wiring missing for several flows (repair estimate, performance, etc.)
+- ⚠️ Email delivery not re-validated after schema changes
 
 **Issues:**
-- Email delivery not verified
-- No push notification system
+- Need job/helpers connected for market trend, verification, subscription renewal, feedback
+- Confirm service role client available in every environment
 
 ---
 
-### 🛠️ Tools & Features: **55%**
-- ✅ Property analyzer
-- ✅ Watchlist (investors)
-- ✅ Saved searches
-- ✅ Map drawing tools
-- ⚠️ Export functionality - CSV only, PDF not working
-- ❌ Advanced analytics - Not implemented
-- ❌ API access - Not implemented
+### 🛠️ Tools & Insights: **60%**
+- ✅ Investor & wholesaler analyzers (mock responses clarified)
+- ✅ Watchlists UI
+- ✅ Saved searches UI
+- ⚠️ Saved search creation throws 500 for some investors (RLS)
+- ⚠️ AI quotas: plan allowances not enforced; test accounts should be unlimited
+- ❌ Advanced analytics dashboard still pending
 
 **Issues:**
-- PDF export broken
-- Analytics dashboard missing
+- Supabase policies need review for saved searches & watchlists
+- AI usage counters must respect tiers + monthly reset
 
 ---
 
-### 📱 Mobile Experience: **45%**
-- ✅ Responsive design
-- ⚠️ Mobile session management - Implemented but has issues
-- ❌ PWA support - Not implemented
-- ❌ Mobile app - Not implemented
-- ⚠️ Touch gestures - Basic only
+### 📱 Mobile & UX Polish: **55%**
+- ✅ Responsive layout across core flows
+- ⚠️ Map/search components cramped on smaller viewports (My Listings form too tight)
+- ⚠️ Mobile session restore occasionally flashes logged-out state
+- ❌ PWA / native wrapper not in scope yet
 
 **Issues:**
-- Mobile session restoration can fail
-- No offline support
+- Need pass on spacing for My Listings edit form + filter drawers
+- Investigate mobile auth refresh flicker
 
 ---
 
-### 🔒 Admin & Moderation: **30%**
-- ✅ Admin dashboard (basic)
-- ⚠️ User management - View only, no edit
-- ❌ Content moderation - Not implemented
-- ❌ Analytics dashboard - Not implemented
-- ❌ System logs - Not implemented
+### 🔒 Admin & Reporting: **35%**
+- ✅ Basic admin dashboard
+- ⚠️ User management read-only; no moderation tools
+- ❌ Content/report workflow not built
+- ❌ System audit logs missing
 
 **Issues:**
-- Admin features are minimal
-- No moderation tools
+- Expand admin actions for support staff
+- Add notification + AI usage reporting
 
 ---
 
-## Critical Bugs (Blocking)
+## Critical Bugs (Blocking Launch)
 
-1. **Sign Out Broken** 🔴
-   - User cannot sign out
-   - Auto re-signs in immediately
-   - Multiple auth listeners conflicting
-   - **Impact:** Users cannot log out, security issue
-
-2. **Listings Not Loading** 🔴
-   - Query starts but never completes
-   - No error returned, just hangs
-   - **Impact:** Core feature broken, users see no listings
-
-3. **Images Not Loading** 🔴
-   - 400 Bad Request on Unsplash images
-   - Next.js image optimization blocking
-   - **Impact:** Listings show no images
-
-4. **Account Page Timeout** 🟡
-   - Times out after 10 seconds
-   - Profile data may not load
-   - **Impact:** Users cannot view/edit account
+1. **Stripe Upgrade Failure** 🔴  
+   `customer`/`customer_email` conflict breaks Basic → Pro checkout.
+2. **Saved Search / Watchlist RLS Errors** 🔴  
+   Investors receive 500s due to missing auth context / policies.
+3. **AI Usage Limits** 🔴  
+   Wholesaler/Investor accounts blocked despite intended allowances; quotas need enforcement + reset logic.
+4. **Wholesaler Post Deal Loop** 🟠  
+   Posting a deal bounces users back to login; high impact on supply.
 
 ---
 
-## High Priority Issues
+## High Priority Follow-Ups
 
-1. **Map Flickering** 🟡
-   - Map re-renders on every bounds change
-   - Markers flash/disappear
-   - **Impact:** Poor UX, performance issues
-
-2. **Post Deal Button** 🟡
-   - Sometimes doesn't appear for wholesalers
-   - Can hang on click
-   - **Impact:** Wholesalers cannot post deals
-
-3. **Query Performance** 🟡
-   - Listings query takes >10 seconds
-   - No timeout protection
-   - **Impact:** Slow page loads, poor UX
-
-4. **Header Buttons Disappearing** 🟡
-   - Buttons disappear on navigation
-   - State not persisting
-   - **Impact:** Navigation broken
+1. Map flicker + drawn shape persistence polish.
+2. Search autocomplete recenter + UX updates (filter-driven save flow).
+3. Notification event wiring for all specified triggers.
+4. Messaging RLS audit plus wholesaler read-only guardrails.
 
 ---
 
-## Medium Priority Issues
+## Medium Priority Items
 
-1. **Unread Count Timeout** 🟡
-   - Header shows timeout warning
-   - Count may not update
-   - **Impact:** Users don't see new messages
-
-2. **Profile Save Errors** 🟡
-   - Can fail silently
-   - Error messages not always shown
-   - **Impact:** Profile updates may not save
-
-3. **Email Notifications** 🟡
-   - Configured but not tested
-   - Delivery not verified
-   - **Impact:** Users may not receive alerts
-
-4. **Mobile Session Issues** 🟡
-   - Session restoration can fail
-   - **Impact:** Mobile users logged out unexpectedly
+1. My Listings edit form spacing / layout cleanup.
+2. Mobile session flicker + auth refresh race conditions.
+3. Email delivery smoke-test (SendGrid / Supabase).  
+4. Analyzer math validation + user education copy refinements.
 
 ---
 
-## Low Priority Issues
+## Low Priority / Backlog
 
-1. **Console Warnings** 🟢
-   - ethereum.js warnings (browser extension)
-   - DOM autocomplete warnings
-   - **Impact:** Clutters console, no functional impact
-
-2. **PDF Export** 🟢
-   - Not working
-   - **Impact:** Feature incomplete but not critical
-
-3. **Analytics Dashboard** 🟢
-   - Not implemented
-   - **Impact:** Missing feature, not blocking
+1. PDF export + advanced analytics dashboards.  
+2. Push notifications & PWA support.  
+3. Admin moderation tooling, system logs, telemetry hardening.
 
 ---
 
-## Deployment Checklist
+## Deployment Checklist (Snapshot)
 
 ### Pre-Deployment
-- [ ] All critical bugs fixed
-- [ ] All tests passing
-- [ ] Environment variables set in Vercel
-- [ ] Database migrations applied
-- [ ] RLS policies verified
-- [ ] API endpoints tested
+- [ ] Critical bugs above resolved & retested
+- [x] Environment vars (incl. `SUPABASE_SERVICE_ROLE_KEY`) on Vercel
+- [ ] Latest DB migration (`20250210_notifications.sql`) applied in all envs
+- [ ] Stripe keys verified + webhook logs clean
+- [ ] Supabase RLS policies regression tested
 
 ### Authentication
-- [ ] Sign in works
-- [ ] Sign out works (CURRENTLY BROKEN)
-- [ ] Session persists across page reloads
-- [ ] Magic link works
-- [ ] Password reset works
-- [ ] Role-based access works
+- [x] Sign in / sign up / reset password
+- [ ] Wholesaler post-deal flow (fix loop)
+- [ ] Mobile session restore (verify)
 
-### Listings
-- [ ] Listings load on homepage (CURRENTLY BROKEN)
-- [ ] Listings display on map (CURRENTLY BROKEN)
-- [ ] Images load (CURRENTLY BROKEN)
-- [ ] Filters work
-- [ ] Search works
-- [ ] Create listing works
-- [ ] Edit listing works
-- [ ] Delete listing works
-- [ ] Featured listings show correctly
+### Listings & Map
+- [x] Listings load & filter
+- [x] Featured markers render (star)
+- [ ] Drawn area persistence under stress
+- [ ] Search autocomplete recenter
 
 ### Payments
-- [ ] Checkout flow works
-- [ ] Webhooks process correctly
-- [ ] Subscription status updates
-- [ ] Tier enforcement works
-- [ ] Usage tracking works
+- [ ] Upgrade checkout flow (Basic → Pro) passes
+- [ ] Quota reset job confirmed
 
-### Messaging
-- [ ] Send message works
-- [ ] Receive message works
-- [ ] Unread count updates (CURRENTLY TIMING OUT)
-- [ ] Conversation list loads
-- [ ] Real-time updates work
+### Messaging & Notifications
+- [x] Conversation list / send message
+- [ ] RLS audit for watchlists/saved searches/messages
+- [ ] Notification triggers verified (manual + automated)
 
-### User Profile
-- [ ] View profile works
-- [ ] Edit profile works (CURRENTLY TIMING OUT)
-- [ ] Change password works
-- [ ] Account page loads (CURRENTLY TIMING OUT)
-
-### Navigation
-- [ ] Header buttons persist (CURRENTLY DISAPPEARING)
-- [ ] Post Deal button shows for wholesalers (CURRENTLY INCONSISTENT)
-- [ ] Role-based navigation works
-- [ ] Links work correctly
-
-### Performance
-- [ ] Page load < 3 seconds
-- [ ] Queries complete < 5 seconds (CURRENTLY HANGING)
-- [ ] Images optimize correctly (CURRENTLY BROKEN)
-- [ ] Map doesn't flicker (CURRENTLY FLICKERING)
-
-### Mobile
-- [ ] Responsive design works
-- [ ] Touch gestures work
-- [ ] Mobile session persists
-- [ ] Forms work on mobile
-
-### Admin
-- [ ] Admin dashboard loads
-- [ ] User management works
-- [ ] System monitoring works
+### Tools & Usage
+- [ ] AI analyzers respect plan limits (with unlimited test override)
+- [ ] Saved search create/delete without 500s
 
 ### Post-Deployment
-- [ ] Monitor error logs
-- [ ] Check Vercel deployment status
-- [ ] Verify environment variables
-- [ ] Test critical user flows
-- [ ] Monitor Supabase usage
-- [ ] Check Stripe webhook logs
+- [ ] Monitor logs (Vercel + Supabase) for 401/500 regressions
+- [ ] Verify Stripe webhook events processed
+- [ ] QA notifications badge + settings
+- [ ] Validate AI usage counters and resets
 
 ---
 
-## Next Steps (Priority Order)
+## Next Steps (Order)
 
-1. **Fix Sign Out** - Remove TOKEN_REFRESHED from all auth listeners
-2. **Fix Listings Query** - Add timeout, error handling, debug why it hangs
-3. **Fix Image Loading** - Verify next.config.mjs is deployed, test Unsplash URLs
-4. **Fix Account Page** - Remove timeout, improve error handling
-5. **Fix Map Flickering** - Optimize marker updates, prevent unnecessary re-renders
-6. **Fix Header Buttons** - Ensure state persists across navigation
-7. **Fix Post Deal Button** - Simplify auth check, ensure it always shows for wholesalers
-8. **Fix Unread Count** - Add timeout, improve query performance
-9. **Test Email Notifications** - Verify delivery, test all notification types
-10. **Improve Query Performance** - Add indexes, optimize RLS policies
+1. Patch Stripe checkout parameters (choose `customer` or `customer_email` per session).  
+2. Resolve Supabase RLS for watchlists & saved searches; confirm bearer tokens everywhere.  
+3. Implement AI usage quota service (per tier + monthly reset + test exemptions).  
+4. Fix wholesaler Post Deal redirect loop + finalize My Listings form spacing.  
+5. Map polish: preserve drawn areas, smooth marker updates, improve search save UX.  
+6. Wire remaining notification triggers + exercise email delivery.  
+7. Regression test messaging endpoints + add integration tests where feasible.  
 
 ---
 
-## Estimated Time to Production Ready
+## Estimated Time to Production-Ready
 
-**Critical Bugs:** 2-3 days  
-**High Priority:** 3-5 days  
-**Medium Priority:** 1-2 weeks  
-**Total:** ~2-3 weeks to production-ready
+- Critical fixes: 2 days  
+- High priority polish: 3-4 days  
+- Medium priority backlog: 1 week  
+- Total ETA: **~2 weeks** (assuming focused effort & successful verification)
 
 ---
 
 ## Notes
 
-- Most core features are implemented but have critical bugs
-- Authentication and listings are the most critical issues
-- Performance is a concern - queries are slow/hanging
-- Mobile experience needs significant work
-- Admin features are minimal and need expansion
+- Notifications system, auth headers, and service role usage are deployed; continue runtime validation.  
+- Stripe + AI quota bugs are the main blockers before inviting broader beta testers.  
+- Map UX and wholesaler flows remain the biggest UX friction points to address during current QA cycle.

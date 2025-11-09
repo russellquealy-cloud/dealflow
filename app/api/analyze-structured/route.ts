@@ -30,16 +30,21 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (profile?.role === 'investor' && role !== 'investor') {
+    const userRole = profile?.role ?? null;
+    const isAdmin = userRole === 'admin';
+
+    if (!isAdmin && userRole === 'investor' && role !== 'investor') {
       return NextResponse.json({ error: 'This analysis is only available for investors' }, { status: 403 });
     }
 
-    if (profile?.role === 'wholesaler' && role !== 'wholesaler') {
+    if (!isAdmin && userRole === 'wholesaler' && role !== 'wholesaler') {
       return NextResponse.json({ error: 'This analysis is only available for wholesalers' }, { status: 403 });
     }
 
     // Perform structured analysis
-    const result = await analyzeStructured(user.id, role, input, supabase);
+    const result = await analyzeStructured(user.id, role, input, supabase, {
+      bypassLimits: isAdmin,
+    });
 
     return NextResponse.json(result);
 

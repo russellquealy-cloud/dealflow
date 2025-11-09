@@ -51,9 +51,9 @@ const money = (n?: number) =>
 export default function ListingCard({ listing }: Props) {
   const href = `/listing/${listing.id}`;
   const price = toNum(listing.price);
-  const beds = listing.bedrooms;
-  const baths = listing.bathrooms;
-  const sqft = listing.home_sqft;
+  const beds = toNum(listing.bedrooms);
+  const baths = toNum(listing.bathrooms);
+  const sqft = toNum(listing.home_sqft);
   
   const description = listing.description;
   
