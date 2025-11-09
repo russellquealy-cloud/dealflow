@@ -102,21 +102,7 @@ async function buildConversationFallback(
     });
   }
 
-  const conversationMap = new Map<
-    string,
-    {
-      thread_id: string;
-      listing_id: string;
-      listing_title?: string | null;
-      listing_address?: string | null;
-      other_user_id: string;
-      other_user_name?: string;
-      last_message?: string;
-      last_message_at?: string;
-      unread_count: number;
-      is_unread: boolean;
-    }
-  >();
+  const conversationMap = new Map<string, ConversationSummary>();
 
   typedMessages.forEach((message) => {
     const isFromUser = message.from_id === userId;
@@ -126,11 +112,11 @@ async function buildConversationFallback(
     if (!existing) {
       conversationMap.set(message.thread_id, {
         thread_id: message.thread_id,
-        listing_id: message.listing_id,
+        listing_id: message.listing_id ?? null,
         listing_title: message.listing?.title,
         listing_address: message.listing?.address,
         other_user_id: otherUserId,
-        other_user_name: profileMap.get(otherUserId),
+        other_user_name: profileMap.get(otherUserId) ?? null,
         last_message: message.body,
         last_message_at: message.created_at,
         unread_count: !isFromUser && !message.read_at ? 1 : 0,
