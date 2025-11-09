@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { analyzeStructured, type UserRole, type InvestorQuestionInput, type WholesalerQuestionInput } from '@/lib/ai-analyzer-structured';
 import { getUserSubscriptionTier } from '@/lib/subscription';
 import { getAuthUser } from '@/lib/auth/server';
+import type { SubscriptionTier } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
+  let subscriptionTier: SubscriptionTier = 'FREE';
+
   try {
     const body = await request.json();
     const { role, input }: { role: UserRole; input: InvestorQuestionInput | WholesalerQuestionInput } = body;
@@ -26,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Verify user role matches
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, segment, tier, membership_tier')
       .eq('id', user.id)
       .single();
 
@@ -41,9 +44,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'This analysis is only available for wholesalers' }, { status: 403 });
     }
 
+    subscriptionTier = await getUserSubscriptionTier(user.id, supabase);
+
+    const email = (user.email ?? '').toLowerCase();
+    const segment = profile?.segment?.toLowerCase();
+    const profileTier = profile?.tier?.toLowerCase();
+    const membershipTier = profile?.membership_tier?.toLowerCase();
+    const isTestAccount =
+      email.endsWith('@test.com') ||
+      email.endsWith('@example.com') ||
+      segment === 'test' ||
+      profileTier === 'test' ||
+      membershipTier === 'test';
+
     // Perform structured analysis
     const result = await analyzeStructured(user.id, role, input, supabase, {
       bypassLimits: isAdmin,
+      planTier: subscriptionTier,
+      isTestAccount,
     });
 
     return NextResponse.json(result);
@@ -57,13 +75,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 429 });
       }
       if (error.message.includes('limit reached') || error.message.includes('Upgrade')) {
-        // Get user ID properly
-        const { user, supabase } = await getAuthUser(request);
-        const tier = user ? await getUserSubscriptionTier(user.id, supabase) : 'FREE';
         return NextResponse.json({ 
           error: error.message,
           upgrade_required: true,
-          tier,
+          tier: subscriptionTier,
         }, { status: 403 });
       }
       if (error.message.includes('Missing required')) {

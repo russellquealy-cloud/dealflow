@@ -10,7 +10,8 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { canUserPerformAction, incrementUsage } from '@/lib/subscription';
+import { getPlanLimits, getUserUsage, incrementUsage } from '@/lib/subscription';
+import type { SubscriptionTier } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ============================================================================
@@ -135,6 +136,12 @@ export interface ExitAnalysis {
   wholesale: { fee: number; profit: number; timeline: string };
   recommendation: string;
 }
+
+type AnalyzeOptions = {
+  bypassLimits?: boolean;
+  planTier?: SubscriptionTier;
+  isTestAccount?: boolean;
+};
 
 // ============================================================================
 // COST CONTROLS & RATE LIMITING
@@ -373,9 +380,17 @@ export async function analyzeStructured(
   role: UserRole,
   input: InvestorQuestionInput | WholesalerQuestionInput,
   supabaseClient?: SupabaseClient,
-  options?: { bypassLimits?: boolean }
+  options?: AnalyzeOptions
 ): Promise<AnalysisResult> {
+  const supabase = supabaseClient ?? (await createClient());
+  const planTier: SubscriptionTier = options?.planTier ?? 'FREE';
+  const isTestAccount = options?.isTestAccount ?? false;
   const bypassLimits = options?.bypassLimits === true;
+  const planLimits = getPlanLimits(planTier);
+  const configuredLimit = planLimits.ai_analyses ?? 0;
+  const hasPlanUnlimited = planTier === 'INVESTOR_PRO';
+  const unlimitedUsage = bypassLimits || isTestAccount || hasPlanUnlimited;
+  let shouldIncrementUsage = false;
 
   // 1. Check rate limits
   if (!bypassLimits) {
@@ -386,16 +401,26 @@ export async function analyzeStructured(
   }
   
   // 2. Check subscription limits
-  if (!bypassLimits) {
-    const canAnalyze = await canUserPerformAction(userId, 'ai_analyses', 1, supabaseClient);
-    if (!canAnalyze) {
+  if (!unlimitedUsage) {
+    if (configuredLimit <= 0) {
       throw new Error('AI analysis limit reached. Upgrade your plan.');
+    }
+    try {
+      const usage = await getUserUsage(userId, supabase);
+      const analysesUsed = usage?.ai_analyses_used ?? 0;
+      if (analysesUsed >= configuredLimit) {
+        throw new Error('AI analysis limit reached. Upgrade your plan.');
+      }
+      shouldIncrementUsage = true;
+    } catch (usageError) {
+      console.error('Failed to load AI usage; proceeding with allowance check fallback.', usageError);
+      shouldIncrementUsage = true;
     }
   }
   
   // 3. Check cache first (store question signature as key)
   const questionKey = generateQuestionKey(role, input);
-  const cached = await getCachedAnalysis(userId, questionKey, supabaseClient);
+  const cached = await getCachedAnalysis(userId, questionKey, supabase);
   if (cached) {
     return { ...cached, cached: true };
   }
@@ -438,8 +463,12 @@ export async function analyzeStructured(
   }
   
   // 6. Increment usage
-  if (!bypassLimits) {
-    await incrementUsage(userId, 'ai_analyses', 1, supabaseClient);
+  if (shouldIncrementUsage) {
+    try {
+      await incrementUsage(userId, 'ai_analyses', 1, supabase);
+    } catch (incrementError) {
+      console.error('Failed to increment AI usage counter.', incrementError);
+    }
   }
   
   // 7. Cache result
@@ -451,7 +480,7 @@ export async function analyzeStructured(
     timestamp: new Date().toISOString(),
   };
   
-  await cacheAnalysis(userId, questionKey, analysisResult, supabaseClient);
+  await cacheAnalysis(userId, questionKey, analysisResult, supabase);
   
   return analysisResult;
 }
