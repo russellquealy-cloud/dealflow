@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/providers/AuthProvider';
 
 type NotificationRecord = {
   id: string;
@@ -17,18 +18,37 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { session, authLoading, refreshSession } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
 
     const loadNotifications = async () => {
+      if (authLoading) {
+        return;
+      }
+
+      if (!session?.access_token) {
+        setError('Please sign in to view notifications.');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
+        const headers: HeadersInit = {
+          Authorization: `Bearer ${session.access_token}`,
+        };
+
         const response = await fetch('/api/notifications?limit=50', {
           credentials: 'include',
+          headers,
         });
 
         if (!response.ok) {
+          if (response.status === 401) {
+            await refreshSession();
+          }
           throw new Error('Failed to load notifications');
         }
 
@@ -43,9 +63,13 @@ export default function NotificationsPage() {
           .map((item) => item.id);
 
         if (unreadIds.length > 0) {
+          const patchHeaders: HeadersInit = {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          };
           await fetch('/api/notifications', {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: patchHeaders,
             credentials: 'include',
             body: JSON.stringify({ ids: unreadIds, is_read: true }),
           }).catch((patchError) => {
@@ -72,7 +96,7 @@ export default function NotificationsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [session?.access_token, authLoading, refreshSession]);
 
   const hasNotifications = notifications.length > 0;
 

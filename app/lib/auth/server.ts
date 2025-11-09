@@ -2,7 +2,11 @@ import { cookies, headers } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import type { NextRequest } from "next/server";
 
-export async function getSupabaseServer() {
+type SupabaseAuthToken = {
+  accessToken?: string;
+};
+
+export async function getSupabaseServer(authToken?: SupabaseAuthToken) {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -28,20 +32,28 @@ export async function getSupabaseServer() {
           }
         },
       },
+      ...(authToken?.accessToken
+        ? {
+            global: {
+              headers: {
+                Authorization: `Bearer ${authToken.accessToken}`,
+              },
+            },
+          }
+        : {}),
     }
   );
 }
 
 function extractBearerToken(source?: Headers | null) {
-  const headerValue = source?.get("authorization") ?? source?.get("Authorization");
+  const headerValue =
+    source?.get("authorization") ?? source?.get("Authorization");
   if (!headerValue) return undefined;
   const match = headerValue.match(/^Bearer\s+(.+)$/i);
   return match ? match[1] : undefined;
 }
 
 export async function getAuthUser(request?: NextRequest | Request) {
-  const supabase = await getSupabaseServer();
-
   let accessToken: string | undefined;
   if (request) {
     accessToken = extractBearerToken(request.headers);
@@ -55,10 +67,16 @@ export async function getAuthUser(request?: NextRequest | Request) {
     }
   }
 
+  const supabase = await getSupabaseServer(
+    accessToken ? { accessToken } : undefined
+  );
+
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser(accessToken);
+  } = accessToken
+    ? await supabase.auth.getUser(accessToken)
+    : await supabase.auth.getUser();
 
   if (error || !user) {
     return { user: null, supabase };

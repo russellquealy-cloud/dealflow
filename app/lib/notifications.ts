@@ -128,7 +128,19 @@ export async function createNotification({
   metadata = null,
   supabaseClient,
 }: CreateNotificationParams): Promise<{ skipped: boolean }> {
-  const supabase = supabaseClient ?? (await getSupabaseServiceRole());
+  let supabase = supabaseClient ?? null;
+
+  if (!supabase) {
+    try {
+      supabase = await getSupabaseServiceRole();
+    } catch (serviceError) {
+      console.warn(
+        'Notifications service: service role client unavailable, notification skipped.',
+        serviceError
+      );
+      return { skipped: true };
+    }
+  }
 
   const preferences =
     (await ensurePreferencesRow(supabase, userId)) ??
