@@ -98,7 +98,7 @@ export default function WatchlistsPage() {
         </p>
       </div>
 
-      {watchlists.length === 0 ? (
+      {watchlists.filter((item) => item.listing).length === 0 ? (
         <div style={{
           border: '1px solid #e5e7eb',
           borderRadius: 12,
@@ -129,7 +129,7 @@ export default function WatchlistsPage() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
           gap: 20
         }}>
-            {watchlists.map((item: WatchlistItem) => (
+            {watchlists.filter((item): item is WatchlistItem & { listing: ListingLike } => Boolean(item.listing)).map((item) => (
             <div key={item.id} style={{ position: 'relative' }}>
               <ListingCard listing={item.listing} />
               <button

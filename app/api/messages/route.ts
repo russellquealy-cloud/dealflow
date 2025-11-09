@@ -98,6 +98,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (messages?.length) {
+      await supabase
+        .from("messages")
+        .update({ read_at: new Date().toISOString() })
+        .eq("thread_id", threadId)
+        .eq("to_id", user.id)
+        .is("read_at", null);
+    }
+
     let counterpartId: string | null = null;
     if (messages && messages.length > 0) {
       for (const msg of messages) {

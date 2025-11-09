@@ -314,7 +314,7 @@ export default function MyListingsPage() {
               <div style={{ display: 'grid', gap: 12 }}>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Edit Listing</h3>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Title</label>
                     <input
@@ -345,7 +345,7 @@ export default function MyListingsPage() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>City</label>
                     <input
@@ -375,7 +375,7 @@ export default function MyListingsPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Bedrooms</label>
                     <input
@@ -524,19 +524,19 @@ export default function MyListingsPage() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <button
                     onClick={() => {
                       setEditingId(null);
                       setEditForm({});
                     }}
-                    style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff' }}
+                    style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', flex: '1 1 130px' }}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
-                    style={{ padding: '8px 16px', border: '1px solid #0ea5e9', borderRadius: 6, background: '#0ea5e9', color: '#fff' }}
+                    style={{ padding: '8px 16px', border: '1px solid #0ea5e9', borderRadius: 6, background: '#0ea5e9', color: '#fff', flex: '1 1 130px' }}
                   >
                     Save Changes
                   </button>

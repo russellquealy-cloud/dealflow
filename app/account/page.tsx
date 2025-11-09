@@ -191,13 +191,19 @@ export default function AccountPage() {
             try {
               const [watchlistsRes, messagesRes] = await Promise.all([
                 supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-                supabase.from('messages').select('id', { count: 'exact', head: true }).eq('from_id', session.user.id)
+                supabase.from('messages').select('listing_id').eq('from_id', session.user.id)
               ]);
-              
+
+              const uniqueContacts = new Set(
+                (messagesRes.data || [])
+                  .map((row) => (row as { listing_id?: string | null }).listing_id)
+                  .filter(Boolean)
+              );
+
               setStats({
                 savedListings: watchlistsRes.count || 0,
                 watchlists: watchlistsRes.count || 0,
-                contactsMade: messagesRes.count || 0,
+                contactsMade: uniqueContacts.size,
                 aiAnalyses: 0 // TODO: Add AI analyses tracking table
               });
             } catch (statsError) {
@@ -216,16 +222,19 @@ export default function AccountPage() {
               const [listingsRes, featuredRes, messagesRes] = await Promise.all([
                 supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id),
                 supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id).eq('featured', true),
-                supabase.from('messages').select('id', { count: 'exact', head: true }).eq('to_id', session.user.id)
+                supabase.from('messages').select('from_id').eq('to_id', session.user.id)
               ]);
-              
-              // Total views would need a views column - for now, use listing count as placeholder
+
+              const uniqueContacts = new Set(
+                (messagesRes.data || []).map((row) => (row as { from_id?: string | null }).from_id).filter(Boolean)
+              );
+
               const totalViews = 0; // TODO: Add views tracking to listings table
-              
+
               setStats({
                 myListings: listingsRes.count || 0,
                 totalViews,
-                contacts: messagesRes.count || 0,
+                contacts: uniqueContacts.size,
                 featuredListings: featuredRes.count || 0
               });
             } catch (statsError) {

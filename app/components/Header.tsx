@@ -10,11 +10,12 @@ import PostDealButton from "./PostDealButton";
 
 const wrap: React.CSSProperties = {
   borderBottom: "1px solid #eee",
-  padding: "10px 16px",
+  padding: "12px 16px",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
+  flexWrap: "wrap",
   background: "#fff",
   position: "sticky",
   top: 0,
@@ -36,16 +37,20 @@ const toggleStyles: React.CSSProperties = {
 
 const mobileMenuStyles: React.CSSProperties = {
   position: "absolute",
-  top: "56px",
+  top: "58px",
   left: 0,
   right: 0,
   background: "#ffffff",
-  boxShadow: "0 8px 24px rgba(15, 23, 42, 0.18)",
-  padding: "16px",
+  boxShadow: "0 12px 24px rgba(15, 23, 42, 0.18)",
+  padding: "18px 16px 24px",
   display: "flex",
   flexDirection: "column",
-  gap: "12px",
+  gap: "14px",
   zIndex: 90,
+  borderBottomLeftRadius: 16,
+  borderBottomRightRadius: 16,
+  maxHeight: "calc(100vh - 70px)",
+  overflowY: "auto",
 };
 
 const linkStyles: React.CSSProperties = {
@@ -345,18 +350,31 @@ export default function Header() {
     return links;
   }, [email, userRole, unreadCount, notificationCount]);
 
+  const mobileLinkStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 14px",
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    color: "#1f2937",
+    textDecoration: "none",
+    fontWeight: 600,
+    background: "#f9fafb",
+  };
+
   const mobileLinks = React.useMemo(() => {
     const items: React.ReactNode[] = [];
 
     items.push(
-      <Link key="pricing" href="/pricing" onClick={closeMobile} style={linkStyles}>
+      <Link key="pricing" href="/pricing" onClick={closeMobile} style={mobileLinkStyle}>
         Pricing
       </Link>
     );
 
     if (email && userRole === "wholesaler") {
       items.push(
-        <Link key="my-listings" href="/my-listings" onClick={closeMobile} style={linkStyles}>
+        <Link key="my-listings" href="/my-listings" onClick={closeMobile} style={mobileLinkStyle}>
           My Listings
         </Link>
       );
@@ -364,17 +382,17 @@ export default function Header() {
 
     if (email && userRole && userRole !== "wholesaler") {
       items.push(
-        <Link key="watchlists" href="/watchlists" onClick={closeMobile} style={linkStyles}>
+        <Link key="watchlists" href="/watchlists" onClick={closeMobile} style={mobileLinkStyle}>
           ⭐ Watchlist
         </Link>
       );
       items.push(
-        <Link key="saved" href="/saved-searches" onClick={closeMobile} style={linkStyles}>
+        <Link key="saved" href="/saved-searches" onClick={closeMobile} style={mobileLinkStyle}>
           🔍 Saved
         </Link>
       );
       items.push(
-        <Link key="alerts" href="/alerts" onClick={closeMobile} style={linkStyles}>
+        <Link key="alerts" href="/alerts" onClick={closeMobile} style={mobileLinkStyle}>
           🔔 Alerts
         </Link>
       );
@@ -382,7 +400,7 @@ export default function Header() {
 
     if (email && userRole === "wholesaler") {
       items.push(
-        <Link key="alerts-wholesaler" href="/alerts" onClick={closeMobile} style={linkStyles}>
+        <Link key="alerts-wholesaler" href="/alerts" onClick={closeMobile} style={mobileLinkStyle}>
           🔔 Alerts
         </Link>
       );
@@ -390,22 +408,28 @@ export default function Header() {
 
     if (email) {
       items.push(
-        <Link key="analyzer" href="/tools/analyzer" onClick={closeMobile} style={linkStyles}>
-          🔧 Analyzer
+        <Link key="analyzer" href="/tools/analyzer" onClick={closeMobile} style={mobileLinkStyle}>
+          <span>🔧 Analyzer</span>
         </Link>
       );
       items.push(
-        <Link key="notifications" href="/notifications" onClick={closeMobile} style={linkStyles}>
-          🔔 Notifications {notificationCount > 0 ? `(${notificationCount})` : ""}
+        <Link key="notifications" href="/notifications" onClick={closeMobile} style={mobileLinkStyle}>
+          <span>🔔 Notifications</span>
+          {notificationCount > 0 && (
+            <span style={{ fontSize: 12, color: "#2563eb" }}>{notificationCount > 99 ? "99+" : notificationCount}</span>
+          )}
         </Link>
       );
       items.push(
-        <Link key="messages" href="/messages" onClick={closeMobile} style={linkStyles}>
-          💬 Messages {unreadCount > 0 ? `(${unreadCount})` : ""}
+        <Link key="messages" href="/messages" onClick={closeMobile} style={mobileLinkStyle}>
+          <span>💬 Messages</span>
+          {unreadCount > 0 && (
+            <span style={{ fontSize: 12, color: "#dc2626" }}>{unreadCount > 99 ? "99+" : unreadCount}</span>
+          )}
         </Link>
       );
       items.push(
-        <Link key="account" href="/account" onClick={closeMobile} style={linkStyles}>
+        <Link key="account" href="/account" onClick={closeMobile} style={mobileLinkStyle}>
           Account
         </Link>
       );
@@ -413,7 +437,12 @@ export default function Header() {
 
     if (userRole === "admin") {
       items.push(
-        <Link key="admin" href="/admin" onClick={closeMobile} style={{ ...linkStyles, color: "#dc2626" }}>
+        <Link
+          key="admin"
+          href="/admin"
+          onClick={closeMobile}
+          style={{ ...mobileLinkStyle, borderColor: "#dc2626", color: "#dc2626" }}
+        >
           🔒 Admin
         </Link>
       );
@@ -426,13 +455,12 @@ export default function Header() {
           type="button"
           onClick={signOut}
           style={{
-            ...linkStyles,
-            border: "none",
+            ...mobileLinkStyle,
+            borderColor: "#dc2626",
             background: "#dc2626",
             color: "white",
-            padding: "10px 14px",
-            borderRadius: 8,
             cursor: signingOut ? "not-allowed" : "pointer",
+            justifyContent: "center",
           }}
           disabled={signingOut}
         >
@@ -441,7 +469,7 @@ export default function Header() {
       );
     } else {
       items.push(
-        <Link key="sign-in" href="/login" onClick={closeMobile} style={linkStyles}>
+        <Link key="sign-in" href="/login" onClick={closeMobile} style={mobileLinkStyle}>
           Sign in
         </Link>
       );
@@ -497,7 +525,7 @@ export default function Header() {
         {mobileOpen ? "✕" : "☰"}
       </button>
 
-      {mobileOpen && (
+          {mobileOpen && (
         <div className="nav-mobile" style={mobileMenuStyles}>
           {email && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
@@ -505,7 +533,7 @@ export default function Header() {
               <span style={{ fontWeight: 600 }}>{email}</span>
             </div>
           )}
-          {userRole === "wholesaler" && <PostDealButton />}
+          {userRole === "wholesaler" && <PostDealButton fullWidth />}
           {mobileLinks}
         </div>
       )}

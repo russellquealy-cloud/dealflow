@@ -32,6 +32,12 @@ type ListingSummary = {
 
 function sanitizeListing(listing: ListingSummary | null | undefined) {
   if (!listing) return null;
+  const imagesValue = (() => {
+    if (Array.isArray(listing.images)) return listing.images as string[];
+    if (typeof listing.images === 'string') return [listing.images];
+    return [];
+  })();
+
   return {
     id: listing.id,
     title: listing.title ?? null,
@@ -48,7 +54,7 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
     repairs: listing.repairs ?? null,
     spread: listing.spread ?? null,
     roi: listing.roi ?? null,
-    images: listing.images ?? null,
+    images: imagesValue,
     cover_image_url: listing.cover_image_url ?? null,
     featured: listing.featured ?? false,
     featured_until: listing.featured_until ?? null,
@@ -106,6 +112,7 @@ export async function GET(request: NextRequest) {
     let listingsMap = new Map<string, ReturnType<typeof sanitizeListing>>();
 
     if (propertyIds.length > 0) {
+      let resolved = false;
       try {
         const serviceSupabase = await getSupabaseServiceRole();
         const { data: listingsData, error: listingsError } = await serviceSupabase
@@ -116,23 +123,39 @@ export async function GET(request: NextRequest) {
           .in('id', propertyIds);
 
         if (listingsError) {
-          console.error('Error loading listings for watchlists:', listingsError);
+          console.error('Error loading listings for watchlists via service role:', listingsError);
+        } else if (listingsData) {
+          listingsMap = new Map(
+            listingsData.map((listing) => [listing.id, sanitizeListing(listing as ListingSummary)])
+          );
+          resolved = true;
+        }
+      } catch (serviceError) {
+        console.error('Service role unavailable for watchlists:', serviceError);
+      }
+
+      if (!resolved) {
+        const { data: listingsData, error: listingsError } = await supabase
+          .from('listings')
+          .select(
+            'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+          )
+          .in('id', propertyIds);
+
+        if (listingsError) {
+          console.error('Error loading listings for watchlists with user context:', listingsError);
         } else if (listingsData) {
           listingsMap = new Map(
             listingsData.map((listing) => [listing.id, sanitizeListing(listing as ListingSummary)])
           );
         }
-      } catch (serviceError) {
-        console.error('Service role unavailable for watchlists:', serviceError);
       }
     }
 
-    const enriched = items
-      .map((item) => ({
-        ...item,
-        listing: listingsMap.get(item.property_id) ?? null,
-      }))
-      .filter((item) => item.listing !== null);
+    const enriched = items.map((item) => ({
+      ...item,
+      listing: listingsMap.get(item.property_id) ?? null,
+    }));
 
     return NextResponse.json({ watchlists: enriched });
   } catch (error) {
