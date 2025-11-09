@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getAuthUser } from '@/lib/auth/server';
 
 export const runtime = 'nodejs';
 
@@ -33,9 +34,9 @@ function isPreferencesPayload(input: unknown): input is PreferencesPayload {
 
 async function fetchOrCreatePreferences(
   userId: string,
-  supabaseClient?: Awaited<ReturnType<typeof createSupabaseServer>>
+  supabaseClient: SupabaseClient
 ) {
-  const supabase = supabaseClient ?? (await createSupabaseServer());
+  const supabase = supabaseClient;
   const { data, error } = await supabase
     .from('notification_preferences')
     .select('*')
@@ -71,15 +72,11 @@ async function fetchOrCreatePreferences(
   return inserted as NotificationPreferences & { id: string; user_id: string };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthUser(request);
 
-    if (authError || !user) {
+    if (!user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -99,13 +96,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthUser(request);
 
-    if (authError || !user) {
+    if (!user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
