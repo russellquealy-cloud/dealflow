@@ -90,21 +90,21 @@ async function loadInvestorAnalytics(userId: string): Promise<InvestorStats> {
   const sixtyDaysAgo = new Date(now);
   sixtyDaysAgo.setDate(now.getDate() - 60);
 
-  const savedListings = await countRows(
-    () =>
-      supabase
-        .from('watchlists')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-  );
+  const savedListings = await countRows(async () => {
+    const { count, error } = await supabase
+      .from('watchlists')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    return { count, error };
+  });
 
-  const aiAnalyses = await countRows(
-    () =>
-      supabase
-        .from('ai_analysis_logs')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-  );
+  const aiAnalyses = await countRows(async () => {
+    const { count, error } = await supabase
+      .from('ai_analysis_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    return { count, error };
+  });
 
   const watchlistsCount = savedListings;
 
@@ -211,21 +211,21 @@ async function loadWholesalerAnalytics(userId: string): Promise<WholesalerStats>
   const sixtyDaysAgo = new Date(now);
   sixtyDaysAgo.setDate(now.getDate() - 60);
 
-  const savedListings = await countRows(
-    () =>
-      supabase
-        .from('watchlists')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-  );
+  const savedListings = await countRows(async () => {
+    const { count, error } = await supabase
+      .from('watchlists')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    return { count, error };
+  });
 
-  const aiAnalyses = await countRows(
-    () =>
-      supabase
-        .from('ai_analysis_logs')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-  );
+  const aiAnalyses = await countRows(async () => {
+    const { count, error } = await supabase
+      .from('ai_analysis_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    return { count, error };
+  });
 
   const { data: contactsRows } = await supabase
     .from('messages')
