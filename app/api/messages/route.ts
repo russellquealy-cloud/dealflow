@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { getAuthUser } from "@/lib/auth/server";
+import { notifyLeadMessage } from "@/lib/notifications";
 
 // Generate deterministic UUID v5 from a string
 function uuidFromString(str: string): string {
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
     // Get listing to verify it exists and get owner
     const { data: listing, error: listingError } = await supabase
       .from("listings")
-      .select("owner_id")
+      .select("owner_id, title")
       .eq("id", listingId)
       .single();
 
@@ -146,9 +147,18 @@ export async function POST(request: NextRequest) {
         }, { status: 500 });
       }
 
-      // Send notification email to recipient
-      // TODO: Implement email notifications when recipient email can be retrieved from auth.users
-      // Currently commented out as we need admin client or RPC function to get user email
+      if (listing.owner_id) {
+        try {
+          await notifyLeadMessage({
+            ownerId: listing.owner_id,
+            listingTitle: typeof listing.title === "string" ? listing.title : null,
+            senderEmail: user.email ?? null,
+            listingId,
+          });
+        } catch (notificationError) {
+          console.error("Failed to queue lead notification", notificationError);
+        }
+      }
 
       return NextResponse.json({ message: newMessage });
   } catch (error) {

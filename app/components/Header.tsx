@@ -62,6 +62,7 @@ export default function Header() {
   const userId = session?.user?.id ?? null;
   const [userRole, setUserRole] = React.useState<string>("");
   const [unreadCount, setUnreadCount] = React.useState<number>(0);
+  const [notificationCount, setNotificationCount] = React.useState<number>(0);
   const [signingOut, setSigningOut] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -130,6 +131,39 @@ export default function Header() {
     }
   }, [userId, refreshSession, session?.access_token]);
 
+  const loadNotificationCount = React.useCallback(async () => {
+    if (!userId) {
+      setNotificationCount(0);
+      return;
+    }
+
+    try {
+      const headers: HeadersInit = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch("/api/notifications/unread-count", {
+        cache: "no-store",
+        credentials: "include",
+        headers,
+      });
+
+      if (response.status === 401) {
+        setNotificationCount(0);
+        await refreshSession();
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setNotificationCount(data.count || 0);
+      }
+    } catch (error) {
+      logger.error("Header: error loading notification count", error);
+    }
+  }, [userId, session?.access_token, refreshSession]);
+
   React.useEffect(() => {
     loadProfile();
   }, [loadProfile]);
@@ -143,6 +177,28 @@ export default function Header() {
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [userId, loadUnreadCount]);
+
+  React.useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    loadNotificationCount();
+    const interval = setInterval(loadNotificationCount, 45000);
+    return () => clearInterval(interval);
+  }, [userId, loadNotificationCount]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handler = () => loadNotificationCount();
+    window.addEventListener("notifications:updated", handler);
+    return () => {
+      window.removeEventListener("notifications:updated", handler);
+    };
+  }, [loadNotificationCount]);
 
   const signOut = React.useCallback(async () => {
     if (signingOut) return;
@@ -226,6 +282,29 @@ export default function Header() {
 
     if (email) {
       links.push(
+        <Link key="notifications" href="/notifications" style={{ ...linkStyles, position: "relative" }}>
+          🔔 Notifications
+          {notificationCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: "-6px",
+                right: "-10px",
+                background: "#2563eb",
+                color: "white",
+                borderRadius: "10px",
+                padding: "1px 6px",
+                fontSize: "11px",
+                fontWeight: 700,
+              }}
+            >
+              {notificationCount > 99 ? "99+" : notificationCount}
+            </span>
+          )}
+        </Link>
+      );
+
+      links.push(
         <Link key="messages" href="/messages" style={{ ...linkStyles, position: "relative" }}>
           💬 Messages
           {unreadCount > 0 && (
@@ -264,7 +343,7 @@ export default function Header() {
     }
 
     return links;
-  }, [email, userRole, unreadCount]);
+  }, [email, userRole, unreadCount, notificationCount]);
 
   const mobileLinks = React.useMemo(() => {
     const items: React.ReactNode[] = [];
@@ -316,6 +395,11 @@ export default function Header() {
         </Link>
       );
       items.push(
+        <Link key="notifications" href="/notifications" onClick={closeMobile} style={linkStyles}>
+          🔔 Notifications {notificationCount > 0 ? `(${notificationCount})` : ""}
+        </Link>
+      );
+      items.push(
         <Link key="messages" href="/messages" onClick={closeMobile} style={linkStyles}>
           💬 Messages {unreadCount > 0 ? `(${unreadCount})` : ""}
         </Link>
@@ -364,7 +448,7 @@ export default function Header() {
     }
 
     return items;
-  }, [email, userRole, unreadCount, closeMobile, signOut, signingOut]);
+  }, [email, userRole, unreadCount, notificationCount, closeMobile, signOut, signingOut]);
 
   return (
     <header style={wrap}>

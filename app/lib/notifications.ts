@@ -1,216 +1,247 @@
-import { createClient } from '@/lib/supabase/server';
+'use server';
 
-export interface NotificationTemplate {
-  subject: string;
-  html: string;
-  text: string;
-}
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServiceRole } from '@/lib/supabase/service';
 
-export interface NotificationData {
-  to: string;
-  template: string;
-  data: Record<string, unknown>;
-  type: 'email' | 'push';
-}
+export type NotificationType =
+  | 'buyer_interest'
+  | 'lead_message'
+  | 'listing_performance'
+  | 'repair_estimate_ready'
+  | 'property_verification'
+  | 'market_trend'
+  | 'subscription_renewal'
+  | 'feedback_rating';
 
-// Email Templates - Temporarily disabled for build
-export const EMAIL_TEMPLATES = {
-  new_message: {
-    subject: 'New Message on Off Axis Deals',
-    html: '<div>New message received</div>',
-    text: 'New message received'
-  },
-  
-  listing_status_change: {
-    subject: 'Listing Status Updated',
-    html: '<div>Listing status updated</div>',
-    text: 'Listing status updated'
-  },
-  
-  subscription_event: {
-    subject: 'Subscription Update',
-    html: '<div>Subscription updated</div>',
-    text: 'Subscription updated'
-  },
-  
-  ai_analysis_completed: {
-    subject: 'AI Analysis Complete',
-    html: '<div>AI analysis completed</div>',
-    text: 'AI analysis completed'
-  },
-  
-  daily_digest: {
-    subject: 'Daily Off Axis Deals Digest',
-    html: '<div>Daily digest</div>',
-    text: 'Daily digest'
-  }
+type PreferenceColumn =
+  | 'buyer_interest'
+  | 'lead_message'
+  | 'listing_performance'
+  | 'repair_estimate_ready'
+  | 'property_verification'
+  | 'market_trend'
+  | 'subscription_renewal'
+  | 'feedback_rating';
+
+const TYPE_TO_COLUMN: Record<NotificationType, PreferenceColumn> = {
+  buyer_interest: 'buyer_interest',
+  lead_message: 'lead_message',
+  listing_performance: 'listing_performance',
+  repair_estimate_ready: 'repair_estimate_ready',
+  property_verification: 'property_verification',
+  market_trend: 'market_trend',
+  subscription_renewal: 'subscription_renewal',
+  feedback_rating: 'feedback_rating',
 };
 
-export async function sendEmail(notification: NotificationData): Promise<boolean> {
-  try {
-    const template = EMAIL_TEMPLATES[notification.template as keyof typeof EMAIL_TEMPLATES];
-    if (!template) {
-      throw new Error(`Template ${notification.template} not found`);
-    }
+type NotificationPreferencesRow = Record<PreferenceColumn, boolean>;
 
-    // Replace template variables
-    let html = template.html;
-    let text = template.text;
-    let subject = template.subject;
+type CreateNotificationParams = {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  listingId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  supabaseClient?: SupabaseClient;
+};
 
-    for (const [key, value] of Object.entries(notification.data)) {
-      const placeholder = `{{${key}}}`;
-      html = html.replace(new RegExp(placeholder, 'g'), String(value));
-      text = text.replace(new RegExp(placeholder, 'g'), String(value));
-      subject = subject.replace(new RegExp(placeholder, 'g'), String(value));
-    }
+async function ensurePreferencesRow(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<NotificationPreferencesRow | null> {
+  const columns = Object.values(TYPE_TO_COLUMN).join(', ');
 
-    // Send email based on configured provider
-    if (process.env.RESEND_API_KEY) {
-      return await sendViaResend(notification.to, subject, html, text);
-    } else if (process.env.POSTMARK_API_TOKEN) {
-      return await sendViaPostmark(notification.to, subject, html, text);
-    } else if (process.env.SENDGRID_API_KEY) {
-      return await sendViaSendGrid(notification.to, subject, html, text);
-    } else {
-      console.warn('No email provider configured');
-      return false;
-    }
-  } catch (error) {
-    console.error('Email sending failed:', error);
-    return false;
+  const { data } = await supabase
+    .from('notification_preferences')
+    .select(columns)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (data) {
+    return data as NotificationPreferencesRow;
   }
+
+  const { error: upsertError } = await supabase
+    .from('notification_preferences')
+    .upsert(
+      { user_id: userId },
+      { onConflict: 'user_id', ignoreDuplicates: false }
+    );
+
+  if (upsertError) {
+    console.error('Failed to upsert notification preferences', upsertError);
+    return null;
+  }
+
+  const { data: createdPreferences, error: fetchError } = await supabase
+    .from('notification_preferences')
+    .select(columns)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('Failed to fetch notification preferences', fetchError);
+    return null;
+  }
+
+  return (createdPreferences as NotificationPreferencesRow) ?? null;
 }
 
-async function sendViaResend(to: string, subject: string, html: string, text: string): Promise<boolean> {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: 'Off Axis Deals <noreply@offaxisdeals.com>',
-      to: [to],
-      subject,
-      html,
-      text,
-    }),
+export async function createNotification({
+  userId,
+  type,
+  title,
+  body,
+  listingId = null,
+  metadata = null,
+  supabaseClient,
+}: CreateNotificationParams): Promise<{ skipped: boolean }> {
+  const supabase = supabaseClient ?? getSupabaseServiceRole();
+
+  const preferences =
+    (await ensurePreferencesRow(supabase, userId)) ??
+    ({
+      buyer_interest: true,
+      lead_message: true,
+      listing_performance: true,
+      repair_estimate_ready: true,
+      property_verification: true,
+      market_trend: true,
+      subscription_renewal: true,
+      feedback_rating: true,
+    } satisfies NotificationPreferencesRow);
+
+  const preferenceColumn = TYPE_TO_COLUMN[type];
+  if (!preferences[preferenceColumn]) {
+    return { skipped: true };
+  }
+
+  const { error } = await supabase.from('notifications').insert({
+    user_id: userId,
+    type,
+    title,
+    body,
+    listing_id: listingId ?? null,
+    metadata: metadata ?? null,
   });
 
-  return response.ok;
-}
-
-async function sendViaPostmark(to: string, subject: string, html: string, text: string): Promise<boolean> {
-  const response = await fetch('https://api.postmarkapp.com/email', {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'X-Postmark-Server-Token': process.env.POSTMARK_API_TOKEN!,
-    },
-    body: JSON.stringify({
-      From: 'noreply@offaxisdeals.com',
-      To: to,
-      Subject: subject,
-      HtmlBody: html,
-      TextBody: text,
-    }),
-  });
-
-  return response.ok;
-}
-
-async function sendViaSendGrid(to: string, subject: string, html: string, text: string): Promise<boolean> {
-  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: 'noreply@offaxisdeals.com', name: 'Off Axis Deals' },
-      subject,
-      content: [
-        { type: 'text/plain', value: text },
-        { type: 'text/html', value: html },
-      ],
-    }),
-  });
-
-  return response.ok;
-}
-
-export async function sendPushNotification(
-  userId: string,
-  title: string,
-  body: string,
-  data?: Record<string, unknown>
-): Promise<boolean> {
-  try {
-    const supabase = await createClient();
-    
-    // Get user's push subscription
-    const { data: subscription, error } = await supabase
-      .from('push_subscriptions')
-      .select('endpoint, p256dh, auth')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .single();
-
-    if (error || !subscription) {
-      console.warn('No push subscription found for user:', userId);
-      return false;
-    }
-
-    // Send push notification
-    const response = await fetch('/api/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subscription: {
-          endpoint: subscription.endpoint,
-          keys: {
-            p256dh: subscription.p256dh,
-            auth: subscription.auth,
-          },
-        },
-        payload: JSON.stringify({
-          title,
-          body,
-          data: data || {},
-        }),
-      }),
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error('Push notification failed:', error);
-    return false;
+  if (error) {
+    console.error('Failed to create notification', error);
   }
+
+  return { skipped: false };
 }
 
-export async function logNotification(
-  userId: string,
-  type: 'email' | 'push',
-  template: string,
-  status: 'sent' | 'failed',
-  error?: string
-): Promise<void> {
-  try {
-    const supabase = await createClient();
-    
-    await supabase
-      .from('notification_logs')
-      .insert({
-        user_id: userId,
-        notification_type: type,
-        template_name: template,
-        status,
-        error_message: error,
-      });
-  } catch (error) {
-    console.error('Failed to log notification:', error);
-  }
+export async function notifyLeadMessage(params: {
+  ownerId: string;
+  listingTitle?: string | null;
+  senderEmail?: string | null;
+  listingId?: string | null;
+}) {
+  const { ownerId, listingTitle, senderEmail, listingId } = params;
+  await createNotification({
+    userId: ownerId,
+    type: 'lead_message',
+    title: listingTitle
+      ? `New inquiry on ${listingTitle}`
+      : 'New lead message',
+    body: senderEmail
+      ? `${senderEmail} sent a message about your listing.`
+      : 'A prospect sent a message about your listing.',
+    listingId: listingId ?? null,
+  });
+}
+
+export async function notifyFeedbackRating(params: {
+  ownerId: string;
+  listingTitle?: string | null;
+  reviewerName?: string | null;
+  listingId?: string | null;
+}) {
+  const { ownerId, listingTitle, reviewerName, listingId } = params;
+  await createNotification({
+    userId: ownerId,
+    type: 'feedback_rating',
+    title: listingTitle
+      ? `New feedback on ${listingTitle}`
+      : 'New feedback received',
+    body: reviewerName
+      ? `${reviewerName} left feedback on your listing.`
+      : 'A buyer left feedback on your listing.',
+    listingId: listingId ?? null,
+  });
+}
+
+// TODO: Hook these helpers into scheduled jobs / workflows once they are implemented.
+export async function notifyListingPerformanceSummary(options: {
+  ownerId: string;
+  summaryTitle: string;
+  summaryBody: string;
+}) {
+  await createNotification({
+    userId: options.ownerId,
+    type: 'listing_performance',
+    title: options.summaryTitle,
+    body: options.summaryBody,
+  });
+}
+
+export async function notifyRepairEstimateReady(options: {
+  ownerId: string;
+  listingTitle?: string | null;
+  listingId?: string | null;
+}) {
+  await createNotification({
+    userId: options.ownerId,
+    type: 'repair_estimate_ready',
+    title: options.listingTitle
+      ? `Repair estimate ready for ${options.listingTitle}`
+      : 'Repair estimate is ready',
+    body: 'Your AI repair estimate has finished processing.',
+    listingId: options.listingId ?? null,
+  });
+}
+
+export async function notifyPropertyVerification(options: {
+  ownerId: string;
+  listingTitle?: string | null;
+  statusMessage: string;
+  listingId?: string | null;
+}) {
+  await createNotification({
+    userId: options.ownerId,
+    type: 'property_verification',
+    title: options.listingTitle
+      ? `Verification update for ${options.listingTitle}`
+      : 'Listing verification update',
+    body: options.statusMessage,
+    listingId: options.listingId ?? null,
+  });
+}
+
+export async function notifyMarketTrend(options: {
+  ownerId: string;
+  title: string;
+  body: string;
+}) {
+  await createNotification({
+    userId: options.ownerId,
+    type: 'market_trend',
+    title: options.title,
+    body: options.body,
+  });
+}
+
+export async function notifySubscriptionRenewal(options: {
+  ownerId: string;
+  title: string;
+  body: string;
+}) {
+  await createNotification({
+    userId: options.ownerId,
+    type: 'subscription_renewal',
+    title: options.title,
+    body: options.body,
+  });
 }
