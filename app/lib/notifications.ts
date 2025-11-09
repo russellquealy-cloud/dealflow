@@ -181,17 +181,15 @@ export async function notifyLeadMessage(params: {
   listingTitle?: string | null;
   senderEmail?: string | null;
   listingId?: string | null;
-  listingSlug?: string | null;
   threadId?: string | null;
   followUp?: boolean;
 }) {
-  const { ownerId, listingTitle, senderEmail, listingId, listingSlug, threadId, followUp } = params;
+  const { ownerId, listingTitle, senderEmail, listingId, threadId, followUp } = params;
   const metadata: Record<string, unknown> | null =
-    threadId || listingSlug || listingId
+    threadId || listingId
       ? {
           ...(threadId ? { threadId } : {}),
           ...(listingId ? { listingId } : {}),
-          ...(listingSlug ? { listingSlug } : {}),
         }
       : null;
 
