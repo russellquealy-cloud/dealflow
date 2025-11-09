@@ -68,6 +68,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({ error: 'A search with this name already exists.' }, { status: 409 });
+      }
       console.error('Error creating saved search:', error);
       return NextResponse.json({ error: 'Failed to create saved search' }, { status: 500 });
     }
@@ -109,6 +112,9 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
+      }
       console.error('Error updating saved search:', error);
       return NextResponse.json({ error: 'Failed to update saved search' }, { status: 500 });
     }
@@ -143,6 +149,9 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', user.id);
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
+      }
       console.error('Error deleting saved search:', error);
       return NextResponse.json({ error: 'Failed to delete saved search' }, { status: 500 });
     }

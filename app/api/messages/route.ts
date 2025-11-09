@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
         thread_id: threadId,
         from_id: user.id,
         to_id: recipientId,
+        listing_id: listingId,
         body: message,
         read_at: null
       })

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ListingCard from './ListingCard';
 
 export type MapPoint = { id: string; lat: number; lng: number; price?: number; featured?: boolean; featured_until?: string };
@@ -22,6 +23,13 @@ type Props = {
 
 export default function ListingsSplitClient({ points, listings, MapComponent, onBoundsChange, mapCenter, mapZoom }: Props) {
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
+  const router = useRouter();
+  const handleMarkerClick = useCallback(
+    (id: string) => {
+      router.push(`/listing/${id}`);
+    },
+    [router]
+  );
   const mapContainerStyle = useMemo(() => ({
     border: '1px solid #e5e7eb',
     borderRadius: '12px',
@@ -76,6 +84,7 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
               onBoundsChange={onBoundsChange}
               center={mapCenter}
               zoom={mapZoom}
+              onMarkerClick={handleMarkerClick}
             />
           </div>
         </div>

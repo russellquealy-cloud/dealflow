@@ -9,7 +9,6 @@ import {
 } from 'react';
 import {
   GoogleMap,
-  InfoWindow,
   Marker,
   MarkerClusterer,
   Polygon,
@@ -41,6 +40,7 @@ export interface GoogleMapImplProps {
   onPolygonComplete?: (polygon: google.maps.Polygon) => void;
   center?: { lat: number; lng: number };
   zoom?: number;
+  onMarkerClick?: (id: string) => void;
 }
 
 const MAP_LIBRARIES: ('drawing' | 'places')[] = ['drawing', 'places'];
@@ -127,6 +127,7 @@ export default function GoogleMapImpl({
   onPolygonComplete,
   center,
   zoom,
+  onMarkerClick,
 }: GoogleMapImplProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
@@ -137,7 +138,6 @@ export default function GoogleMapImpl({
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawnPath, setDrawnPath] = useState<google.maps.LatLngLiteral[] | null>(null);
-  const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
   const [boundsPayload, setBoundsPayload] = useState<BoundsPayload | null>(null);
 
   const geocodePanRef = useRef(false);
@@ -224,11 +224,6 @@ export default function GoogleMapImpl({
         position: { lat: point.lat, lng: point.lng } as google.maps.LatLngLiteral,
       })),
     [points]
-  );
-
-  const activePoint = useMemo(
-    () => markerData.find((point) => point.id === activeMarkerId) ?? null,
-    [markerData, activeMarkerId]
   );
 
   useEffect(() => {
@@ -492,33 +487,16 @@ export default function GoogleMapImpl({
                       : undefined
                   }
                   zIndex={point.featured ? 200 : undefined}
-                  onClick={() => setActiveMarkerId(point.id)}
+                  onClick={() => {
+                    if (onMarkerClick) {
+                      onMarkerClick(point.id);
+                    }
+                  }}
                 />
               ))}
             </>
           )}
         </MarkerClusterer>
-
-        {activePoint && (
-          <InfoWindow
-            position={{ lat: activePoint.lat, lng: activePoint.lng }}
-            onCloseClick={() => setActiveMarkerId(null)}
-          >
-            <div className="max-w-[220px] text-sm">
-              <p className="font-semibold text-gray-800">
-                {activePoint.title || activePoint.address || 'Listing'}
-              </p>
-              {typeof activePoint.price === 'number' && (
-                <p className="text-gray-600">
-                  ${activePoint.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                </p>
-              )}
-              {activePoint.address && (
-                <p className="text-xs text-gray-500">{activePoint.address}</p>
-              )}
-            </div>
-          </InfoWindow>
-        )}
 
         {drawnPath && drawnPath.length > 0 && (
           <Polygon path={drawnPath} options={polygonOptions} />

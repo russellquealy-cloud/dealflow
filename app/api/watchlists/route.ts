@@ -1,5 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/server';
+import { getSupabaseServiceRole } from '@/lib/supabase/service';
+
+type WatchlistRow = {
+  id: string;
+  user_id: string;
+  property_id: string;
+  created_at: string;
+};
+
+type ListingSummary = {
+  id: string;
+  title?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  price?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  home_sqft?: number | null;
+  arv?: number | null;
+  repairs?: number | null;
+  spread?: number | null;
+  roi?: number | null;
+  images?: unknown;
+  cover_image_url?: string | null;
+  featured?: boolean | null;
+  featured_until?: string | null;
+};
+
+function sanitizeListing(listing: ListingSummary | null | undefined) {
+  if (!listing) return null;
+  return {
+    id: listing.id,
+    title: listing.title ?? null,
+    address: listing.address ?? null,
+    city: listing.city ?? null,
+    state: listing.state ?? null,
+    zip: listing.zip ?? null,
+    price: listing.price ?? null,
+    bedrooms: listing.bedrooms ?? null,
+    baths: listing.bathrooms ?? null,
+    bathrooms: listing.bathrooms ?? null,
+    home_sqft: listing.home_sqft ?? null,
+    arv: listing.arv ?? null,
+    repairs: listing.repairs ?? null,
+    spread: listing.spread ?? null,
+    roi: listing.roi ?? null,
+    images: listing.images ?? null,
+    cover_image_url: listing.cover_image_url ?? null,
+    featured: listing.featured ?? false,
+    featured_until: listing.featured_until ?? null,
+  };
+}
 
 // GET: Fetch user's watchlist
 export async function GET(request: NextRequest) {
@@ -37,7 +91,7 @@ export async function GET(request: NextRequest) {
     // Otherwise, fetch all watchlists
     const { data: watchlists, error } = await supabase
       .from('watchlists')
-      .select('*, listing:listings(*)')
+      .select('id, user_id, property_id, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -46,7 +100,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    return NextResponse.json({ watchlists: watchlists || [] });
+    const items = (watchlists ?? []) as WatchlistRow[];
+    const propertyIds = Array.from(new Set(items.map((item) => item.property_id).filter(Boolean)));
+
+    let listingsMap = new Map<string, ReturnType<typeof sanitizeListing>>();
+
+    if (propertyIds.length > 0) {
+      try {
+        const serviceSupabase = await getSupabaseServiceRole();
+        const { data: listingsData, error: listingsError } = await serviceSupabase
+          .from('listings')
+          .select(
+            'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+          )
+          .in('id', propertyIds);
+
+        if (listingsError) {
+          console.error('Error loading listings for watchlists:', listingsError);
+        } else if (listingsData) {
+          listingsMap = new Map(
+            listingsData.map((listing) => [listing.id, sanitizeListing(listing as ListingSummary)])
+          );
+        }
+      } catch (serviceError) {
+        console.error('Service role unavailable for watchlists:', serviceError);
+      }
+    }
+
+    const enriched = items
+      .map((item) => ({
+        ...item,
+        listing: listingsMap.get(item.property_id) ?? null,
+      }))
+      .filter((item) => item.listing !== null);
+
+    return NextResponse.json({ watchlists: enriched });
   } catch (error) {
     console.error('Error in watchlists GET:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -81,13 +169,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Add to watchlist
-    const { data: watchlist, error } = await supabase
+    const { data: watchlistRow, error } = await supabase
       .from('watchlists')
       .insert({
         user_id: user.id,
         property_id: listingId
       })
-      .select('*, listing:listings(*)')
+      .select('id, user_id, property_id, created_at')
       .single();
 
     if (error) {
@@ -95,7 +183,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to add to watchlist' }, { status: 500 });
     }
 
-    return NextResponse.json({ watchlist });
+    let listing = null;
+    try {
+      const serviceSupabase = await getSupabaseServiceRole();
+      const { data: listingData, error: listingError } = await serviceSupabase
+        .from('listings')
+        .select(
+          'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+        )
+        .eq('id', listingId)
+        .maybeSingle();
+
+      if (listingError) {
+        console.error('Error fetching listing for watchlist response:', listingError);
+      }
+      listing = sanitizeListing(listingData as ListingSummary | null | undefined);
+    } catch (serviceError) {
+      console.error('Service role unavailable fetching watchlist listing:', serviceError);
+    }
+
+    return NextResponse.json({
+      watchlist: {
+        ...(watchlistRow as WatchlistRow),
+        listing,
+      },
+    });
   } catch (error) {
     console.error('Error in watchlists POST:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
