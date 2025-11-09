@@ -50,16 +50,31 @@ async function ensurePreferencesRow(
   supabase: SupabaseClient,
   userId: string
 ): Promise<NotificationPreferencesRow | null> {
-  const columns = Object.values(TYPE_TO_COLUMN).join(', ');
+  const columns = Object.values(TYPE_TO_COLUMN);
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('notification_preferences')
-    .select(columns)
+    .select(columns.join(', '))
     .eq('user_id', userId)
     .maybeSingle();
 
+  if (error) {
+    console.error('Failed to fetch notification preferences', error);
+    return null;
+  }
+
   if (data) {
-    return data as NotificationPreferencesRow;
+    const preferences: Partial<NotificationPreferencesRow> = {};
+    columns.forEach((key) => {
+      const value = data[key];
+      if (typeof value === 'boolean') {
+        preferences[key] = value;
+      }
+    });
+
+    if (Object.keys(preferences).length === columns.length) {
+      return preferences as NotificationPreferencesRow;
+    }
   }
 
   const { error: upsertError } = await supabase
@@ -76,7 +91,7 @@ async function ensurePreferencesRow(
 
   const { data: createdPreferences, error: fetchError } = await supabase
     .from('notification_preferences')
-    .select(columns)
+    .select(columns.join(', '))
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -85,7 +100,21 @@ async function ensurePreferencesRow(
     return null;
   }
 
-  return (createdPreferences as NotificationPreferencesRow) ?? null;
+  if (createdPreferences) {
+    const preferences: Partial<NotificationPreferencesRow> = {};
+    columns.forEach((key) => {
+      const value = createdPreferences[key];
+      if (typeof value === 'boolean') {
+        preferences[key] = value;
+      }
+    });
+
+    if (Object.keys(preferences).length === columns.length) {
+      return preferences as NotificationPreferencesRow;
+    }
+  }
+
+  return null;
 }
 
 export async function createNotification({
