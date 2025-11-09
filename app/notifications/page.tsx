@@ -18,7 +18,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { session, authLoading, refreshSession } = useAuth();
+  const { session, loading: authLoading, refreshSession } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
