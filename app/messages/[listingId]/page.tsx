@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
@@ -28,8 +28,10 @@ interface Listing {
 
 export default function MessagesPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const listingId = params?.listingId as string;
+  const threadParam = searchParams?.get('thread') ?? null;
   const { session, loading: authLoading } = useAuth();
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -80,7 +82,11 @@ export default function MessagesPage() {
           headers['Authorization'] = `Bearer ${session.access_token}`;
         }
 
-        const response = await fetch(`/api/messages?listingId=${listingId}`, {
+        const fetchUrl = `/api/messages?listingId=${listingId}${
+          threadParam ? `&threadId=${encodeURIComponent(threadParam)}` : ''
+        }`;
+
+        const response = await fetch(fetchUrl, {
           credentials: 'include',
           cache: 'no-store',
           headers,
@@ -123,8 +129,12 @@ export default function MessagesPage() {
               break;
             }
           }
-          if (!counterpartId && listingData.owner_id && listingData.owner_id !== currentUserId) {
-            counterpartId = listingData.owner_id;
+          if (!counterpartId) {
+            if (threadParam && data.counterpartId) {
+              counterpartId = data.counterpartId as string | null;
+            } else if (listingData.owner_id && listingData.owner_id !== currentUserId) {
+              counterpartId = listingData.owner_id;
+            }
           }
           setOtherUserId(counterpartId);
           setLoading(false);

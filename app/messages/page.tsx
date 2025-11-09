@@ -153,7 +153,13 @@ export default function MessagesPage() {
           {conversations.map((conv) => (
             <Link
               key={conv.thread_id}
-              href={`/messages/${conv.listing_id}`}
+              href={
+                conv.listing_id
+                  ? `/messages/${conv.listing_id}${
+                      conv.thread_id ? `?thread=${encodeURIComponent(conv.thread_id)}` : ''
+                    }`
+                  : '#'
+              }
               style={{
                 display: 'block',
                 border: '1px solid #e5e7eb',

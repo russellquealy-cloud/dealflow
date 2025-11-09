@@ -183,8 +183,9 @@ export async function notifyLeadMessage(params: {
   listingId?: string | null;
   listingSlug?: string | null;
   threadId?: string | null;
+  followUp?: boolean;
 }) {
-  const { ownerId, listingTitle, senderEmail, listingId, listingSlug, threadId } = params;
+  const { ownerId, listingTitle, senderEmail, listingId, listingSlug, threadId, followUp } = params;
   const metadata: Record<string, unknown> | null =
     threadId || listingSlug || listingId
       ? {
@@ -194,15 +195,27 @@ export async function notifyLeadMessage(params: {
         }
       : null;
 
+  const title = listingTitle
+    ? followUp
+      ? `New message on ${listingTitle}`
+      : `New inquiry on ${listingTitle}`
+    : followUp
+      ? 'New message about your listing'
+      : 'New lead message';
+
+  const body = senderEmail
+    ? followUp
+      ? `${senderEmail} replied to the ongoing conversation.`
+      : `${senderEmail} sent a message about your listing.`
+    : followUp
+      ? 'A buyer sent another message about your listing.'
+      : 'A prospect sent a message about your listing.';
+
   await createNotification({
     userId: ownerId,
     type: 'lead_message',
-    title: listingTitle
-      ? `New inquiry on ${listingTitle}`
-      : 'New lead message',
-    body: senderEmail
-      ? `${senderEmail} sent a message about your listing.`
-      : 'A prospect sent a message about your listing.',
+    title,
+    body,
     listingId: listingId ?? null,
     metadata,
   });

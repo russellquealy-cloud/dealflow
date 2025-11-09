@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get("listingId");
+    let threadId = searchParams.get("threadId");
 
     if (!listingId) {
       return NextResponse.json({ error: "Listing ID required" }, { status: 400 });
@@ -56,9 +57,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Listing owner not found" }, { status: 404 });
     }
 
-    // Generate thread_id from user IDs and listing ID for consistent thread identification
-    const threadString = [user.id, listing.owner_id, listingId].sort().join("-");
-    const threadId = uuidFromString(threadString);
+    if (!threadId) {
+      const { data: existingThread } = await supabase
+        .from("messages")
+        .select("thread_id")
+        .eq("listing_id", listingId)
+        .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingThread?.thread_id) {
+        threadId = existingThread.thread_id;
+      }
+    }
+
+    if (!threadId) {
+      const threadString = [user.id, listing.owner_id, listingId].sort().join("-");
+      threadId = uuidFromString(threadString);
+    }
 
     // Get messages for this conversation (thread)
     // Fetch messages without joins to avoid foreign key syntax issues
@@ -70,16 +87,41 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching messages:", error);
-      // Return detailed error for debugging
-      return NextResponse.json({ 
-        error: "Failed to fetch messages",
-        details: error.message,
-        code: error.code,
-        hint: error.hint
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Failed to fetch messages",
+          details: error.message,
+          code: error.code,
+          hint: error.hint,
+        },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ messages: messages || [] });
+    let counterpartId: string | null = null;
+    if (messages && messages.length > 0) {
+      for (const msg of messages) {
+        if (msg.from_id !== user.id) {
+          counterpartId = msg.from_id;
+          break;
+        }
+        if (msg.to_id !== user.id) {
+          counterpartId = msg.to_id;
+          break;
+        }
+      }
+      if (!counterpartId && listing.owner_id && listing.owner_id !== user.id) {
+        counterpartId = listing.owner_id;
+      }
+    } else if (listing.owner_id && listing.owner_id !== user.id) {
+      counterpartId = listing.owner_id;
+    }
+
+    return NextResponse.json({
+      messages: messages || [],
+      threadId,
+      counterpartId,
+    });
   } catch (error) {
     console.error("Error in messages GET:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -148,6 +190,19 @@ export async function POST(request: NextRequest) {
         }, { status: 500 });
       }
 
+      let followUp = false;
+      if (listing.owner_id) {
+        try {
+          const { count } = await supabase
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("thread_id", threadId);
+          followUp = (count ?? 0) > 1;
+        } catch (countError) {
+          console.warn("Failed to count messages in thread", countError);
+        }
+      }
+
       if (listing.owner_id) {
         try {
           await notifyLeadMessage({
@@ -157,6 +212,7 @@ export async function POST(request: NextRequest) {
             listingId,
             listingSlug: typeof listing.slug === "string" ? listing.slug : null,
             threadId,
+            followUp,
           });
         } catch (notificationError) {
           console.error("Failed to queue lead notification", notificationError);

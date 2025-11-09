@@ -107,11 +107,17 @@ export default function NotificationsPage() {
       const metadata = notification.metadata ?? {};
       const listingIdFromMetadata =
         typeof metadata.listingId === 'string' ? metadata.listingId : null;
+      const threadIdFromMetadata =
+        typeof metadata.threadId === 'string' ? metadata.threadId : null;
 
       if (notification.type === 'lead_message') {
         const listingId = notification.listing_id ?? listingIdFromMetadata;
         if (listingId) {
-          router.push(`/messages/${listingId}`);
+          if (threadIdFromMetadata) {
+            router.push(`/messages/${listingId}?thread=${threadIdFromMetadata}`);
+          } else {
+            router.push(`/messages/${listingId}`);
+          }
           return;
         }
       }
