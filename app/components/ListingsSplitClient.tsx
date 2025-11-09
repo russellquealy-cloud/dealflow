@@ -15,6 +15,7 @@ type Props = {
     onBoundsChange?: (bounds: unknown) => void;
     center?: { lat: number; lng: number };
     zoom?: number;
+    onMarkerClick?: (id: string) => void;
   }>;
   onBoundsChange?: (bounds: unknown) => void;
   mapCenter?: { lat: number; lng: number } | undefined;
