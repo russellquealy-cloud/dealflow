@@ -115,9 +115,56 @@ export async function GET(request: NextRequest) {
     // For search, only search in indexed fields (address, city, state) with prefix match
     // Avoid '%...%' wildcard searches across many columns
     if (params.search && params.search.trim()) {
-      const searchTerm = params.search.trim();
-      // Use OR for multiple indexed fields, but keep it simple
-      query = query.or(`address.ilike.${searchTerm}%,city.ilike.${searchTerm}%,state.ilike.${searchTerm}%`);
+      const rawSearch = params.search.trim();
+
+      // Extract potential city/state parts when the search includes commas (e.g. "Salem, MA")
+      let primaryTerm = rawSearch;
+      let stateFilter: string | undefined;
+
+      const commaIndex = rawSearch.indexOf(',');
+      if (commaIndex !== -1) {
+        primaryTerm = rawSearch.slice(0, commaIndex).trim();
+        const remainder = rawSearch.slice(commaIndex + 1).trim();
+        const stateCandidate = remainder.split(/\s+/)[0];
+        if (stateCandidate && /^[A-Za-z]{2}$/u.test(stateCandidate)) {
+          stateFilter = stateCandidate.toUpperCase();
+        }
+      }
+
+      // Handle inputs like "Salem MA" (space-separated tokens)
+      if (!stateFilter) {
+        const tokens = primaryTerm.split(/\s+/).filter(Boolean);
+        const lastToken = tokens[tokens.length - 1];
+        if (lastToken && /^[A-Za-z]{2}$/u.test(lastToken)) {
+          stateFilter = lastToken.toUpperCase();
+          primaryTerm = tokens.slice(0, -1).join(' ');
+        }
+      }
+
+      const sanitizeForIlike = (value: string) =>
+        value
+          .replace(/[%_]/g, '') // remove wildcard modifiers
+          .replace(/[^A-Za-z0-9\s]/g, ' ') // strip punctuation (commas, etc.)
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const normalizedTerm = sanitizeForIlike(primaryTerm || rawSearch);
+
+      if (stateFilter) {
+        query = query.eq('state', stateFilter);
+      }
+
+      if (normalizedTerm) {
+        const pattern = `${normalizedTerm}%`;
+        const fragments: string[] = [
+          `address.ilike.${pattern}`,
+          `city.ilike.${pattern}`,
+        ];
+        if (!stateFilter) {
+          fragments.push(`state.ilike.${pattern}`);
+        }
+        query = query.or(fragments.join(','));
+      }
     }
 
     query = query.order('featured', { ascending: false, nullsFirst: false });

@@ -6,10 +6,54 @@ import Footer from "@/components/Footer";
 import MobileLayout from "@/components/MobileLayout";
 import { AuthProvider } from "@/providers/AuthProvider";
 
+const BASE_URL = "https://www.offaxisdeals.com";
+const DEFAULT_TITLE = "Off Axis Deals | Real Estate Investment Marketplace";
+const DEFAULT_DESCRIPTION =
+  "Find real estate investment deals fast. Off-market properties for investors and wholesalers nationwide.";
+const KEYWORDS = [
+  "real estate deals",
+  "off-market properties",
+  "wholesaling",
+  "investment properties",
+  "real estate investors",
+  "Off Axis Deals",
+  "real estate investment",
+  "off-market deals",
+  "property wholesaling",
+  "real estate platform",
+  "investment opportunities",
+  "property analysis",
+  "real estate AI"
+];
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Off Axis Deals",
+  url: BASE_URL,
+  logo: `${BASE_URL}/logo.png`,
+  sameAs: [
+    "https://www.facebook.com/offaxisdeals",
+    "https://www.instagram.com/offaxisdeals",
+    "https://www.linkedin.com/company/offaxisdeals"
+  ],
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "customerservice@offaxisdeals.com",
+    contactType: "customer support"
+  }
+} as const;
+
 export const metadata: Metadata = {
-  title: "Off Axis Deals - Real Estate Investment Platform",
-  description: "Connect investors with wholesalers. Find off-market real estate deals, analyze properties with AI, and grow your investment portfolio. Join thousands of successful real estate investors and wholesalers.",
-  keywords: "real estate investment, off-market deals, property wholesaling, real estate platform, investment opportunities, property analysis, real estate AI",
+  metadataBase: new URL(BASE_URL),
+  title: DEFAULT_TITLE,
+  description: DEFAULT_DESCRIPTION,
+  authors: [{ name: "Off Axis Deals" }],
+  keywords: KEYWORDS,
+  robots: {
+    index: true,
+    follow: true
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -18,16 +62,30 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false
   },
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png"
+  },
   openGraph: {
-    title: "Off Axis Deals - Real Estate Investment Platform",
-    description: "Connect investors with wholesalers. Find off-market real estate deals, analyze properties with AI, and grow your investment portfolio.",
     type: "website",
-    siteName: "Off Axis Deals"
+    url: BASE_URL,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    siteName: "Off Axis Deals",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Off Axis Deals - real estate investment marketplace"
+      }
+    ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "Off Axis Deals - Real Estate Investment Platform",
-    description: "Connect investors with wholesalers. Find off-market real estate deals, analyze properties with AI, and grow your investment portfolio."
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: ["/og-image.png"]
   }
 };
 
@@ -55,6 +113,10 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body style={{ height: '100%', margin: 0, padding: 0 }}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <AuthProvider>
           <MobileLayout>
             {/* App shell: header fixed at top, content fills the rest */}
