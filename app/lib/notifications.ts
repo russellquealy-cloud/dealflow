@@ -97,7 +97,7 @@ export async function createNotification({
   metadata = null,
   supabaseClient,
 }: CreateNotificationParams): Promise<{ skipped: boolean }> {
-  const supabase = supabaseClient ?? getSupabaseServiceRole();
+  const supabase = supabaseClient ?? (await getSupabaseServiceRole());
 
   const preferences =
     (await ensurePreferencesRow(supabase, userId)) ??

@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let serviceClient: SupabaseClient | null = null;
 
-export function getSupabaseServiceRole(): SupabaseClient {
+export async function getSupabaseServiceRole(): Promise<SupabaseClient> {
   if (!serviceClient) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
