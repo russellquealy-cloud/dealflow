@@ -476,7 +476,7 @@ export default function Header() {
     }
 
     return items;
-  }, [email, userRole, unreadCount, notificationCount, closeMobile, signOut, signingOut]);
+  }, [email, userRole, unreadCount, notificationCount, closeMobile, signOut, signingOut, mobileLinkStyle]);
 
   return (
     <header style={wrap}>

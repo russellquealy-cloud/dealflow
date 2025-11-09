@@ -151,7 +151,7 @@ export default function MessagesPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, session, listingId, router]);
+  }, [authLoading, session, listingId, router, threadParam]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

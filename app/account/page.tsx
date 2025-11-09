@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
+import UserAnalyticsDashboard from '@/components/UserAnalyticsDashboard';
+import type { UserAnalytics } from '@/lib/analytics';
 import Link from 'next/link';
 import type { SubscriptionTier } from '@/lib/stripe';
 
@@ -99,16 +101,10 @@ export default function AccountPage() {
     full_name?: string;
     verified?: boolean;
   } | null>(null);
-  const [stats, setStats] = useState<{
-    savedListings?: number;
-    contactsMade?: number;
-    aiAnalyses?: number;
-    watchlists?: number;
-    myListings?: number;
-    totalViews?: number;
-    contacts?: number;
-    featuredListings?: number;
-  }>({});
+  const [analyticsStats, setAnalyticsStats] = useState<UserAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [isProTier, setIsProTier] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -181,78 +177,38 @@ export default function AccountPage() {
           console.log('Profile loaded successfully:', profileData);
           console.log('Segment:', profileData?.segment, 'Tier:', profileData?.tier);
           setProfile(profileData);
-          
-          // Load stats based on user role
-          const isInvestor = profileData.segment === 'investor' || (profileData.role === 'investor' && !profileData.segment);
-          const isWholesaler = profileData.segment === 'wholesaler' || profileData.role === 'wholesaler';
-          
-          if (isInvestor) {
-            // Investor stats - use simpler queries with timeout
-            try {
-              const [watchlistsRes, messagesRes] = await Promise.all([
-                supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-                supabase.from('messages').select('listing_id').eq('from_id', session.user.id)
-              ]);
+          const tierValue = (profileData?.tier || profileData?.membership_tier || '').toLowerCase();
+          setIsProTier(tierValue.includes('pro') || tierValue.includes('enterprise'));
 
-              const uniqueContacts = new Set<string>();
-              (messagesRes.data || []).forEach((row: { listing_id?: string | null }) => {
-                const record = row;
-                if (record.listing_id) {
-                  uniqueContacts.add(record.listing_id);
-                }
-              });
+          try {
+            setAnalyticsLoading(true);
+            setAnalyticsError(null);
 
-              setStats({
-                savedListings: watchlistsRes.count || 0,
-                watchlists: watchlistsRes.count || 0,
-                contactsMade: uniqueContacts.size,
-                aiAnalyses: 0 // TODO: Add AI analyses tracking table
-              });
-            } catch (statsError) {
-              console.error('Error loading investor stats:', statsError);
-              // Set default stats on error
-              setStats({
-                savedListings: 0,
-                watchlists: 0,
-                contactsMade: 0,
-                aiAnalyses: 0
-              });
+            const headers: HeadersInit = {};
+            if (session.access_token) {
+              headers.Authorization = `Bearer ${session.access_token}`;
             }
-          } else if (isWholesaler) {
-            // Wholesaler stats - use simpler queries with timeout
-            try {
-              const [listingsRes, featuredRes, messagesRes] = await Promise.all([
-                supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id),
-                supabase.from('listings').select('id', { count: 'exact', head: true }).eq('owner_id', session.user.id).eq('featured', true),
-                supabase.from('messages').select('from_id').eq('to_id', session.user.id)
-              ]);
 
-              const uniqueContacts = new Set<string>();
-              (messagesRes.data || []).forEach((row: { from_id?: string | null }) => {
-                const record = row;
-                if (record.from_id) {
-                  uniqueContacts.add(record.from_id);
-                }
-              });
+            const response = await fetch('/api/analytics', {
+              headers,
+              credentials: 'include',
+              cache: 'no-store',
+            });
 
-              const totalViews = 0; // TODO: Add views tracking to listings table
-
-              setStats({
-                myListings: listingsRes.count || 0,
-                totalViews,
-                contacts: uniqueContacts.size,
-                featuredListings: featuredRes.count || 0
-              });
-            } catch (statsError) {
-              console.error('Error loading wholesaler stats:', statsError);
-              // Set default stats on error
-              setStats({
-                myListings: 0,
-                totalViews: 0,
-                contacts: 0,
-                featuredListings: 0
-              });
+            if (!response.ok) {
+              const text = await response.text().catch(() => '');
+              throw new Error(`Analytics fetch failed: ${response.status} ${text}`);
             }
+
+            const data = await response.json();
+            setAnalyticsStats(data.stats);
+            setIsProTier(data.isPro);
+          } catch (analyticsError) {
+            console.error('Error loading analytics:', analyticsError);
+            setAnalyticsStats(null);
+            setAnalyticsError('Analytics unavailable right now.');
+          } finally {
+            setAnalyticsLoading(false);
           }
         }
         
@@ -458,60 +414,55 @@ export default function AccountPage() {
       </div>
 
       {/* Analytics */}
-      {profile && (() => {
-        const isInvestor = profile.segment === 'investor' || (profile.role === 'investor' && !profile.segment);
-        const isWholesaler = profile.segment === 'wholesaler' || profile.role === 'wholesaler';
-        
+      {(() => {
+        if (analyticsLoading) {
+          return (
+            <div
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: 12,
+                padding: 24,
+                marginBottom: 24,
+                background: '#fff',
+              }}
+            >
+              <div style={{ color: '#64748b' }}>Loading analytics…</div>
+            </div>
+          );
+        }
+
+        if (analyticsError) {
+          return (
+            <div
+              style={{
+                border: '1px solid #fee2e2',
+                borderRadius: 12,
+                padding: 24,
+                marginBottom: 24,
+                background: '#fff5f5',
+                color: '#b91c1c',
+              }}
+            >
+              {analyticsError}
+            </div>
+          );
+        }
+
+        if (!analyticsStats) {
+          return null;
+        }
+
         return (
-          <div style={{ 
-            border: '1px solid #e5e7eb', 
-            borderRadius: 12, 
-            padding: 24, 
-            marginBottom: 24,
-            background: '#fff'
-          }}>
-            <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Analytics</h2>
-            {isInvestor ? (
-              // Investor Analytics
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0f9ff' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>{stats.savedListings || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Saved Listings</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0fdf4' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{stats.contactsMade || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Contacts Made</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>{stats.aiAnalyses || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>AI Analyses</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#faf5ff' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#a855f7' }}>{stats.watchlists || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Watchlists</div>
-                </div>
-              </div>
-            ) : isWholesaler ? (
-              // Wholesaler Analytics
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0f9ff' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0ea5e9' }}>{stats.myListings || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>My Listings</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f0fdf4' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{stats.totalViews || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Total Views</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fffbeb' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>{stats.contacts || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Contacts</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fef2f2' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}>{stats.featuredListings || 0}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Featured Listings</div>
-                </div>
-              </div>
-            ) : null}
+          <div
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 12,
+              padding: 24,
+              marginBottom: 24,
+              background: '#fff',
+            }}
+          >
+            <UserAnalyticsDashboard stats={analyticsStats} isPro={isProTier} />
           </div>
         );
       })()}

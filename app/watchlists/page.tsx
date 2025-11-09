@@ -11,7 +11,7 @@ interface WatchlistItem {
   id: string;
   property_id: string;
   created_at: string;
-  listing: ListingLike;
+  listing: ListingLike | null;
 }
 
 export default function WatchlistsPage() {

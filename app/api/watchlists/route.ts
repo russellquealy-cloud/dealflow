@@ -7,6 +7,7 @@ type WatchlistRow = {
   user_id: string;
   property_id: string;
   created_at: string;
+  listing?: ListingSummary | null;
 };
 
 type ListingSummary = {
@@ -97,7 +98,34 @@ export async function GET(request: NextRequest) {
     // Otherwise, fetch all watchlists
     const { data: watchlists, error } = await supabase
       .from('watchlists')
-      .select('id, user_id, property_id, created_at')
+      .select(
+        `
+        id,
+        user_id,
+        property_id,
+        created_at,
+        listing:property_id (
+          id,
+          title,
+          address,
+          city,
+          state,
+          zip,
+          price,
+          bedrooms,
+          bathrooms,
+          home_sqft,
+          arv,
+          repairs,
+          spread,
+          roi,
+          images,
+          cover_image_url,
+          featured,
+          featured_until
+        )
+      `
+      )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -152,10 +180,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const enriched = items.map((item) => ({
-      ...item,
-      listing: listingsMap.get(item.property_id) ?? null,
-    }));
+    const enriched = items.map((item) => {
+      const joinedListing = item.listing ? sanitizeListing(item.listing) : null;
+      return {
+        id: item.id,
+        user_id: item.user_id,
+        property_id: item.property_id,
+        created_at: item.created_at,
+        listing: joinedListing ?? listingsMap.get(item.property_id) ?? null,
+      };
+    });
 
     return NextResponse.json({ watchlists: enriched });
   } catch (error) {

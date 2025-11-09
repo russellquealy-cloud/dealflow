@@ -242,7 +242,7 @@ export default function NotificationsPage() {
         })}
       </div>
     );
-  }, [loading, error, hasNotifications, notifications]);
+  }, [loading, error, hasNotifications, notifications, handleNotificationClick]);
 
   return (
     <div
