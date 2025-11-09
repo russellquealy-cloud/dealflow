@@ -66,7 +66,7 @@ async function ensurePreferencesRow(
   if (data) {
     const preferences: Partial<NotificationPreferencesRow> = {};
     columns.forEach((key) => {
-      const value = data[key];
+      const value = (data as Record<string, unknown>)[key];
       if (typeof value === 'boolean') {
         preferences[key] = value;
       }
@@ -103,7 +103,7 @@ async function ensurePreferencesRow(
   if (createdPreferences) {
     const preferences: Partial<NotificationPreferencesRow> = {};
     columns.forEach((key) => {
-      const value = createdPreferences[key];
+      const value = (createdPreferences as Record<string, unknown>)[key];
       if (typeof value === 'boolean') {
         preferences[key] = value;
       }
