@@ -23,6 +23,7 @@ type ProfileSummary = {
 
 type ListingSummary = {
   id: string;
+  slug?: string | null;
   title?: string | null;
   address?: string | null;
   owner_id: string;
@@ -33,6 +34,7 @@ type ConversationSummary = {
   listing_id: string | null;
   listing_title?: string | null;
   listing_address?: string | null;
+  listing_slug?: string | null;
   other_user_id: string;
   other_user_name?: string | null;
   last_message?: string;
@@ -171,7 +173,7 @@ async function hydrateConversations(
       if (!listings) {
         const { data } = await supabase
           .from("listings")
-          .select("id, title, address, owner_id")
+          .select("id, slug, title, address, owner_id")
           .in("owner_id", participantIds);
         listings = (data as ListingSummary[]) ?? [];
         cache.set(cacheKey, listings);
@@ -190,6 +192,7 @@ async function hydrateConversations(
         copy.listing_id = match.id;
         copy.listing_title = copy.listing_title ?? match.title;
         copy.listing_address = copy.listing_address ?? match.address;
+        copy.listing_slug = copy.listing_slug ?? match.slug ?? null;
 
         // Best-effort repair of historical rows missing listing_id
         try {

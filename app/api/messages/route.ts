@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     // Get listing to verify it exists and get owner
     const { data: listing, error: listingError } = await supabase
       .from("listings")
-      .select("owner_id, title")
+      .select("owner_id, title, slug")
       .eq("id", listingId)
       .single();
 
@@ -155,6 +155,8 @@ export async function POST(request: NextRequest) {
             listingTitle: typeof listing.title === "string" ? listing.title : null,
             senderEmail: user.email ?? null,
             listingId,
+            listingSlug: typeof listing.slug === "string" ? listing.slug : null,
+            threadId,
           });
         } catch (notificationError) {
           console.error("Failed to queue lead notification", notificationError);

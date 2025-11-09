@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 
 type NotificationRecord = {
@@ -19,6 +20,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { session, loading: authLoading, refreshSession } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     let isMounted = true;
@@ -100,6 +102,32 @@ export default function NotificationsPage() {
 
   const hasNotifications = notifications.length > 0;
 
+  const handleNotificationClick = useCallback(
+    (notification: NotificationRecord) => {
+      const metadata = notification.metadata ?? {};
+      const listingIdFromMetadata =
+        typeof metadata.listingId === 'string' ? metadata.listingId : null;
+
+      if (notification.type === 'lead_message') {
+        const listingId = notification.listing_id ?? listingIdFromMetadata;
+        if (listingId) {
+          router.push(`/messages/${listingId}`);
+          return;
+        }
+      }
+
+      if (notification.listing_id) {
+        router.push(`/listing/${notification.listing_id}`);
+        return;
+      }
+
+      if (listingIdFromMetadata) {
+        router.push(`/listing/${listingIdFromMetadata}`);
+      }
+    },
+    [router]
+  );
+
   const content = useMemo(() => {
     if (loading) {
       return (
@@ -173,6 +201,7 @@ export default function NotificationsPage() {
           return (
             <div
               key={notification.id}
+              role="button"
               style={{
                 padding: '18px 24px',
                 borderBottom: last ? 'none' : '1px solid #e5e7eb',
@@ -180,7 +209,9 @@ export default function NotificationsPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 6,
+                cursor: 'pointer',
               }}
+              onClick={() => handleNotificationClick(notification)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div

@@ -181,8 +181,19 @@ export async function notifyLeadMessage(params: {
   listingTitle?: string | null;
   senderEmail?: string | null;
   listingId?: string | null;
+  listingSlug?: string | null;
+  threadId?: string | null;
 }) {
-  const { ownerId, listingTitle, senderEmail, listingId } = params;
+  const { ownerId, listingTitle, senderEmail, listingId, listingSlug, threadId } = params;
+  const metadata: Record<string, unknown> | null =
+    threadId || listingSlug || listingId
+      ? {
+          ...(threadId ? { threadId } : {}),
+          ...(listingId ? { listingId } : {}),
+          ...(listingSlug ? { listingSlug } : {}),
+        }
+      : null;
+
   await createNotification({
     userId: ownerId,
     type: 'lead_message',
@@ -193,6 +204,7 @@ export async function notifyLeadMessage(params: {
       ? `${senderEmail} sent a message about your listing.`
       : 'A prospect sent a message about your listing.',
     listingId: listingId ?? null,
+    metadata,
   });
 }
 

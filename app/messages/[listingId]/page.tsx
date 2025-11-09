@@ -74,8 +74,6 @@ export default function MessagesPage() {
         }
 
         setListing(listingData);
-        const ownerId = listingData.owner_id || null;
-        setOtherUserId(ownerId ?? null);
 
         const headers: HeadersInit = {};
         if (session?.access_token) {
@@ -110,7 +108,25 @@ export default function MessagesPage() {
 
         const data = await response.json();
         if (!cancelled) {
-          setMessages(data.messages || []);
+          const loadedMessages: Message[] = data.messages || [];
+          setMessages(loadedMessages);
+
+          const currentUserId = session.user.id;
+          let counterpartId: string | null = null;
+          for (const msg of loadedMessages) {
+            if (msg.from_id !== currentUserId) {
+              counterpartId = msg.from_id;
+              break;
+            }
+            if (msg.to_id !== currentUserId) {
+              counterpartId = msg.to_id;
+              break;
+            }
+          }
+          if (!counterpartId && listingData.owner_id && listingData.owner_id !== currentUserId) {
+            counterpartId = listingData.owner_id;
+          }
+          setOtherUserId(counterpartId);
           setLoading(false);
         }
       } catch (error) {
