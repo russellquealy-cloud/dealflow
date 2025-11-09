@@ -67,10 +67,10 @@ function computeActivityScore(stats: CoreStats, dealsViewedCurrent: number): num
 }
 
 async function countRows<T>(
-  promise: Promise<{ count: number | null; error: T | null }>
+  fetcher: () => Promise<{ count: number | null; error: T | null }>
 ): Promise<number> {
   try {
-    const { count, error } = await promise;
+    const { count, error } = await fetcher();
     if (error) {
       console.error('Analytics count error:', error);
       return 0;
@@ -91,17 +91,19 @@ async function loadInvestorAnalytics(userId: string): Promise<InvestorStats> {
   sixtyDaysAgo.setDate(now.getDate() - 60);
 
   const savedListings = await countRows(
-    supabase
-      .from('watchlists')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
+    () =>
+      supabase
+        .from('watchlists')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
   );
 
   const aiAnalyses = await countRows(
-    supabase
-      .from('ai_analysis_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
+    () =>
+      supabase
+        .from('ai_analysis_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
   );
 
   const watchlistsCount = savedListings;
@@ -210,17 +212,19 @@ async function loadWholesalerAnalytics(userId: string): Promise<WholesalerStats>
   sixtyDaysAgo.setDate(now.getDate() - 60);
 
   const savedListings = await countRows(
-    supabase
-      .from('watchlists')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
+    () =>
+      supabase
+        .from('watchlists')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
   );
 
   const aiAnalyses = await countRows(
-    supabase
-      .from('ai_analysis_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
+    () =>
+      supabase
+        .from('ai_analysis_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
   );
 
   const { data: contactsRows } = await supabase
