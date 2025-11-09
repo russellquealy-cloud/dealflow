@@ -194,11 +194,13 @@ export default function AccountPage() {
                 supabase.from('messages').select('listing_id').eq('from_id', session.user.id)
               ]);
 
-              const uniqueContacts = new Set(
-                (messagesRes.data || [])
-                  .map((row) => (row as { listing_id?: string | null }).listing_id)
-                  .filter(Boolean)
-              );
+              const uniqueContacts = new Set<string>();
+              (messagesRes.data || []).forEach((row) => {
+                const record = row as { listing_id?: string | null };
+                if (record.listing_id) {
+                  uniqueContacts.add(record.listing_id);
+                }
+              });
 
               setStats({
                 savedListings: watchlistsRes.count || 0,
@@ -225,9 +227,13 @@ export default function AccountPage() {
                 supabase.from('messages').select('from_id').eq('to_id', session.user.id)
               ]);
 
-              const uniqueContacts = new Set(
-                (messagesRes.data || []).map((row) => (row as { from_id?: string | null }).from_id).filter(Boolean)
-              );
+              const uniqueContacts = new Set<string>();
+              (messagesRes.data || []).forEach((row) => {
+                const record = row as { from_id?: string | null };
+                if (record.from_id) {
+                  uniqueContacts.add(record.from_id);
+                }
+              });
 
               const totalViews = 0; // TODO: Add views tracking to listings table
 
