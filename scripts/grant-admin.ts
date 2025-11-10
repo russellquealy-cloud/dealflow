@@ -6,7 +6,18 @@
  * service role key to be configured in the environment.
  */
 
+import { config } from 'dotenv';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { getSupabaseServiceRole } from '../app/lib/supabase/service';
+
+const envFiles = ['.env.local', '.env'];
+envFiles.forEach((file) => {
+  const filePath = join(process.cwd(), file);
+  if (existsSync(filePath)) {
+    config({ path: filePath });
+  }
+});
 
 async function grantAdmin(emailArg?: string) {
   const email = (emailArg || process.env.ADMIN_EMAIL || 'admin@offaxisdeals.com').trim().toLowerCase();

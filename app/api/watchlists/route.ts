@@ -96,45 +96,98 @@ export async function GET(request: NextRequest) {
     }
 
     // Otherwise, fetch all watchlists
-    const { data: watchlists, error } = await supabase
-      .from('watchlists')
-      .select(
-        `
-        id,
-        user_id,
-        property_id,
-        created_at,
-        listing:property_id (
-          id,
-          title,
-          address,
-          city,
-          state,
-          zip,
-          price,
-          bedrooms,
-          bathrooms,
-          home_sqft,
-          arv,
-          repairs,
-          spread,
-          roi,
-          images,
-          cover_image_url,
-          featured,
-          featured_until
-        )
-      `
-      )
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    let watchlists: unknown[] | null = null;
+    let queryError: unknown = null;
 
-    if (error) {
-      console.error('Error fetching watchlists:', error);
-      return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
+    try {
+      const serviceSupabase = await getSupabaseServiceRole();
+      const { data: serviceData, error: serviceError } = await serviceSupabase
+        .from('watchlists')
+        .select(
+          `
+          id,
+          user_id,
+          property_id,
+          created_at,
+          listing:property_id (
+            id,
+            title,
+            address,
+            city,
+            state,
+            zip,
+            price,
+            bedrooms,
+            bathrooms,
+            home_sqft,
+            arv,
+            repairs,
+            spread,
+            roi,
+            images,
+            cover_image_url,
+            featured,
+            featured_until
+          )
+        `
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (serviceError) {
+        console.error('Service role watchlist query failed, falling back to user context:', serviceError);
+        queryError = serviceError;
+      } else {
+        watchlists = serviceData ?? [];
+      }
+    } catch (serviceError) {
+      console.error('Service role unavailable when fetching watchlists:', serviceError);
+      queryError = serviceError;
     }
 
-    const items = (watchlists ?? []) as Array<
+    if (!watchlists) {
+      const { data: userData, error: userError } = await supabase
+        .from('watchlists')
+        .select(
+          `
+          id,
+          user_id,
+          property_id,
+          created_at,
+          listing:property_id (
+            id,
+            title,
+            address,
+            city,
+            state,
+            zip,
+            price,
+            bedrooms,
+            bathrooms,
+            home_sqft,
+            arv,
+            repairs,
+            spread,
+            roi,
+            images,
+            cover_image_url,
+            featured,
+            featured_until
+          )
+        `
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (userError) {
+        console.error('Error fetching watchlists with user context:', userError);
+        return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
+      }
+
+      watchlists = userData ?? [];
+    }
+
+    const items = watchlists as Array<
       WatchlistRow & { listing?: ListingSummary | ListingSummary[] | null }
     >;
     const propertyIds = Array.from(new Set(items.map((item) => item.property_id).filter(Boolean)));

@@ -1,8 +1,8 @@
 # Off Axis Deals - Project Status Report
 **Generated:** November 8, 2025  
-**Last Updated:** November 8, 2025
+**Last Updated:** November 10, 2025
 
-## Overall Completion: **~78%**
+## Overall Completion: **~80%**
 
 ---
 
@@ -24,19 +24,19 @@
 
 ---
 
-### 🏠 Listings Management & Map: **72%**
+### 🏠 Listings Management & Map: **74%**
 - ✅ Create / edit / delete listings (wholesalers)
 - ✅ View listings (all users) with filters
 - ✅ Listing detail page + media gallery
 - ✅ Featured listings (including map/star styling)
 - ✅ Polygon draw & persistence
-- ⚠️ Search autocomplete connects but misses recentering UX polish
-- ⚠️ Map flicker reduced but still noticeable under heavy marker redraws
+- ⚠️ Search autocomplete suggestions intermittently fail and map does not recenter on selection
+- ✅ Map flicker eliminated; drawn polygons persist across navigation
 - ✅ My Listings management view
 
 **Issues:**
-- Map viewport height good, but drawn shapes still briefly disappear on dataset refresh
-- Need final pass on search UX + mobile map layout breathing room
+- Restore Google Places autocomplete suggestions and recenter map on result select / submit
+- Broaden saved search UX to feel less manual; review mobile layout spacing
 
 ---
 
@@ -53,23 +53,24 @@
 
 ---
 
-### 💬 Messaging: **68%**
+### 💬 Messaging: **70%**
 - ✅ Conversation list (with fallback when view missing)
 - ✅ Message send/receive with RLS
 - ✅ Unread badge in header
 - ⚠️ Notification hookup for message events partially complete
-- ⚠️ Wholesaler read-only rules not enforced everywhere
+- ⚠️ Visual read receipts not surfaced in UI
 
 **Issues:**
 - RLS still failing for some investor watchlist/message writes (401/500 reports)
 - Need regression sweep for auth headers on all message endpoints
+- Surface read-state indicator inside thread view for clarity
 
 ---
 
-### 🔔 Notifications & Alerts: **70%**
+### 🔔 Notifications & Alerts: **72%**
 - ✅ Supabase tables + RLS for preferences & notifications
 - ✅ API routes: preferences, list, unread count
-- ✅ Settings UI with optimistic toggles
+- ✅ Settings UI with optimistic toggles (accessible; needs navigation entry point)
 - ✅ In-app notifications page + header badge
 - ⚠️ Event wiring missing for several flows (repair estimate, performance, etc.)
 - ⚠️ Email delivery not re-validated after schema changes
@@ -77,20 +78,22 @@
 **Issues:**
 - Need job/helpers connected for market trend, verification, subscription renewal, feedback
 - Confirm service role client available in every environment
+- Add first-class navigation link to notification preferences
 
 ---
 
-### 🛠️ Tools & Insights: **60%**
+### 🛠️ Tools & Insights: **62%**
 - ✅ Investor & wholesaler analyzers (mock responses clarified)
-- ✅ Watchlists UI
+- ⚠️ Watchlists API returning 500 for some users (fetch fallback needs repair)
 - ✅ Saved searches UI
 - ⚠️ Saved search creation throws 500 for some investors (RLS)
 - ⚠️ AI quotas: plan allowances not enforced; test accounts should be unlimited
 - ❌ Advanced analytics dashboard still pending
 
 **Issues:**
-- Supabase policies need review for saved searches & watchlists
+- Supabase policies need review for saved searches & watchlists; resolve current 500s
 - AI usage counters must respect tiers + monthly reset
+- Restore Google Places suggestions + map recenter for search workflow
 
 ---
 
@@ -122,21 +125,23 @@
 
 1. **Stripe Upgrade Failure** 🔴  
    `customer`/`customer_email` conflict breaks Basic → Pro checkout.
-2. **Saved Search / Watchlist RLS Errors** 🔴  
-   Investors receive 500s due to missing auth context / policies.
+2. **Watchlist / Saved Search API Errors** 🔴  
+   Fetching watchlists returns 500 (service role fallback + policies need fix).
 3. **AI Usage Limits** 🔴  
    Wholesaler/Investor accounts blocked despite intended allowances; quotas need enforcement + reset logic.
 4. **Wholesaler Post Deal Loop** 🟠  
    Posting a deal bounces users back to login; high impact on supply.
+5. **Search Autocomplete Regression** 🟠  
+   Places suggestions not returning results; map fails to recenter on typed location.
 
 ---
 
 ## High Priority Follow-Ups
 
-1. Map flicker + drawn shape persistence polish.
-2. Search autocomplete recenter + UX updates (filter-driven save flow).
-3. Notification event wiring for all specified triggers.
-4. Messaging RLS audit plus wholesaler read-only guardrails.
+1. Restore Places autocomplete + map recenter behaviour; modernize search save UX.
+2. Wire notification events for buyer interest, market trend, subscription renewal, feedback.
+3. Messaging RLS audit plus wholesaler read-only guardrails and visible read receipts.
+4. Finish Stripe checkout fix + AI quota enforcement once blockers cleared.
 
 ---
 
@@ -201,12 +206,12 @@
 ## Next Steps (Order)
 
 1. Patch Stripe checkout parameters (choose `customer` or `customer_email` per session).  
-2. Resolve Supabase RLS for watchlists & saved searches; confirm bearer tokens everywhere.  
+2. Resolve Supabase watchlist/saved-search 500s using service role + policy review.  
 3. Implement AI usage quota service (per tier + monthly reset + test exemptions).  
 4. Fix wholesaler Post Deal redirect loop + finalize My Listings form spacing.  
-5. Map polish: preserve drawn areas, smooth marker updates, improve search save UX.  
-6. Wire remaining notification triggers + exercise email delivery.  
-7. Regression test messaging endpoints + add integration tests where feasible.  
+5. Restore Google Places suggestions + auto recentre, then modernize search-save UX.  
+6. Wire remaining notification triggers (market trend, subscription renewal, feedback) + add navigation entry to settings.  
+7. Regression test messaging endpoints, surface read-state, and ensure auth headers across clients.  
 
 ---
 
