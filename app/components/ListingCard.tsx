@@ -5,6 +5,29 @@ import Image from 'next/image';
 import WatchlistButton from './WatchlistButton';
 import { isSupabaseStorageUrl, supabaseImageLoader } from '@/lib/images';
 
+type OwnerProfileSnapshot = {
+  id: string;
+  role?: string | null;
+  segment?: string | null;
+  full_name?: string | null;
+  company_name?: string | null;
+  profile_photo_url?: string | null;
+  phone_verified?: boolean | null;
+  is_pro_subscriber?: boolean | null;
+  buy_markets?: string[] | null;
+  buy_property_types?: string[] | null;
+  buy_price_min?: number | null;
+  buy_price_max?: number | null;
+  buy_strategy?: string | null;
+  buy_condition?: string | null;
+  capital_available?: number | null;
+  wholesale_markets?: string[] | null;
+  deal_arbands?: string[] | null;
+  deal_discount_target?: number | null;
+  assignment_methods?: string[] | null;
+  avg_days_to_buyer?: number | null;
+};
+
 export type ListingLike = {
   id: string | number;
   title?: string;
@@ -32,6 +55,8 @@ export type ListingLike = {
   roi?: number | string; // percent
   featured?: boolean;
   featured_until?: string;
+  owner_id?: string;
+  owner_profile?: OwnerProfileSnapshot | null;
 };
 
 type Props = { listing: ListingLike };
@@ -47,6 +72,27 @@ const toNum = (v: unknown): number | undefined => {
 
 const money = (n?: number) =>
   n === undefined ? '—' : n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+const snapshotContainerStyle: React.CSSProperties = {
+  marginTop: 12,
+  padding: 10,
+  borderRadius: 8,
+  border: '1px solid #e2e8f0',
+  background: '#f8fafc',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+};
+
+const miniBadgeStyle: React.CSSProperties = {
+  fontSize: 10,
+  padding: '3px 6px',
+  borderRadius: 999,
+  border: '1px solid #cbd5f5',
+  background: '#eff6ff',
+  color: '#1d4ed8',
+  fontWeight: 600,
+};
 
 export default function ListingCard({ listing }: Props) {
   const href = `/listing/${listing.id}`;
@@ -77,6 +123,8 @@ export default function ListingCard({ listing }: Props) {
 
   const showImage = img && !imageErrored;
   const isSupabaseImage = showImage ? isSupabaseStorageUrl(img) : false;
+  const ownerProfile = listing.owner_profile;
+  const ownerRole = (ownerProfile?.segment || ownerProfile?.role || '').toLowerCase();
 
   return (
     <div style={{ 
@@ -220,6 +268,57 @@ export default function ListingCard({ listing }: Props) {
           </div>
           <WatchlistButton listingId={String(listing.id)} size="small" />
         </div>
+
+        {ownerProfile && ownerRole === 'wholesaler' && (
+          <div style={snapshotContainerStyle}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937' }}>Wholesaler Snapshot</div>
+            <div style={{ fontSize: 12, color: '#111827' }}>
+              {ownerProfile.company_name || ownerProfile.full_name || 'Verified wholesaler'}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {ownerProfile.is_pro_subscriber && (
+                <span
+                  style={{
+                    ...miniBadgeStyle,
+                    border: '1px solid #c084fc',
+                    background: '#f3e8ff',
+                    color: '#7c3aed',
+                  }}
+                >
+                  Pro
+                </span>
+              )}
+              {ownerProfile.phone_verified && (
+                <span
+                  style={{
+                    ...miniBadgeStyle,
+                    border: '1px solid #34d399',
+                    background: '#d1fae5',
+                    color: '#047857',
+                  }}
+                >
+                  Phone verified
+                </span>
+              )}
+            </div>
+            {Array.isArray(ownerProfile.wholesale_markets) && ownerProfile.wholesale_markets.length > 0 && (
+              <div style={{ fontSize: 11, color: '#4b5563' }}>
+                Operates in: {ownerProfile.wholesale_markets.slice(0, 3).join(', ')}
+                {ownerProfile.wholesale_markets.length > 3 ? '…' : ''}
+              </div>
+            )}
+            {Array.isArray(ownerProfile.deal_arbands) && ownerProfile.deal_arbands.length > 0 && (
+              <div style={{ fontSize: 11, color: '#4b5563' }}>
+                Typical ARV: {ownerProfile.deal_arbands.join(', ')}
+              </div>
+            )}
+            {typeof ownerProfile.deal_discount_target === 'number' && Number.isFinite(ownerProfile.deal_discount_target) && (
+              <div style={{ fontSize: 11, color: '#4b5563' }}>
+                Discount target: {ownerProfile.deal_discount_target}% below ARV
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

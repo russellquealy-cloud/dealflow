@@ -27,6 +27,7 @@ type ListingSummary = {
   cover_image_url?: string | null;
   featured?: boolean | null;
   featured_until?: string | null;
+  owner_profile?: Record<string, unknown> | null;
 };
 
 function sanitizeListing(listing: ListingSummary | null | undefined) {
@@ -112,10 +113,10 @@ export async function GET(request: NextRequest) {
     let listingsMap = new Map<string, ReturnType<typeof sanitizeListing>>();
 
     if (propertyIds.length > 0) {
-      const { data: listingsData, error: listingsError } = await supabase
+        const { data: listingsData, error: listingsError } = await supabase
         .from('listings')
         .select(
-          'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+            'id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
         )
         .in('id', propertyIds);
 
@@ -125,8 +126,40 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
       } else if (listingsData) {
+        const listingsArray = listingsData as Array<Record<string, unknown>>;
+        const ownerIds = Array.from(
+          new Set(
+            listingsArray
+              .map((listing) => listing.owner_id)
+              .filter((ownerId): ownerId is string => typeof ownerId === 'string' && ownerId.length > 0)
+          )
+        );
+
+        const ownerProfilesMap = new Map<string, Record<string, unknown>>();
+        if (ownerIds.length > 0) {
+          const { data: ownerProfiles, error: ownerError } = await supabase
+            .from('profiles')
+            .select(
+              'id, role, segment, full_name, company_name, profile_photo_url, phone_verified, is_pro_subscriber, buy_markets, buy_property_types, buy_price_min, buy_price_max, buy_strategy, buy_condition, capital_available, wholesale_markets, deal_arbands, deal_discount_target, assignment_methods, avg_days_to_buyer'
+            )
+            .in('id', ownerIds);
+
+          if (ownerError) {
+            console.error('Owner profile fetch error (watchlists)', ownerError);
+          } else if (ownerProfiles) {
+            ownerProfiles.forEach((profileRow) => {
+              ownerProfilesMap.set(profileRow.id, profileRow);
+            });
+          }
+        }
+
         listingsMap = new Map(
-          listingsData.map((listing) => [listing.id, sanitizeListing(listing as ListingSummary)])
+          listingsArray.map((listing) => {
+            const ownerId = typeof listing.owner_id === 'string' ? listing.owner_id : undefined;
+            const core = sanitizeListing(listing as ListingSummary);
+            const ownerProfile = ownerId ? ownerProfilesMap.get(ownerId) ?? null : null;
+            return [listing.id, { ...core, owner_profile: ownerProfile }];
+          })
         );
       }
     }
@@ -193,7 +226,7 @@ export async function POST(request: NextRequest) {
     const { data: listingData, error: listingError } = await supabase
       .from('listings')
       .select(
-        'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+        'id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
       )
       .eq('id', listingId)
       .maybeSingle();
@@ -204,7 +237,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     } else {
-      listing = sanitizeListing(listingData as ListingSummary | null | undefined);
+      const ownerId = listingData?.owner_id as string | undefined;
+      let ownerProfile = null;
+      if (ownerId) {
+        const { data: ownerProfileRow } = await supabase
+          .from('profiles')
+          .select(
+            'id, role, segment, full_name, company_name, profile_photo_url, phone_verified, is_pro_subscriber, buy_markets, buy_property_types, buy_price_min, buy_price_max, buy_strategy, buy_condition, capital_available, wholesale_markets, deal_arbands, deal_discount_target, assignment_methods, avg_days_to_buyer'
+          )
+          .eq('id', ownerId)
+          .maybeSingle();
+        ownerProfile = ownerProfileRow ?? null;
+      }
+      const core = sanitizeListing(listingData as ListingSummary | null | undefined);
+      listing = core ? { ...core, owner_profile: ownerProfile } : null;
     }
 
     return NextResponse.json({

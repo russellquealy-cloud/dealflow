@@ -26,6 +26,37 @@ interface Listing {
   owner_id?: string;
 }
 
+interface ProfileSnapshot {
+  id: string;
+  role?: string | null;
+  segment?: string | null;
+  full_name?: string | null;
+  company_name?: string | null;
+  profile_photo_url?: string | null;
+  phone_verified?: boolean | null;
+  is_pro_subscriber?: boolean | null;
+  buy_markets?: string[] | null;
+  buy_property_types?: string[] | null;
+  buy_price_min?: number | null;
+  buy_price_max?: number | null;
+  buy_strategy?: string | null;
+  buy_condition?: string | null;
+  capital_available?: number | null;
+  wholesale_markets?: string[] | null;
+  deal_arbands?: string[] | null;
+  deal_discount_target?: number | null;
+  assignment_methods?: string[] | null;
+  avg_days_to_buyer?: number | null;
+}
+
+const formatList = (values?: string[] | null, max = 3): string => {
+  if (!Array.isArray(values) || values.length === 0) return '—';
+  const trimmed = values.filter((item) => typeof item === 'string' && item.trim().length > 0);
+  if (trimmed.length === 0) return '—';
+  const shown = trimmed.slice(0, max).join(', ');
+  return trimmed.length > max ? `${shown}…` : shown;
+};
+
 export default function MessagesPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -40,6 +71,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
+  const [counterpartProfile, setCounterpartProfile] = useState<ProfileSnapshot | null>(null);
   const redirectRef = useRef(false);
 
   useEffect(() => {
@@ -61,6 +93,7 @@ export default function MessagesPage() {
 
     const loadData = async () => {
       try {
+        setCounterpartProfile(null);
         const { data: listingData, error: listingError } = await supabase
           .from('listings')
           .select('id, title, address, price, owner_id')
@@ -136,8 +169,27 @@ export default function MessagesPage() {
               counterpartId = listingData.owner_id;
             }
           }
-          setOtherUserId(counterpartId);
-          setLoading(false);
+
+          let counterpartProfileData: ProfileSnapshot | null = null;
+          if (counterpartId) {
+            const { data: profileRow, error: profileError } = await supabase
+              .from('profiles')
+              .select(
+                'id, role, segment, full_name, company_name, profile_photo_url, phone_verified, is_pro_subscriber, buy_markets, buy_property_types, buy_price_min, buy_price_max, buy_strategy, buy_condition, capital_available, wholesale_markets, deal_arbands, deal_discount_target, assignment_methods, avg_days_to_buyer'
+              )
+              .eq('id', counterpartId)
+              .single();
+
+            if (!profileError && profileRow) {
+              counterpartProfileData = profileRow as ProfileSnapshot;
+            }
+          }
+
+          if (!cancelled) {
+            setOtherUserId(counterpartId);
+            setCounterpartProfile(counterpartProfileData);
+            setLoading(false);
+          }
         }
       } catch (error) {
         console.error('Error loading messages:', error);
@@ -270,6 +322,108 @@ export default function MessagesPage() {
           </p>
         )}
       </div>
+
+      {counterpartProfile && (
+        <div style={{
+          border: '1px solid #e2e8f0',
+          borderRadius: 12,
+          padding: 20,
+          marginBottom: 24,
+          background: '#f8fafc',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1f2937' }}>
+            Conversation with {counterpartProfile.company_name || counterpartProfile.full_name || 'Partner'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{
+              fontSize: 11,
+              padding: '4px 8px',
+              borderRadius: 999,
+              border: '1px solid #cbd5f5',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              fontWeight: 600,
+            }}>
+              {(counterpartProfile.segment || counterpartProfile.role || 'investor').toUpperCase()}
+            </span>
+            {counterpartProfile.is_pro_subscriber && (
+              <span style={{
+                fontSize: 11,
+                padding: '4px 8px',
+                borderRadius: 999,
+                border: '1px solid #c084fc',
+                background: '#f3e8ff',
+                color: '#7c3aed',
+                fontWeight: 600,
+              }}>
+                Pro
+              </span>
+            )}
+            {counterpartProfile.phone_verified && (
+              <span style={{
+                fontSize: 11,
+                padding: '4px 8px',
+                borderRadius: 999,
+                border: '1px solid #34d399',
+                background: '#d1fae5',
+                color: '#047857',
+                fontWeight: 600,
+              }}>
+                Phone verified
+              </span>
+            )}
+          </div>
+          {(() => {
+            const counterpartRole = (counterpartProfile.segment || counterpartProfile.role || '').toLowerCase();
+            if (counterpartRole === 'wholesaler') {
+              return (
+                <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
+                  <div>Markets: {formatList(counterpartProfile.wholesale_markets, 4)}</div>
+                  <div>Assignment methods: {formatList(counterpartProfile.assignment_methods, 4)}</div>
+                  {typeof counterpartProfile.deal_discount_target === 'number' && Number.isFinite(counterpartProfile.deal_discount_target) && (
+                    <div>Discount target: {counterpartProfile.deal_discount_target}% below ARV</div>
+                  )}
+                  {typeof counterpartProfile.avg_days_to_buyer === 'number' && Number.isFinite(counterpartProfile.avg_days_to_buyer) && (
+                    <div>Average days to buyer: {counterpartProfile.avg_days_to_buyer}</div>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
+                <div>Buy markets: {formatList(counterpartProfile.buy_markets, 4)}</div>
+                <div>Property types: {formatList(counterpartProfile.buy_property_types, 4)}</div>
+              {(() => {
+                const min = typeof counterpartProfile.buy_price_min === 'number' && Number.isFinite(counterpartProfile.buy_price_min)
+                  ? counterpartProfile.buy_price_min
+                  : null;
+                const max = typeof counterpartProfile.buy_price_max === 'number' && Number.isFinite(counterpartProfile.buy_price_max)
+                  ? counterpartProfile.buy_price_max
+                  : null;
+                if (min !== null && max !== null) {
+                  return (
+                    <div>
+                      Price range: ${min.toLocaleString()} – ${max.toLocaleString()}
+                    </div>
+                  );
+                }
+                if (min !== null) {
+                  return <div>Minimum buy price: ${min.toLocaleString()}</div>;
+                }
+                if (max !== null) {
+                  return <div>Maximum buy price: ${max.toLocaleString()}</div>;
+                }
+                return null;
+              })()}
+                {counterpartProfile.buy_strategy && <div>Strategy: {counterpartProfile.buy_strategy}</div>}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Messages */}
       <div style={{

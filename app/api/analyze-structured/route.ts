@@ -51,15 +51,13 @@ export async function POST(request: NextRequest) {
     const segment = profile?.segment?.toLowerCase();
     const profileTier = profile?.tier?.toLowerCase();
     const membershipTier = profile?.membership_tier?.toLowerCase();
+    const plan = profileTier ?? membershipTier ?? 'free';
     const isTestAccount =
       email.endsWith('@test.com') ||
       email.endsWith('@example.com') ||
       segment === 'test' ||
       profileTier === 'test' ||
       membershipTier === 'test';
-
-    const plan = profile?.tier?.toLowerCase() ?? 'free';
-    const isTestAccount = (profile?.membership_tier?.toLowerCase() === 'test') || (profile?.segment?.toLowerCase() === 'test') || (user.email ?? '').toLowerCase().endsWith('@test.com') || (user.email ?? '').toLowerCase().endsWith('@example.com');
 
     const quota = await checkAndIncrementAiUsage(user.id, plan, isAdmin || isTestAccount);
     if (!quota.allowed) {

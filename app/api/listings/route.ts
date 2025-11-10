@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // Build query with timeout signal
     let query = supabase
       .from('listings')
-      .select('id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until', { count: 'exact' })
+      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until', { count: 'exact' })
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
       .range(params.offset!, params.offset! + params.limit! - 1);
@@ -252,10 +252,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`✅ Listings query completed in ${elapsed}ms: ${data.length} items, total count: ${count || 0}`);
+    const listings = data as Array<Record<string, unknown>>;
+    const ownerIds = Array.from(
+      new Set(
+        listings
+          .map((listing) => listing.owner_id)
+          .filter((ownerId): ownerId is string => typeof ownerId === 'string' && ownerId.length > 0)
+      )
+    );
+
+    const ownerProfilesMap = new Map<string, Record<string, unknown>>();
+    if (ownerIds.length > 0) {
+      const { data: ownerProfiles, error: ownerError } = await supabase
+        .from('profiles')
+        .select(
+          'id, role, segment, full_name, company_name, profile_photo_url, phone_verified, is_pro_subscriber, buy_markets, buy_property_types, buy_price_min, buy_price_max, buy_strategy, buy_condition, capital_available, wholesale_markets, deal_arbands, deal_discount_target, assignment_methods, avg_days_to_buyer'
+        )
+        .in('id', ownerIds);
+
+      if (ownerError) {
+        console.error('Owner profile fetch error', ownerError);
+      } else if (ownerProfiles) {
+        ownerProfiles.forEach((profileRow) => {
+          ownerProfilesMap.set(profileRow.id, profileRow);
+        });
+      }
+    }
+
+    const enrichedListings = listings.map((listing) => {
+      const ownerId = typeof listing.owner_id === 'string' ? listing.owner_id : undefined;
+      const ownerProfile = ownerId ? ownerProfilesMap.get(ownerId) ?? null : null;
+      return {
+        ...listing,
+        owner_profile: ownerProfile,
+      };
+    });
+
+    console.log(`✅ Listings query completed in ${elapsed}ms: ${listings.length} items, total count: ${count || 0}`);
 
     return NextResponse.json({
-      items: data,
+      items: enrichedListings,
       count: count || data.length,
       error: null
     });

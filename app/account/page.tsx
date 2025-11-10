@@ -1,12 +1,212 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import UserAnalyticsDashboard from '@/components/UserAnalyticsDashboard';
 import type { UserAnalytics } from '@/lib/analytics';
 import Link from 'next/link';
 import type { SubscriptionTier } from '@/lib/stripe';
+import { getProfileCompleteness, type AnyProfile, type UserRole, type ProfileCompletenessResult } from '@/lib/profileCompleteness';
+
+const sectionStyle: CSSProperties = {
+  marginTop: 24,
+  padding: 16,
+  borderRadius: 12,
+  border: '1px solid #e2e8f0',
+  background: '#ffffff',
+};
+
+const sectionTitleStyle: CSSProperties = {
+  fontSize: 16,
+  fontWeight: 600,
+  marginBottom: 12,
+};
+
+const fieldRowStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  marginBottom: 12,
+};
+
+const badgeRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginTop: 8,
+};
+
+const badgeBaseStyle: CSSProperties = {
+  fontSize: 11,
+  padding: '4px 8px',
+  borderRadius: 999,
+  border: '1px solid #cbd5f5',
+  background: '#eff6ff',
+  color: '#1d4ed8',
+  fontWeight: 500,
+};
+
+const propertyTypeOptions = ['SFR', 'Duplex', 'Triplex', '4-Plex', 'Small MF (5-20)', 'Land', 'Other'] as const;
+const strategyOptions = ['Flip', 'BRRRR', 'Buy-and-Hold', 'Wholesale', 'Other'] as const;
+const conditionOptions = ['Light Rehab', 'Medium Rehab', 'Heavy Rehab', 'Full Gut'] as const;
+
+const wholesalerArvOptions = ['<150k', '150–300k', '300–500k', '500k+'] as const;
+const assignmentOptions = ['Assignment', 'Double Close', 'Novation', 'Wholetail'] as const;
+
+const chipRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+};
+
+const chipStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '6px 10px',
+  borderRadius: 999,
+  border: '1px solid #cbd5f5',
+  background: '#fff',
+  color: '#1e3a8a',
+  fontSize: 12,
+  cursor: 'pointer',
+};
+
+const chipSelectedStyle: CSSProperties = {
+  ...chipStyle,
+  border: '1px solid #2563eb',
+  background: '#dbeafe',
+  color: '#1d4ed8',
+};
+
+const missingKeyLabels: Record<string, string> = {
+  full_name: 'Add your name',
+  company_name: 'Add your company name',
+  profile_photo_url: 'Upload a profile photo',
+  phone_verified: 'Verify your phone number',
+  license_info: 'Add license information',
+  buy_markets: 'Define your target buy markets',
+  buy_property_types: 'Select buy box property types',
+  buy_price_min: 'Set minimum buy price',
+  buy_price_max: 'Set maximum buy price',
+  buy_strategy: 'Choose a buy strategy',
+  buy_condition: 'Specify preferred property condition',
+  capital_available: 'Provide available capital',
+  wholesale_markets: 'List your wholesaling markets',
+  deal_arbands: 'Select typical ARV bands',
+  deal_discount_target: 'Enter your discount target',
+  assignment_methods: 'Select assignment methods',
+  avg_days_to_buyer: 'Indicate average days to find buyer',
+};
+
+type ProfileFormState = {
+  full_name: string;
+  company_name: string;
+  profile_photo_url: string;
+  license_info: string;
+  buy_markets: string[];
+  buy_property_types: string[];
+  buy_price_min: string;
+  buy_price_max: string;
+  buy_strategy: string;
+  buy_condition: string;
+  capital_available: string;
+  wholesale_markets: string[];
+  deal_arbands: string[];
+  deal_discount_target: string;
+  assignment_methods: string[];
+  avg_days_to_buyer: string;
+};
+
+const emptyFormState: ProfileFormState = {
+  full_name: '',
+  company_name: '',
+  profile_photo_url: '',
+  license_info: '',
+  buy_markets: [],
+  buy_property_types: [],
+  buy_price_min: '',
+  buy_price_max: '',
+  buy_strategy: '',
+  buy_condition: '',
+  capital_available: '',
+  wholesale_markets: [],
+  deal_arbands: [],
+  deal_discount_target: '',
+  assignment_methods: [],
+  avg_days_to_buyer: '',
+};
+
+function parseNumberFromString(value: string): number | null {
+  if (!value) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === 'string' ? item.trim() : item != null ? String(item).trim() : ''))
+      .filter((item) => item.length > 0);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? [trimmed] : [];
+  }
+  return [];
+}
+
+function buildCompletenessProfile(
+  role: UserRole,
+  id: string,
+  state: ProfileFormState,
+  extras: {
+    phone_verified?: boolean | null;
+    license_info?: string | null;
+    profile_photo_url?: string | null;
+    company_name?: string | null;
+    full_name?: string | null;
+    is_pro_subscriber?: boolean | null;
+  }
+): AnyProfile {
+  const base = {
+    id,
+    role,
+    full_name: state.full_name || extras.full_name || null,
+    company_name: state.company_name || extras.company_name || null,
+    profile_photo_url: state.profile_photo_url || extras.profile_photo_url || null,
+    phone_verified: extras.phone_verified ?? null,
+    license_info: state.license_info || extras.license_info || null,
+    is_pro_subscriber: extras.is_pro_subscriber ?? null,
+  };
+
+  if (role === 'investor') {
+    return {
+      ...base,
+      role: 'investor',
+      buy_markets: state.buy_markets,
+      buy_property_types: state.buy_property_types,
+      buy_price_min: parseNumberFromString(state.buy_price_min),
+      buy_price_max: parseNumberFromString(state.buy_price_max),
+      buy_strategy: state.buy_strategy || null,
+      buy_condition: state.buy_condition || null,
+      capital_available: parseNumberFromString(state.capital_available),
+    };
+  }
+
+  return {
+    ...base,
+    role: 'wholesaler',
+    wholesale_markets: state.wholesale_markets,
+    deal_arbands: state.deal_arbands,
+    deal_discount_target: parseNumberFromString(state.deal_discount_target),
+    assignment_methods: state.assignment_methods,
+    avg_days_to_buyer: parseNumberFromString(state.avg_days_to_buyer),
+  };
+}
 
 // Helper function to get plan name and features (client-side safe)
 function getPlanInfo(segment?: string, tier?: string): { name: string; tier: SubscriptionTier; features: string[] } {
@@ -93,6 +293,7 @@ export default function AccountPage() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ 
+    id?: string;
     role?: string;
     segment?: string;
     tier?: string;
@@ -100,11 +301,143 @@ export default function AccountPage() {
     company_name?: string;
     full_name?: string;
     verified?: boolean;
+    profile_photo_url?: string | null;
+    license_info?: string | null;
+    buy_markets?: string[] | null;
+    buy_property_types?: string[] | null;
+    buy_price_min?: number | null;
+    buy_price_max?: number | null;
+    buy_strategy?: string | null;
+    buy_condition?: string | null;
+    capital_available?: number | null;
+    wholesale_markets?: string[] | null;
+    deal_arbands?: string[] | null;
+    deal_discount_target?: number | null;
+    assignment_methods?: string[] | null;
+    avg_days_to_buyer?: number | null;
+    is_pro_subscriber?: boolean | null;
   } | null>(null);
   const [analyticsStats, setAnalyticsStats] = useState<UserAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [isProTier, setIsProTier] = useState(false);
+  const [formState, setFormState] = useState<ProfileFormState>(emptyFormState);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [completeness, setCompleteness] = useState<ProfileCompletenessResult | null>(null);
+  const profileRole = ((profile?.segment || profile?.role) ?? 'investor') as UserRole;
+  const completenessScore = completeness?.score ?? 0;
+  const strengthLabel =
+    completenessScore >= 80 ? 'Strong' : completenessScore >= 50 ? 'Good' : 'Needs work';
+  const strengthColor =
+    completenessScore >= 80 ? '#15803d' : completenessScore >= 50 ? '#1d4ed8' : '#b91c1c';
+
+  const nextSteps = useMemo(() => {
+    if (!completeness) return [];
+    return completeness.missingKeys
+      .map((key) => missingKeyLabels[key] ?? key)
+      .filter((value, index, arr) => arr.indexOf(value) === index)
+      .slice(0, 4);
+  }, [completeness]);
+
+  const badgeStyles = useMemo(() => {
+    const roleBadge =
+      profileRole === 'wholesaler'
+        ? { ...badgeBaseStyle, border: '1px solid #f59e0b', background: '#fef3c7', color: '#b45309' }
+        : { ...badgeBaseStyle, border: '1px solid #60a5fa', background: '#dbeafe', color: '#1d4ed8' };
+    const proBadge = { ...badgeBaseStyle, border: '1px solid #c084fc', background: '#f3e8ff', color: '#7c3aed' };
+    const verifiedBadge = { ...badgeBaseStyle, border: '1px solid #34d399', background: '#d1fae5', color: '#047857' };
+    const licenseBadge = { ...badgeBaseStyle, border: '1px solid #fca5a5', background: '#fee2e2', color: '#b91c1c' };
+    return { roleBadge, proBadge, verifiedBadge, licenseBadge };
+  }, [profileRole]);
+
+  const badges = useMemo(() => {
+    const items: Array<{ label: string; style: React.CSSProperties }> = [];
+    items.push({
+      label: profileRole === 'wholesaler' ? 'Wholesaler' : 'Investor',
+      style: badgeStyles.roleBadge,
+    });
+    if (profile?.is_pro_subscriber) {
+      items.push({ label: 'Pro Subscriber', style: badgeStyles.proBadge });
+    }
+    if (profile?.phone_verified) {
+      items.push({ label: 'Phone Verified', style: badgeStyles.verifiedBadge });
+    }
+    if (profile?.license_info) {
+      items.push({ label: 'License on File', style: badgeStyles.licenseBadge });
+    }
+    return items;
+  }, [badgeStyles, profile, profileRole]);
+
+  const hydrateProfileState = (profileRecord: Record<string, unknown> | null, sessionUserId: string) => {
+    const role = ((profileRecord?.segment || profileRecord?.role) ?? 'investor') as UserRole;
+    const buyPriceMinValue = profileRecord?.buy_price_min as number | string | null | undefined;
+    const buyPriceMaxValue = profileRecord?.buy_price_max as number | string | null | undefined;
+    const capitalValue = profileRecord?.capital_available as number | string | null | undefined;
+    const dealDiscountValue = profileRecord?.deal_discount_target as number | string | null | undefined;
+    const avgDaysValue = profileRecord?.avg_days_to_buyer as number | string | null | undefined;
+    const nextFormState: ProfileFormState = {
+      full_name: (profileRecord?.full_name as string) ?? '',
+      company_name: (profileRecord?.company_name as string) ?? '',
+      profile_photo_url: (profileRecord?.profile_photo_url as string) ?? '',
+      license_info: (profileRecord?.license_info as string) ?? '',
+      buy_markets: toStringArray(profileRecord?.buy_markets),
+      buy_property_types: toStringArray(profileRecord?.buy_property_types),
+      buy_price_min: buyPriceMinValue != null ? String(buyPriceMinValue) : '',
+      buy_price_max: buyPriceMaxValue != null ? String(buyPriceMaxValue) : '',
+      buy_strategy: (profileRecord?.buy_strategy as string) ?? '',
+      buy_condition: (profileRecord?.buy_condition as string) ?? '',
+      capital_available: capitalValue != null ? String(capitalValue) : '',
+      wholesale_markets: toStringArray(profileRecord?.wholesale_markets),
+      deal_arbands: toStringArray(profileRecord?.deal_arbands),
+      deal_discount_target: dealDiscountValue != null ? String(dealDiscountValue) : '',
+      assignment_methods: toStringArray(profileRecord?.assignment_methods),
+      avg_days_to_buyer: avgDaysValue != null ? String(avgDaysValue) : '',
+    };
+    setFormState(nextFormState);
+    const completenessProfile = buildCompletenessProfile(role, profileRecord?.id ? String(profileRecord.id) : sessionUserId, nextFormState, {
+      phone_verified: (profileRecord?.phone_verified as boolean | null) ?? null,
+      license_info: (profileRecord?.license_info as string) ?? null,
+      profile_photo_url: (profileRecord?.profile_photo_url as string) ?? null,
+      company_name: (profileRecord?.company_name as string) ?? null,
+      full_name: (profileRecord?.full_name as string) ?? null,
+      is_pro_subscriber: (profileRecord?.is_pro_subscriber as boolean | null) ?? null,
+    });
+    setCompleteness(getProfileCompleteness(completenessProfile));
+  };
+
+  const handleTextFieldChange =
+    (field: Exclude<keyof ProfileFormState, 'buy_markets' | 'buy_property_types' | 'wholesale_markets' | 'deal_arbands' | 'assignment_methods'>) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { value } = event.target;
+      setFormState((prev) => ({ ...prev, [field]: value }));
+    };
+
+  const handleArrayInputChange =
+    (field: 'buy_markets' | 'wholesale_markets') =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { value } = event.target;
+      const items = value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+      setFormState((prev) => ({ ...prev, [field]: items }));
+    };
+
+  const toggleOption = (
+    field: 'buy_property_types' | 'deal_arbands' | 'assignment_methods',
+    option: string
+  ) => {
+    setFormState((prev) => {
+      const current = new Set(prev[field]);
+      if (current.has(option)) {
+        current.delete(option);
+      } else {
+        current.add(option);
+      }
+      return { ...prev, [field]: Array.from(current) };
+    });
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -159,19 +492,44 @@ export default function AccountPage() {
                 .single();
               if (createError) {
                 console.error('Error creating profile:', createError);
-                setProfile({ role: 'investor', segment: 'investor', tier: 'free', membership_tier: 'free' });
+                const fallbackProfile = {
+                  id: session.user.id,
+                  role: 'investor',
+                  segment: 'investor',
+                  tier: 'free',
+                  membership_tier: 'free',
+                };
+                setProfile(fallbackProfile);
+                hydrateProfileState(fallbackProfile, session.user.id);
               } else {
                 console.log('Profile loaded:', newProfile);
                 setProfile(newProfile);
+                hydrateProfileState(newProfile, session.user.id);
               }
             } catch (createErr) {
               console.error('Exception creating profile:', createErr);
-              setProfile({ role: 'investor', segment: 'investor', tier: 'free', membership_tier: 'free' });
+              const fallbackProfile = {
+                id: session.user.id,
+                role: 'investor',
+                segment: 'investor',
+                tier: 'free',
+                membership_tier: 'free',
+              };
+              setProfile(fallbackProfile);
+              hydrateProfileState(fallbackProfile, session.user.id);
             }
           } else {
             // Other error - set default profile
             console.error('Unexpected profile error:', profileError);
-            setProfile({ role: 'investor', segment: 'investor', tier: 'free', membership_tier: 'free' });
+            const fallbackProfile = {
+              id: session.user.id,
+              role: 'investor',
+              segment: 'investor',
+              tier: 'free',
+              membership_tier: 'free',
+            };
+            setProfile(fallbackProfile);
+            hydrateProfileState(fallbackProfile, session.user.id);
           }
         } else {
           console.log('Profile loaded successfully:', profileData);
@@ -179,6 +537,8 @@ export default function AccountPage() {
           setProfile(profileData);
           const tierValue = (profileData?.tier || profileData?.membership_tier || '').toLowerCase();
           setIsProTier(tierValue.includes('pro') || tierValue.includes('enterprise'));
+
+          hydrateProfileState(profileData, session.user.id);
 
           try {
             setAnalyticsLoading(true);
@@ -224,6 +584,69 @@ export default function AccountPage() {
     checkAuth();
   }, [router]);
 
+  useEffect(() => {
+    if (!user) return;
+    const role = ((profile?.segment || profile?.role) ?? 'investor') as UserRole;
+    const completenessProfile = buildCompletenessProfile(role, profile?.id ?? user.id, formState, {
+      phone_verified: profile?.phone_verified ?? null,
+      license_info: formState.license_info || profile?.license_info ?? null,
+      profile_photo_url: formState.profile_photo_url || profile?.profile_photo_url ?? null,
+      company_name: formState.company_name || profile?.company_name ?? null,
+      full_name: formState.full_name || profile?.full_name ?? null,
+      is_pro_subscriber: profile?.is_pro_subscriber ?? null,
+    });
+    setCompleteness(getProfileCompleteness(completenessProfile));
+  }, [formState, profile, user]);
+
+  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) return;
+    setSavingProfile(true);
+    setSaveMessage(null);
+    try {
+      const updates = {
+        full_name: formState.full_name || null,
+        company_name: formState.company_name || null,
+        profile_photo_url: formState.profile_photo_url || null,
+        license_info: formState.license_info || null,
+        buy_markets: formState.buy_markets,
+        buy_property_types: formState.buy_property_types,
+        buy_price_min: parseNumberFromString(formState.buy_price_min),
+        buy_price_max: parseNumberFromString(formState.buy_price_max),
+        buy_strategy: formState.buy_strategy || null,
+        buy_condition: formState.buy_condition || null,
+        capital_available: parseNumberFromString(formState.capital_available),
+        wholesale_markets: formState.wholesale_markets,
+        deal_arbands: formState.deal_arbands,
+        deal_discount_target: parseNumberFromString(formState.deal_discount_target),
+        assignment_methods: formState.assignment_methods,
+        avg_days_to_buyer: parseNumberFromString(formState.avg_days_to_buyer),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Profile update error', error);
+        setSaveMessage('Failed to save profile changes.');
+      } else {
+        setSaveMessage('Profile updated successfully.');
+        setProfile((prev) => {
+          const merged = { ...(prev ?? {}), ...updates, id: prev?.id ?? user.id };
+          hydrateProfileState(merged, user.id);
+          return merged;
+        });
+      }
+    } catch (error) {
+      console.error('Profile save exception', error);
+      setSaveMessage('Unexpected error saving profile.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -260,24 +683,340 @@ export default function AccountPage() {
 
       <h1 style={{ margin: '0 0 24px 0', fontSize: 32, fontWeight: 800 }}>Account Settings</h1>
 
-      {/* User Info */}
-      <div style={{ 
-        border: '1px solid #e5e7eb', 
-        borderRadius: 12, 
-        padding: 24, 
-        marginBottom: 24,
-        background: '#fff'
-      }}>
-        <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Profile Information</h2>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Email</label>
-            <div style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#f9fafb' }}>
-              {user?.email}
+      {profile && completeness && (
+        <div style={{ ...sectionStyle, marginTop: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 14, color: '#4b5563', fontWeight: 500 }}>Profile strength</span>
+              <div style={{ fontSize: 20, fontWeight: 700, color: strengthColor }}>
+                {completenessScore}% · {strengthLabel}
+              </div>
+              <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${completenessScore}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #2563eb, #22d3ee)',
+                    borderRadius: 999,
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
             </div>
+
+            {badges.length > 0 && (
+              <div style={badgeRowStyle}>
+                {badges.map((badge) => (
+                  <span key={badge.label} style={badge.style}>
+                    {badge.label}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {nextSteps.length > 0 && (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2937', marginBottom: 4 }}>
+                  Next best steps
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18, color: '#4b5563', fontSize: 13, lineHeight: 1.6 }}>
+                  {nextSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* User Info & Profile Form */}
+      <form
+        onSubmit={handleProfileSubmit}
+        style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: 12,
+          padding: 24,
+          marginBottom: 24,
+          background: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}
+      >
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Profile Information</h2>
+        <div style={fieldRowStyle}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Email</label>
+          <div
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #d1d5db',
+              borderRadius: 6,
+              background: '#f9fafb',
+              color: '#4b5563',
+              fontSize: 14,
+            }}
+          >
+            {user?.email}
+          </div>
+        </div>
+
+        <div style={fieldRowStyle}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Full name</label>
+          <input
+            type="text"
+            value={formState.full_name}
+            onChange={handleTextFieldChange('full_name')}
+            placeholder="Jane Doe"
+            style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+          />
+        </div>
+
+        <div style={fieldRowStyle}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Company name</label>
+          <input
+            type="text"
+            value={formState.company_name}
+            onChange={handleTextFieldChange('company_name')}
+            placeholder="Off Axis Capital"
+            style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+          />
+        </div>
+
+        <div style={fieldRowStyle}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>Profile photo URL</label>
+          <input
+            type="url"
+            value={formState.profile_photo_url}
+            onChange={handleTextFieldChange('profile_photo_url')}
+            placeholder="https://..."
+            style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+          />
+        </div>
+
+        <div style={fieldRowStyle}>
+          <label style={{ fontSize: 14, fontWeight: 500 }}>License info (optional)</label>
+          <input
+            type="text"
+            value={formState.license_info}
+            onChange={handleTextFieldChange('license_info')}
+            placeholder="e.g. CA DRE #123456"
+            style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+          />
+        </div>
+
+        <div style={{ fontSize: 12, color: '#6b7280' }}>
+          Phone verification is handled through our onboarding team.
+          {profile?.phone_verified ? ' ✅ Verified.' : ' Not verified yet.'}
+        </div>
+
+        {profileRole === 'investor' ? (
+          <div style={sectionStyle}>
+            <div style={sectionTitleStyle}>Buy Box</div>
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Markets</label>
+              <textarea
+                value={formState.buy_markets.join(', ')}
+                onChange={handleArrayInputChange('buy_markets')}
+                placeholder="Comma-separated cities, counties, or ZIPs"
+                rows={2}
+                style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14, resize: 'vertical' }}
+              />
+              <span style={{ fontSize: 12, color: '#6b7280' }}>Example: Phoenix AZ, Maricopa County, 85224</span>
+            </div>
+
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Property types</label>
+              <div style={chipRowStyle}>
+                {propertyTypeOptions.map((option) => {
+                  const selected = formState.buy_property_types.includes(option);
+                  return (
+                    <label
+                      key={option}
+                      style={selected ? chipSelectedStyle : chipStyle}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleOption('buy_property_types', option)}
+                        style={{ display: 'none' }}
+                      />
+                      {option}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ ...fieldRowStyle, flex: '1 1 160px', marginBottom: 0 }}>
+                <label style={{ fontSize: 14, fontWeight: 500 }}>Min price</label>
+                <input
+                  type="number"
+                  value={formState.buy_price_min}
+                  onChange={handleTextFieldChange('buy_price_min')}
+                  placeholder="50000"
+                  style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+                />
+              </div>
+              <div style={{ ...fieldRowStyle, flex: '1 1 160px', marginBottom: 0 }}>
+                <label style={{ fontSize: 14, fontWeight: 500 }}>Max price</label>
+                <input
+                  type="number"
+                  value={formState.buy_price_max}
+                  onChange={handleTextFieldChange('buy_price_max')}
+                  placeholder="500000"
+                  style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ ...fieldRowStyle, flex: '1 1 200px', marginBottom: 0 }}>
+                <label style={{ fontSize: 14, fontWeight: 500 }}>Strategy</label>
+                <select
+                  value={formState.buy_strategy}
+                  onChange={handleTextFieldChange('buy_strategy')}
+                  style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+                >
+                  <option value="">Select strategy</option>
+                  {strategyOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ ...fieldRowStyle, flex: '1 1 200px', marginBottom: 0 }}>
+                <label style={{ fontSize: 14, fontWeight: 500 }}>Condition</label>
+                <select
+                  value={formState.buy_condition}
+                  onChange={handleTextFieldChange('buy_condition')}
+                  style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+                >
+                  <option value="">Select condition</option>
+                  {conditionOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Capital available (USD)</label>
+              <input
+                type="number"
+                value={formState.capital_available}
+                onChange={handleTextFieldChange('capital_available')}
+                placeholder="250000"
+                style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div style={sectionStyle}>
+            <div style={sectionTitleStyle}>Deal Profile</div>
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Markets</label>
+              <textarea
+                value={formState.wholesale_markets.join(', ')}
+                onChange={handleArrayInputChange('wholesale_markets')}
+                placeholder="Comma-separated cities or counties"
+                rows={2}
+                style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14, resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Typical ARV bands</label>
+              <div style={chipRowStyle}>
+                {wholesalerArvOptions.map((option) => {
+                  const selected = formState.deal_arbands.includes(option);
+                  return (
+                    <label key={option} style={selected ? chipSelectedStyle : chipStyle}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleOption('deal_arbands', option)}
+                        style={{ display: 'none' }}
+                      />
+                      {option}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Discount target (% below ARV)</label>
+              <input
+                type="number"
+                value={formState.deal_discount_target}
+                onChange={handleTextFieldChange('deal_discount_target')}
+                placeholder="15"
+                style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+              />
+            </div>
+
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Assignment methods</label>
+              <div style={chipRowStyle}>
+                {assignmentOptions.map((option) => {
+                  const selected = formState.assignment_methods.includes(option);
+                  return (
+                    <label key={option} style={selected ? chipSelectedStyle : chipStyle}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleOption('assignment_methods', option)}
+                        style={{ display: 'none' }}
+                      />
+                      {option}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={fieldRowStyle}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Average days to find buyer</label>
+              <input
+                type="number"
+                value={formState.avg_days_to_buyer}
+                onChange={handleTextFieldChange('avg_days_to_buyer')}
+                placeholder="14"
+                style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5f5', fontSize: 14 }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button
+            type="submit"
+            disabled={savingProfile}
+            style={{
+              alignSelf: 'flex-start',
+              padding: '12px 24px',
+              borderRadius: 8,
+              border: 'none',
+              background: savingProfile ? '#9ca3af' : '#2563eb',
+              color: '#fff',
+              fontWeight: 600,
+              cursor: savingProfile ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {savingProfile ? 'Saving...' : 'Save profile'}
+          </button>
+          {saveMessage && (
+            <span style={{ fontSize: 13, color: saveMessage.includes('successfully') ? '#15803d' : '#b91c1c' }}>
+              {saveMessage}
+            </span>
+          )}
+        </div>
+      </form>
 
       {/* Subscription Level */}
       <div style={{ 
