@@ -6,7 +6,7 @@
  * service role key to be configured in the environment.
  */
 
-import { getSupabaseServiceRole } from '@/app/lib/supabase/service';
+import { getSupabaseServiceRole } from '../app/lib/supabase/service';
 
 async function grantAdmin(emailArg?: string) {
   const email = (emailArg || process.env.ADMIN_EMAIL || 'admin@offaxisdeals.com').trim().toLowerCase();
