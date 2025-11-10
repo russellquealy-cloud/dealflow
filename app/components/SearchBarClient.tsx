@@ -82,9 +82,9 @@ export default function SearchBarClient({
     [clearSuggestions, fetchSuggestions]
   );
 
-  function dispatchGeocode(target: string) {
+  function dispatchGeocode(target: string, placeId?: string) {
     if (!target.trim()) return;
-    window.dispatchEvent(new CustomEvent('df:geocode', { detail: { q: target } }));
+    window.dispatchEvent(new CustomEvent('df:geocode', { detail: { q: target, placeId } }));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -92,7 +92,7 @@ export default function SearchBarClient({
     const trimmed = q.trim();
     if (!trimmed) return;
     clearSuggestions();
-    dispatchGeocode(trimmed);
+      dispatchGeocode(trimmed);
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -116,7 +116,7 @@ export default function SearchBarClient({
         onChange(prediction.description);
       }
       clearSuggestions();
-      dispatchGeocode(prediction.description);
+      dispatchGeocode(prediction.description, prediction.place_id);
     },
     [clearSuggestions, onChange]
   );

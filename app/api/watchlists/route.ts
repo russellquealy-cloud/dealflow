@@ -7,7 +7,6 @@ type WatchlistRow = {
   user_id: string;
   property_id: string;
   created_at: string;
-  listing?: ListingSummary | null;
 };
 
 type ListingSummary = {
@@ -95,101 +94,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    // Otherwise, fetch all watchlists
-    let watchlists: unknown[] | null = null;
-    let queryError: unknown = null;
+    // Otherwise, fetch all watchlists (no join to avoid RLS issues)
+    const { data: watchlistRows, error: watchlistError } = await supabase
+      .from('watchlists')
+      .select('id, user_id, property_id, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-    try {
-      const serviceSupabase = await getSupabaseServiceRole();
-      const { data: serviceData, error: serviceError } = await serviceSupabase
-        .from('watchlists')
-        .select(
-          `
-          id,
-          user_id,
-          property_id,
-          created_at,
-          listing:property_id (
-            id,
-            title,
-            address,
-            city,
-            state,
-            zip,
-            price,
-            bedrooms,
-            bathrooms,
-            home_sqft,
-            arv,
-            repairs,
-            spread,
-            roi,
-            images,
-            cover_image_url,
-            featured,
-            featured_until
-          )
-        `
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (serviceError) {
-        console.error('Service role watchlist query failed, falling back to user context:', serviceError);
-        queryError = serviceError;
-      } else {
-        watchlists = serviceData ?? [];
-      }
-    } catch (serviceError) {
-      console.error('Service role unavailable when fetching watchlists:', serviceError);
-      queryError = serviceError;
+    if (watchlistError) {
+      console.error('Error fetching watchlists:', watchlistError);
+      return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    if (!watchlists) {
-      const { data: userData, error: userError } = await supabase
-        .from('watchlists')
-        .select(
-          `
-          id,
-          user_id,
-          property_id,
-          created_at,
-          listing:property_id (
-            id,
-            title,
-            address,
-            city,
-            state,
-            zip,
-            price,
-            bedrooms,
-            bathrooms,
-            home_sqft,
-            arv,
-            repairs,
-            spread,
-            roi,
-            images,
-            cover_image_url,
-            featured,
-            featured_until
-          )
-        `
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (userError) {
-        console.error('Error fetching watchlists with user context:', userError);
-        return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
-      }
-
-      watchlists = userData ?? [];
-    }
-
-    const items = watchlists as Array<
-      WatchlistRow & { listing?: ListingSummary | ListingSummary[] | null }
-    >;
+    const items = (watchlistRows ?? []) as WatchlistRow[];
     const propertyIds = Array.from(new Set(items.map((item) => item.property_id).filter(Boolean)));
 
     let listingsMap = new Map<string, ReturnType<typeof sanitizeListing>>();
@@ -235,19 +152,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const enriched = items.map((item) => {
-      const listingData = Array.isArray(item.listing)
-        ? item.listing[0]
-        : item.listing;
-      const joinedListing = listingData ? sanitizeListing(listingData) : null;
-      return {
-        id: item.id,
-        user_id: item.user_id,
-        property_id: item.property_id,
-        created_at: item.created_at,
-        listing: joinedListing ?? listingsMap.get(item.property_id) ?? null,
-      };
-    });
+    const enriched = items.map((item) => ({
+      id: item.id,
+      user_id: item.user_id,
+      property_id: item.property_id,
+      created_at: item.created_at,
+      listing: listingsMap.get(item.property_id) ?? null,
+    }));
 
     return NextResponse.json({ watchlists: enriched });
   } catch (error) {

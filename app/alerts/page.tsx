@@ -183,6 +183,22 @@ export default function AlertsPage() {
         <p style={{ margin: 0, color: '#6b7280', fontSize: 16 }}>
           Manage how and when you receive alerts for {userRole === 'investor' ? 'investment opportunities' : 'your listings'}
         </p>
+        <div style={{ marginTop: 16 }}>
+          <button
+            onClick={() => router.push('/settings/notifications')}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 10,
+              border: '1px solid #1d4ed8',
+              background: '#1d4ed8',
+              color: '#fff',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Open Notification Preferences
+          </button>
+        </div>
       </div>
 
       <div style={{

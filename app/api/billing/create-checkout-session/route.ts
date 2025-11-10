@@ -119,11 +119,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      customer_email: user.email ?? undefined,
-      customer: stripeCustomerId ?? undefined,
       metadata: {
         supabase_user_id: user.id,
         requested_segment: segment,
@@ -133,7 +131,15 @@ export async function POST(req: NextRequest) {
       },
       success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
-    });
+    };
+
+    if (stripeCustomerId) {
+      sessionParams.customer = stripeCustomerId;
+    } else if (user.email) {
+      sessionParams.customer_email = user.email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ url: session.url });
   } catch (error) {

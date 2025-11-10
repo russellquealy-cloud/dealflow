@@ -296,6 +296,47 @@ export default function ListingsPage() {
     return handleMapBoundsChangeWithFilters(bounds, filters);
   }, [handleMapBoundsChangeWithFilters, filters]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('savedSearchCriteria');
+      if (!raw) return;
+      window.localStorage.removeItem('savedSearchCriteria');
+      const parsed = JSON.parse(raw) as {
+        filters?: Partial<Filters> | null;
+        searchQuery?: string | null;
+        bounds?: BoundsPayload | null;
+      };
+
+      if (parsed.searchQuery) {
+        setSearchQuery(parsed.searchQuery);
+      }
+      if (parsed.filters) {
+        setFilters((prev) => ({ ...prev, ...parsed.filters }));
+      }
+      if (parsed.bounds) {
+        setMapBounds(parsed.bounds);
+        setActiveMapBounds(true);
+        void handleMapBoundsChange(parsed.bounds);
+
+        const { north, south, east, west } = parsed.bounds;
+        if (
+          typeof north === 'number' &&
+          typeof south === 'number' &&
+          typeof east === 'number' &&
+          typeof west === 'number'
+        ) {
+          const lat = (north + south) / 2;
+          const lng = (east + west) / 2;
+          setMapCenter({ lat, lng });
+          setMapZoom(parsed.bounds.polygon ? 12 : 11);
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to apply saved search criteria', error);
+    }
+  }, [handleMapBoundsChange]);
+
   // Load all listings on mount
   useEffect(() => {
     let isMounted = true;
@@ -379,8 +420,9 @@ export default function ListingsPage() {
   // Handle geocoding events from search bar
   useEffect(() => {
     const handleGeocode = async (e: Event) => {
-      const customEvent = e as CustomEvent<{ q: string }>;
+      const customEvent = e as CustomEvent<{ q: string; placeId?: string }>;
       const query = customEvent.detail.q;
+      const placeId = customEvent.detail.placeId;
       
       if (!query) return;
       
@@ -388,7 +430,7 @@ export default function ListingsPage() {
         const response = await fetch('/api/geocode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: query })
+          body: JSON.stringify({ address: query, placeId })
         });
         
         if (!response.ok) {

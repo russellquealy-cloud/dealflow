@@ -1,37 +1,33 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import CreateListingForm from '@/components/CreateListingForm';
+import { useAuth } from '@/providers/AuthProvider';
 
-export const dynamic = 'force-dynamic';
+export default function NewListingPage() {
+  const router = useRouter();
+  const { session, loading, refreshSession } = useAuth();
 
-export default async function NewListingPage() {
-  console.log('🔐 New listing page - Starting authentication check...');
-  
-  const supabase = await createClient();
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  console.log('🔐 New listing page - Session check:', { 
-    hasSession: !!session, 
-    hasUser: !!session?.user,
-    userEmail: session?.user?.email,
-    userId: session?.user?.id,
-    error: error?.message,
-    errorCode: error?.code
-  });
-  
-  
-  if (error) {
-    console.error('🔐 Session error:', error);
-    console.log('🔐 Redirecting to login due to session error');
-    redirect('/login?next=/my-listings/new');
+  useEffect(() => {
+    if (loading) return;
+    if (!session) {
+      void refreshSession();
+      router.replace('/login?next=/my-listings/new');
+    }
+  }, [session, loading, router, refreshSession]);
+
+  if (loading) {
+    return (
+      <main style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ fontSize: 16, color: '#4b5563' }}>Checking your session…</div>
+      </main>
+    );
   }
-  
-  if (!session || !session.user) {
-    console.log('🔐 No session found, redirecting to login');
-    redirect('/login?next=/my-listings/new');
+
+  if (!session) {
+    return null;
   }
-  
-  console.log('🔐 Authentication successful, rendering page');
 
   return (
     <main style={{ padding: 24 }}>
