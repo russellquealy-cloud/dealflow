@@ -16,6 +16,7 @@
     "db:setup": "npm run db:reset && npm run db:seed",
     "vercel:verify-domain": "tsx scripts/vercel-verify-domain.ts",
     "stripe:bootstrap": "tsx scripts/stripe-bootstrap.ts",
+    "grant-admin": "tsx scripts/grant-admin.ts",
     "import-market-trends": "tsx scripts/import-market-trends.ts",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
