@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { NextRequest, NextResponse } from 'next/server';
 import { analyzeStructured, type UserRole, type InvestorQuestionInput, type WholesalerQuestionInput } from '@/lib/ai-analyzer-structured';
 import { getUserSubscriptionTier } from '@/lib/subscription';
 import { getAuthUser } from '@/lib/auth/server';
