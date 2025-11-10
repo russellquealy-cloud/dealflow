@@ -21,18 +21,14 @@ async function grantAdmin(emailArg?: string) {
   try {
     const supabase = await getSupabaseServiceRole();
 
-    const { data: userList, error: listError } = await supabase.auth.admin.listUsers({
-      page: 1,
-      perPage: 1,
-      email,
-    });
+    const { data: userResult, error: userError } = await supabase.auth.admin.getUserByEmail(email);
 
-    if (listError) {
-      console.error('Failed to fetch user list:', listError);
+    if (userError) {
+      console.error('Failed to fetch user by email:', userError);
       process.exit(1);
     }
 
-    const user = userList?.users?.[0];
+    const user = userResult?.user ?? null;
 
     if (!user) {
       console.error(`No Supabase user found with email ${email}`);
