@@ -40,16 +40,16 @@
 
 ---
 
-### 💰 Payments & Subscriptions: **75%**
+### 💰 Payments & Subscriptions: **82%**
 - ✅ Stripe integration end-to-end
 - ✅ Pricing page + tier gating
 - ✅ Billing history + plan metadata
-- ⚠️ Upgrade checkout fails when both `customer` & `customer_email` sent
-- ⚠️ Usage tracking per plan exists but quota resets not automated
+- ✅ Upgrade checkout uses correct customer/customer_email logic
+- ✅ AI usage quotas enforced per plan with monthly tracking
 
 **Issues:**
-- Investor Basic → Pro upgrade blocked by Stripe parameter conflict
-- Monthly AI allowance logic needs enforcement + admin override tooling
+- Surface AI usage reporting in UI/admin views
+- Ensure monthly cleanup job for `ai_usage` is scheduled in production
 
 ---
 

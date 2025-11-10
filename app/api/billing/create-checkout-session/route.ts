@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type Stripe from "stripe";
 import { getAuthUser } from "@/lib/auth/server";
 import { STRIPE_PRICES, getStripe } from "@/lib/stripe";
 

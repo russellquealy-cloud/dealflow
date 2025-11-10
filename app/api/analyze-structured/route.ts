@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { analyzeStructured, type UserRole, type InvestorQuestionInput, type WholesalerQuestionInput } from '@/lib/ai-analyzer-structured';
 import { getUserSubscriptionTier } from '@/lib/subscription';
 import { getAuthUser } from '@/lib/auth/server';
+import { checkAndIncrementAiUsage } from '@/lib/ai/usage';
 import type { SubscriptionTier } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
@@ -57,11 +59,20 @@ export async function POST(request: NextRequest) {
       profileTier === 'test' ||
       membershipTier === 'test';
 
+    const plan = profile?.tier?.toLowerCase() ?? 'free';
+    const isTestAccount = (profile?.membership_tier?.toLowerCase() === 'test') || (profile?.segment?.toLowerCase() === 'test') || (user.email ?? '').toLowerCase().endsWith('@test.com') || (user.email ?? '').toLowerCase().endsWith('@example.com');
+
+    const quota = await checkAndIncrementAiUsage(user.id, plan, isAdmin || isTestAccount);
+    if (!quota.allowed) {
+      const status = quota.reason === 'quota_exceeded' ? 429 : 500;
+      return NextResponse.json({ error: quota.reason ?? 'quota_error' }, { status });
+    }
+
     // Perform structured analysis
     const result = await analyzeStructured(user.id, role, input, supabase, {
       bypassLimits: isAdmin,
       planTier: subscriptionTier,
-      isTestAccount,
+      isTestAccount: isAdmin || isTestAccount,
     });
 
     return NextResponse.json(result);

@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching saved searches:', error);
+      console.error('saved_searches select error', error);
+      if (error.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Failed to fetch saved searches' }, { status: 500 });
     }
 
@@ -71,7 +74,10 @@ export async function POST(request: NextRequest) {
       if (error.code === '23505') {
         return NextResponse.json({ error: 'A search with this name already exists.' }, { status: 409 });
       }
-      console.error('Error creating saved search:', error);
+      console.error('saved_searches insert error', error);
+      if (error.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Failed to create saved search' }, { status: 500 });
     }
 
@@ -115,7 +121,10 @@ export async function PUT(request: NextRequest) {
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
       }
-      console.error('Error updating saved search:', error);
+      console.error('saved_searches update error', error);
+      if (error.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Failed to update saved search' }, { status: 500 });
     }
 
@@ -152,7 +161,10 @@ export async function DELETE(request: NextRequest) {
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
       }
-      console.error('Error deleting saved search:', error);
+      console.error('saved_searches delete error', error);
+      if (error.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Failed to delete saved search' }, { status: 500 });
     }
 

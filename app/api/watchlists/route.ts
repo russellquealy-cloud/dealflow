@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/server';
-import { getSupabaseServiceRole } from '@/lib/supabase/service';
 
 type WatchlistRow = {
   id: string;
@@ -69,12 +68,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get('listingId');
 
-    // If no user, return false for watchlist status (don't return 401 to prevent console errors)
     if (!user) {
-      if (listingId) {
-        return NextResponse.json({ isInWatchlist: false });
-      }
-      return NextResponse.json({ watchlists: [] });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // If listingId provided, check if it's in watchlist
@@ -86,15 +81,17 @@ export async function GET(request: NextRequest) {
         .eq('property_id', listingId)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = not found
-        console.error('Error checking watchlist:', error);
-        return NextResponse.json({ isInWatchlist: false }); // Return false instead of error
+      if (error && error.code !== 'PGRST116') {
+        console.error('watchlists select error (single)', error);
+        if (error.code === '42501') {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        return NextResponse.json({ error: 'Server error' }, { status: 500 });
       }
 
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    // Otherwise, fetch all watchlists (no join to avoid RLS issues)
     const { data: watchlistRows, error: watchlistError } = await supabase
       .from('watchlists')
       .select('id, user_id, property_id, created_at')
@@ -102,7 +99,10 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (watchlistError) {
-      console.error('Error fetching watchlists:', watchlistError);
+      console.error('watchlists select error', watchlistError);
+      if (watchlistError.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
@@ -112,43 +112,22 @@ export async function GET(request: NextRequest) {
     let listingsMap = new Map<string, ReturnType<typeof sanitizeListing>>();
 
     if (propertyIds.length > 0) {
-      let resolved = false;
-      try {
-        const serviceSupabase = await getSupabaseServiceRole();
-        const { data: listingsData, error: listingsError } = await serviceSupabase
-          .from('listings')
-          .select(
-            'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
-          )
-          .in('id', propertyIds);
+      const { data: listingsData, error: listingsError } = await supabase
+        .from('listings')
+        .select(
+          'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+        )
+        .in('id', propertyIds);
 
-        if (listingsError) {
-          console.error('Error loading listings for watchlists via service role:', listingsError);
-        } else if (listingsData) {
-          listingsMap = new Map(
-            listingsData.map((listing) => [listing.id, sanitizeListing(listing as ListingSummary)])
-          );
-          resolved = true;
+      if (listingsError) {
+        console.error('listings select error (watchlists enrichment)', listingsError);
+        if (listingsError.code === '42501') {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-      } catch (serviceError) {
-        console.error('Service role unavailable for watchlists:', serviceError);
-      }
-
-      if (!resolved) {
-        const { data: listingsData, error: listingsError } = await supabase
-          .from('listings')
-          .select(
-            'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
-          )
-          .in('id', propertyIds);
-
-        if (listingsError) {
-          console.error('Error loading listings for watchlists with user context:', listingsError);
-        } else if (listingsData) {
-          listingsMap = new Map(
-            listingsData.map((listing) => [listing.id, sanitizeListing(listing as ListingSummary)])
-          );
-        }
+      } else if (listingsData) {
+        listingsMap = new Map(
+          listingsData.map((listing) => [listing.id, sanitizeListing(listing as ListingSummary)])
+        );
       }
     }
 
@@ -182,7 +161,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Listing ID required' }, { status: 400 });
     }
 
-    // Check if already in watchlist
     const { data: existing } = await supabase
       .from('watchlists')
       .select('id')
@@ -194,38 +172,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Already in watchlist', watchlist: existing });
     }
 
-    // Add to watchlist
     const { data: watchlistRow, error } = await supabase
       .from('watchlists')
       .insert({
         user_id: user.id,
-        property_id: listingId
+        property_id: listingId,
       })
       .select('id, user_id, property_id, created_at')
       .single();
 
     if (error) {
-      console.error('Error adding to watchlist:', error);
+      console.error('watchlists insert error', error);
+      if (error.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Failed to add to watchlist' }, { status: 500 });
     }
 
     let listing = null;
-    try {
-      const serviceSupabase = await getSupabaseServiceRole();
-      const { data: listingData, error: listingError } = await serviceSupabase
-        .from('listings')
-        .select(
-          'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
-        )
-        .eq('id', listingId)
-        .maybeSingle();
+    const { data: listingData, error: listingError } = await supabase
+      .from('listings')
+      .select(
+        'id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+      )
+      .eq('id', listingId)
+      .maybeSingle();
 
-      if (listingError) {
-        console.error('Error fetching listing for watchlist response:', listingError);
+    if (listingError) {
+      console.error('listings select error (single for watchlist)', listingError);
+      if (listingError.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
+    } else {
       listing = sanitizeListing(listingData as ListingSummary | null | undefined);
-    } catch (serviceError) {
-      console.error('Service role unavailable fetching watchlist listing:', serviceError);
     }
 
     return NextResponse.json({
@@ -263,7 +242,10 @@ export async function DELETE(request: NextRequest) {
       .eq('property_id', listingId);
 
     if (error) {
-      console.error('Error removing from watchlist:', error);
+      console.error('watchlists delete error', error);
+      if (error.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Failed to remove from watchlist' }, { status: 500 });
     }
 
