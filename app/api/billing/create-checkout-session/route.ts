@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
