@@ -15,7 +15,7 @@ export async function checkAndIncrementAiUsage(
     return { allowed: true };
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -62,7 +62,7 @@ export async function checkAndIncrementAiUsage(
   const { error: upsertError } = await supabase
     .from('ai_usage')
     .upsert(
-      { user_id: userId, month_start, requests: currentCount + 1 },
+      { user_id: userId, month_start: monthStart, requests: currentCount + 1 },
       { onConflict: 'user_id,month_start' }
     );
 

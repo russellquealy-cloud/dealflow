@@ -298,9 +298,10 @@ export default function AccountPage() {
     segment?: string;
     tier?: string;
     membership_tier?: string; 
-    company_name?: string;
-    full_name?: string;
+    company_name?: string | null;
+    full_name?: string | null;
     verified?: boolean;
+    phone_verified?: boolean | null;
     profile_photo_url?: string | null;
     license_info?: string | null;
     buy_markets?: string[] | null;
@@ -589,10 +590,10 @@ export default function AccountPage() {
     const role = ((profile?.segment || profile?.role) ?? 'investor') as UserRole;
     const completenessProfile = buildCompletenessProfile(role, profile?.id ?? user.id, formState, {
       phone_verified: profile?.phone_verified ?? null,
-      license_info: formState.license_info || profile?.license_info ?? null,
-      profile_photo_url: formState.profile_photo_url || profile?.profile_photo_url ?? null,
-      company_name: formState.company_name || profile?.company_name ?? null,
-      full_name: formState.full_name || profile?.full_name ?? null,
+      license_info: formState.license_info || (profile?.license_info ?? null),
+      profile_photo_url: formState.profile_photo_url || (profile?.profile_photo_url ?? null),
+      company_name: formState.company_name || (profile?.company_name ?? null),
+      full_name: formState.full_name || (profile?.full_name ?? null),
       is_pro_subscriber: profile?.is_pro_subscriber ?? null,
     });
     setCompleteness(getProfileCompleteness(completenessProfile));

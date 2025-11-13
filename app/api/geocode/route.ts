@@ -112,6 +112,8 @@ export async function GET(request: NextRequest) {
   const lngParam = searchParams.get('lng');
   const lat = latParam ? Number.parseFloat(latParam) : undefined;
   const lng = lngParam ? Number.parseFloat(lngParam) : undefined;
+  const latValid = lat !== undefined && !Number.isNaN(lat);
+  const lngValid = lng !== undefined && !Number.isNaN(lng);
 
   return performGeocode({
     address,

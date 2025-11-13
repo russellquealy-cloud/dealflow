@@ -110,7 +110,8 @@ export async function GET(request: NextRequest) {
     const items = (watchlistRows ?? []) as WatchlistRow[];
     const propertyIds = Array.from(new Set(items.map((item) => item.property_id).filter(Boolean)));
 
-    let listingsMap = new Map<string, ReturnType<typeof sanitizeListing>>();
+    type ListingWithOwner = ReturnType<typeof sanitizeListing> & { owner_profile: Record<string, unknown> | null };
+    let listingsMap = new Map<string, ListingWithOwner | null>();
 
     if (propertyIds.length > 0) {
         const { data: listingsData, error: listingsError } = await supabase
@@ -153,14 +154,18 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        listingsMap = new Map(
-          listingsArray.map((listing) => {
+        const mapEntries: Array<[string, ListingWithOwner | null]> = listingsArray
+          .map((listing) => {
             const ownerId = typeof listing.owner_id === 'string' ? listing.owner_id : undefined;
             const core = sanitizeListing(listing as ListingSummary);
             const ownerProfile = ownerId ? ownerProfilesMap.get(ownerId) ?? null : null;
-            return [listing.id, { ...core, owner_profile: ownerProfile }];
+            const listingId = typeof listing.id === 'string' ? listing.id : String(listing.id ?? '');
+            if (!listingId) return null;
+            return [listingId, { ...core, owner_profile: ownerProfile }] as [string, ListingWithOwner | null];
           })
-        );
+          .filter((entry): entry is [string, ListingWithOwner | null] => entry !== null);
+        
+        listingsMap = new Map(mapEntries);
       }
     }
 

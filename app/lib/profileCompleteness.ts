@@ -83,7 +83,7 @@ export function getProfileCompleteness(profile: AnyProfile): ProfileCompleteness
 
   const baseWeightPerField = groupWeights.base / baseFields.length;
   baseFields.forEach((field) => {
-    const value = profile[field];
+    const value = profile[field] as string | null | undefined;
     if (stringIsSet(value)) {
       score += baseWeightPerField;
     } else {
@@ -100,7 +100,7 @@ export function getProfileCompleteness(profile: AnyProfile): ProfileCompleteness
       } else {
         missingKeys.push(field);
       }
-    } else if (stringIsSet(value)) {
+    } else if (stringIsSet(value as string | null | undefined)) {
       score += trustWeightPerField;
     } else {
       missingKeys.push(field);
@@ -110,7 +110,7 @@ export function getProfileCompleteness(profile: AnyProfile): ProfileCompleteness
   const roleFields = profile.role === 'investor' ? investorFields : wholesalerFields;
   const roleWeightPerField = groupWeights.role / roleFields.length;
   roleFields.forEach((field) => {
-    const value = (profile as Record<string, unknown>)[field as string];
+    const value = (profile as unknown as Record<string, unknown>)[field as string];
     let filled = false;
     if (Array.isArray(value)) {
       filled = arrayHasValues(value as string[]);
