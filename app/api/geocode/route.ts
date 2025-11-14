@@ -72,9 +72,33 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
     geoUrl.searchParams.set("key", key);
 
     const textRes = await fetch(textUrl, { method: "GET", cache: "no-store" });
-    const textJson = await textRes.json();
+    const textJson = (await textRes.json()) as {
+      results?: Array<{
+        geometry?: {
+          location?: { lat: number; lng: number };
+          viewport?: {
+            northeast: { lat: number; lng: number };
+            southwest: { lat: number; lng: number };
+          };
+        };
+        formatted_address?: string;
+        name?: string;
+      }>;
+    };
 
-    const pick = (r: any) => {
+    const pick = (
+      r: {
+        geometry?: {
+          location?: { lat: number; lng: number };
+          viewport?: {
+            northeast: { lat: number; lng: number };
+            southwest: { lat: number; lng: number };
+          };
+        };
+        formatted_address?: string;
+        name?: string;
+      } | null | undefined
+    ) => {
       const loc = r?.geometry?.location;
       const vp = r?.geometry?.viewport;
       if (!loc) return null;
@@ -97,7 +121,19 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
 
     if (!hit) {
       const geoRes = await fetch(geoUrl, { method: "GET", cache: "no-store" });
-      const geoJson = await geoRes.json();
+      const geoJson = (await geoRes.json()) as {
+        results?: Array<{
+          geometry?: {
+            location?: { lat: number; lng: number };
+            viewport?: {
+              northeast: { lat: number; lng: number };
+              southwest: { lat: number; lng: number };
+            };
+          };
+          formatted_address?: string;
+          name?: string;
+        }>;
+      };
       hit = Array.isArray(geoJson?.results) ? pick(geoJson.results[0]) : null;
     }
 
@@ -106,7 +142,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
     }
 
     return NextResponse.json({ ok: true, ...hit });
-  } catch (e: any) {
+  } catch (e) {
     console.error("GEOCODE_ERROR", e);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }

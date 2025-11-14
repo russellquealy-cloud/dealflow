@@ -146,7 +146,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Process the joined data
-    const enriched = (watchlistData || []).map((item: any) => {
+    type WatchlistWithListing = {
+      id: string;
+      user_id: string;
+      property_id: string;
+      created_at: string;
+      listings: ListingSummary | ListingSummary[] | null;
+    };
+    
+    const enriched = (watchlistData || []).map((item: WatchlistWithListing) => {
       const listingData = Array.isArray(item.listings) ? item.listings[0] : item.listings;
       const listing = listingData ? sanitizeListing(listingData as ListingSummary) : null;
       
