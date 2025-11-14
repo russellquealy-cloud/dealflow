@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('saved_searches select error', error);
+      console.error('saved_searches select error', {
+        table: 'saved_searches',
+        error_code: error.code,
+        error_message: error.message,
+        user_id: user.id,
+      });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -74,7 +79,12 @@ export async function POST(request: NextRequest) {
       if (error.code === '23505') {
         return NextResponse.json({ error: 'A search with this name already exists.' }, { status: 409 });
       }
-      console.error('saved_searches insert error', error);
+      console.error('saved_searches insert error', {
+        table: 'saved_searches',
+        error_code: error.code,
+        error_message: error.message,
+        user_id: user.id,
+      });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -121,7 +131,12 @@ export async function PUT(request: NextRequest) {
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
       }
-      console.error('saved_searches update error', error);
+      console.error('saved_searches update error', {
+        table: 'saved_searches',
+        error_code: error.code,
+        error_message: error.message,
+        user_id: user.id,
+      });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -161,7 +176,12 @@ export async function DELETE(request: NextRequest) {
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
       }
-      console.error('saved_searches delete error', error);
+      console.error('saved_searches delete error', {
+        table: 'saved_searches',
+        error_code: error.code,
+        error_message: error.message,
+        user_id: user.id,
+      });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }

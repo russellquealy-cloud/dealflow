@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { analyzeProperty, type AIAnalysisInput } from '@/lib/ai-analyzer';
 import { canUserPerformAction, getUserSubscriptionTier } from '@/lib/subscription';
 import { getAuthUser } from '@/lib/auth/server';
+import { checkAndIncrementAiUsage } from '@/lib/ai/usage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user can perform AI analysis
+    // Get profile for plan and test status
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('tier, membership_tier, is_test, role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = profile?.role === 'admin';
+    const profileTier = profile?.tier?.toLowerCase() ?? 'free';
+    const membershipTier = profile?.membership_tier?.toLowerCase();
+    const plan = membershipTier ?? profileTier ?? 'free';
+    const isTestAccount = profile?.is_test === true;
+
+    // Check AI usage quota
+    const quota = await checkAndIncrementAiUsage(user.id, plan, isAdmin || isTestAccount);
+    if (!quota.allowed) {
+      const status = quota.reason === 'quota_exceeded' ? 429 : 500;
+      const tier = await getUserSubscriptionTier(user.id, supabase);
+      return NextResponse.json({ 
+        error: quota.reason === 'quota_exceeded' 
+          ? 'Monthly AI analysis quota exceeded. Please upgrade your plan or wait until next month.'
+          : 'AI analysis temporarily unavailable',
+        tier,
+        upgrade_required: quota.reason === 'quota_exceeded'
+      }, { status });
+    }
+
+    // Check if user can perform AI analysis (legacy check, kept for compatibility)
     const canAnalyze = await canUserPerformAction(user.id, 'ai_analyses', 1, supabase);
     if (!canAnalyze) {
       const tier = await getUserSubscriptionTier(user.id, supabase);

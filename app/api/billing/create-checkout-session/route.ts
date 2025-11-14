@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getAuthUser } from "@/lib/auth/server";
 import { STRIPE_PRICES, getStripe } from "@/lib/stripe";
+import { getOrCreateStripeCustomerId } from "@/lib/billing/stripeCustomer";
 
 export const runtime = "nodejs";
 
@@ -69,45 +70,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("stripe_customer_id, role, tier")
-      .eq("id", user.id)
-      .single();
+    // Get or create Stripe customer ID
+    const stripeCustomerId = await getOrCreateStripeCustomerId({ user, supabase });
 
-    if (profileError && profileError.code !== "PGRST116") {
-      console.error("create-checkout-session profile error", profileError);
+    if (!stripeCustomerId && !user.email) {
       return NextResponse.json(
-        { error: "Failed to load profile" },
-        { status: 500 }
+        { error: "Missing email address" },
+        { status: 400 }
       );
     }
 
-    let stripeCustomerId = profile?.stripe_customer_id ?? null;
-
-    const stripe = getStripe();
-
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
-        email: user.email ?? undefined,
-        metadata: {
-          supabase_user_id: user.id,
-          requested_segment: segment,
-          requested_tier: tier,
-        },
-      });
-
-      stripeCustomerId = customer.id;
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ stripe_customer_id: stripeCustomerId })
-        .eq("id", user.id);
-
-      if (updateError) {
-        console.error("Failed to update stripe_customer_id", updateError);
-      }
-    }
+    // Get profile for metadata
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, tier")
+      .eq("id", user.id)
+      .single();
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -134,12 +112,19 @@ export async function POST(req: NextRequest) {
       cancel_url: `${baseUrl}/pricing`,
     };
 
+    // CRITICAL: Never set both customer and customer_email
+    // If we have a Stripe customer ID, use it; otherwise use email
     if (stripeCustomerId) {
       sessionParams.customer = stripeCustomerId;
-    } else if (user.email) {
-      sessionParams.customer_email = user.email;
+      // Explicitly do NOT set customer_email when customer is set
+    } else {
+      // Only set customer_email if we don't have a customer ID
+      if (user.email) {
+        sessionParams.customer_email = user.email;
+      }
     }
 
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ url: session.url });

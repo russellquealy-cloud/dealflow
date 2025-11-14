@@ -47,17 +47,25 @@ export async function POST(request: NextRequest) {
 
     subscriptionTier = await getUserSubscriptionTier(user.id, supabase);
 
-    const email = (user.email ?? '').toLowerCase();
-    const segment = profile?.segment?.toLowerCase();
-    const profileTier = profile?.tier?.toLowerCase();
+    // Get plan and test status from profile
+    const profileTier = profile?.tier?.toLowerCase() ?? 'free';
     const membershipTier = profile?.membership_tier?.toLowerCase();
-    const plan = profileTier ?? membershipTier ?? 'free';
+    const plan = membershipTier ?? profileTier ?? 'free';
+    
+    // Check if user is a test account
+    // Check profile.is_test field first, then fallback to email/segment checks
+    const { data: fullProfile } = await supabase
+      .from('profiles')
+      .select('is_test')
+      .eq('id', user.id)
+      .single();
+    
+    const email = (user.email ?? '').toLowerCase();
     const isTestAccount =
+      fullProfile?.is_test === true ||
       email.endsWith('@test.com') ||
       email.endsWith('@example.com') ||
-      segment === 'test' ||
-      profileTier === 'test' ||
-      membershipTier === 'test';
+      profile?.segment?.toLowerCase() === 'test';
 
     const quota = await checkAndIncrementAiUsage(user.id, plan, isAdmin || isTestAccount);
     if (!quota.allowed) {

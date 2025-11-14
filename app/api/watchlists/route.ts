@@ -83,7 +83,12 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('watchlists select error (single)', error);
+        console.error('watchlists select error (single)', {
+          table: 'watchlists',
+          error_code: error.code,
+          error_message: error.message,
+          user_id: user.id,
+        });
         if (error.code === '42501') {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -100,7 +105,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (watchlistError) {
-      console.error('watchlists select error', watchlistError);
+      console.error('watchlists select error', {
+        table: 'watchlists',
+        error_code: watchlistError.code,
+        error_message: watchlistError.message,
+        user_id: user.id,
+      });
       if (watchlistError.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -220,7 +230,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('watchlists insert error', error);
+      console.error('watchlists insert error', {
+        table: 'watchlists',
+        error_code: error.code,
+        error_message: error.message,
+        user_id: user.id,
+      });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -293,7 +308,12 @@ export async function DELETE(request: NextRequest) {
       .eq('property_id', listingId);
 
     if (error) {
-      console.error('watchlists delete error', error);
+      console.error('watchlists delete error', {
+        table: 'watchlists',
+        error_code: error.code,
+        error_message: error.message,
+        user_id: user.id,
+      });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
