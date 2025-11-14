@@ -430,7 +430,7 @@ export default function ListingsPage() {
         const response = await fetch('/api/geocode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: query, placeId })
+          body: JSON.stringify({ q: query, placeId })
         });
         
         if (!response.ok) {
@@ -439,12 +439,16 @@ export default function ListingsPage() {
         }
         
         const data = await response.json();
-        if (data.location) {
+        if (data.ok && data.lat && data.lng) {
           // Move map to geocoded location
-          setMapCenter({ lat: data.location.lat, lng: data.location.lng });
+          setMapCenter({ lat: data.lat, lng: data.lng });
           setMapZoom(14);
           // Also update search query to show the formatted address
-          setSearchQuery(data.formatted_address || query);
+          if (data.formatted_address) {
+            setSearchQuery(data.formatted_address);
+          }
+        } else if (!data.ok) {
+          logger.warn('Geocoding returned no results:', data.error);
         }
       } catch (error) {
         logger.error('Error geocoding:', error);

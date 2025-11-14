@@ -98,9 +98,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    const { data: watchlistRows, error: watchlistError } = await supabase
+    // Use join query to get watchlists with listings in one query
+    // The ! indicates a foreign key relationship
+    const { data: watchlistData, error: watchlistError } = await supabase
       .from('watchlists')
-      .select('id, user_id, property_id, created_at')
+      .select(`
+        id,
+        user_id,
+        property_id,
+        created_at,
+        listings!property_id (
+          id,
+          owner_id,
+          title,
+          address,
+          city,
+          state,
+          zip,
+          price,
+          bedrooms,
+          bathrooms,
+          home_sqft,
+          arv,
+          repairs,
+          spread,
+          roi,
+          images,
+          cover_image_url,
+          featured,
+          featured_until
+        )
+      `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -117,75 +145,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    const items = (watchlistRows ?? []) as WatchlistRow[];
-    const propertyIds = Array.from(new Set(items.map((item) => item.property_id).filter(Boolean)));
-
-    type ListingWithOwner = ReturnType<typeof sanitizeListing> & { owner_profile: Record<string, unknown> | null };
-    let listingsMap = new Map<string, ListingWithOwner | null>();
-
-    if (propertyIds.length > 0) {
-        const { data: listingsData, error: listingsError } = await supabase
-        .from('listings')
-        .select(
-            'id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
-        )
-        .in('id', propertyIds);
-
-      if (listingsError) {
-        console.error('listings select error (watchlists enrichment)', listingsError);
-        if (listingsError.code === '42501') {
-          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-      } else if (listingsData) {
-        const listingsArray = listingsData as Array<Record<string, unknown>>;
-        const ownerIds = Array.from(
-          new Set(
-            listingsArray
-              .map((listing) => listing.owner_id)
-              .filter((ownerId): ownerId is string => typeof ownerId === 'string' && ownerId.length > 0)
-          )
-        );
-
-        const ownerProfilesMap = new Map<string, Record<string, unknown>>();
-        if (ownerIds.length > 0) {
-          const { data: ownerProfiles, error: ownerError } = await supabase
-            .from('profiles')
-            .select(
-              'id, role, segment, full_name, company_name, profile_photo_url, phone_verified, is_pro_subscriber, buy_markets, buy_property_types, buy_price_min, buy_price_max, buy_strategy, buy_condition, capital_available, wholesale_markets, deal_arbands, deal_discount_target, assignment_methods, avg_days_to_buyer'
-            )
-            .in('id', ownerIds);
-
-          if (ownerError) {
-            console.error('Owner profile fetch error (watchlists)', ownerError);
-          } else if (ownerProfiles) {
-            ownerProfiles.forEach((profileRow) => {
-              ownerProfilesMap.set(profileRow.id, profileRow);
-            });
-          }
-        }
-
-        const mapEntries: Array<[string, ListingWithOwner | null]> = listingsArray
-          .map((listing) => {
-            const ownerId = typeof listing.owner_id === 'string' ? listing.owner_id : undefined;
-            const core = sanitizeListing(listing as ListingSummary);
-            const ownerProfile = ownerId ? ownerProfilesMap.get(ownerId) ?? null : null;
-            const listingId = typeof listing.id === 'string' ? listing.id : String(listing.id ?? '');
-            if (!listingId) return null;
-            return [listingId, { ...core, owner_profile: ownerProfile }] as [string, ListingWithOwner | null];
-          })
-          .filter((entry): entry is [string, ListingWithOwner | null] => entry !== null);
-        
-        listingsMap = new Map(mapEntries);
-      }
-    }
-
-    const enriched = items.map((item) => ({
-      id: item.id,
-      user_id: item.user_id,
-      property_id: item.property_id,
-      created_at: item.created_at,
-      listing: listingsMap.get(item.property_id) ?? null,
-    }));
+    // Process the joined data
+    const enriched = (watchlistData || []).map((item: any) => {
+      const listingData = Array.isArray(item.listings) ? item.listings[0] : item.listings;
+      const listing = listingData ? sanitizeListing(listingData as ListingSummary) : null;
+      
+      return {
+        id: item.id,
+        user_id: item.user_id,
+        property_id: item.property_id,
+        created_at: item.created_at,
+        listing,
+      };
+    });
 
     return NextResponse.json({ watchlists: enriched });
   } catch (error) {
