@@ -48,6 +48,20 @@ export default function WatchlistsPage() {
         }
         const data = await response.json();
         console.log('✅ Watchlists loaded:', { count: data.watchlists?.length || 0, watchlists: data.watchlists });
+        
+        // Log detailed info about each watchlist item
+        if (data.watchlists && data.watchlists.length > 0) {
+          data.watchlists.forEach((item: WatchlistItem, index: number) => {
+            console.log(`📋 Watchlist item ${index}:`, {
+              id: item.id,
+              property_id: item.property_id,
+              hasListing: !!item.listing,
+              listingId: item.listing?.id,
+              listingTitle: item.listing?.title,
+            });
+          });
+        }
+        
         setWatchlists(data.watchlists || []);
         setError(null);
       })

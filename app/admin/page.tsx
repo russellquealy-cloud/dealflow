@@ -36,17 +36,21 @@ export default function AdminDashboard() {
         const userIsAdmin = checkIsAdminClient(profile);
         setIsAdmin(userIsAdmin);
         
-        // If not admin, redirect to listings (don't use router.push to avoid loops)
-        if (!userIsAdmin) {
-          console.warn('Non-admin user accessed admin page, redirecting to listings');
-          window.location.href = '/listings';
-          return;
-        }
+        // Log the result for debugging
+        console.log('🔒 Admin page: Admin check result:', {
+          userEmail: session.user.email,
+          userId: session.user.id,
+          profileRole: profile?.role,
+          profileSegment: profile?.segment,
+          isAdmin: userIsAdmin,
+        });
+        
+        // Don't redirect - let the page show diagnostic info if not admin
+        // The page will show "Access Denied" with diagnostic tools
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
-        // On error, redirect to listings
-        window.location.href = '/listings';
+        // Don't redirect on error - show diagnostic info instead
       } finally {
         setLoading(false);
       }

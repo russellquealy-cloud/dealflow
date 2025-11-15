@@ -137,20 +137,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch listings separately to avoid join issues
-    const { data: listingsData, error: listingsError } = await supabase
-      .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until')
-      .in('id', listingIds);
+      // Fetch listings separately to avoid join issues
+      const { data: listingsData, error: listingsError } = await supabase
+        .from('listings')
+        .select('id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until')
+        .in('id', listingIds);
 
-    if (listingsError) {
-      console.error('listings select error (for watchlist)', {
-        error_code: listingsError.code,
-        error_message: listingsError.message,
-        listing_ids: listingIds,
-      });
-      // Continue even if listings fail - return watchlist items with null listings
-    }
+      if (listingsError) {
+        console.error('❌ listings select error (for watchlist)', {
+          error_code: listingsError.code,
+          error_message: listingsError.message,
+          listing_ids: listingIds,
+        });
+        // Continue even if listings fail - return watchlist items with null listings
+      } else {
+        console.log('✅ Fetched listings for watchlist:', {
+          requestedIds: listingIds.length,
+          foundListings: listingsData?.length || 0,
+          listingIds: listingsData?.map(l => l.id) || [],
+        });
+      }
 
     // Create a map of listing ID to listing data
     const listingsMap = new Map<string, ListingSummary>();
@@ -163,6 +169,14 @@ export async function GET(request: NextRequest) {
       const listingData = listingsMap.get(item.property_id);
       const listing = listingData ? sanitizeListing(listingData) : null;
       
+      if (!listing) {
+        console.warn('⚠️ Watchlist item has no listing data:', {
+          watchlistId: item.id,
+          propertyId: item.property_id,
+          listingInMap: !!listingData,
+        });
+      }
+      
       return {
         id: item.id,
         user_id: item.user_id,
@@ -170,6 +184,12 @@ export async function GET(request: NextRequest) {
         created_at: item.created_at,
         listing,
       };
+    });
+
+    console.log('📋 Returning enriched watchlists:', {
+      totalItems: enriched.length,
+      itemsWithListings: enriched.filter(e => e.listing).length,
+      itemsWithoutListings: enriched.filter(e => !e.listing).length,
     });
 
     return NextResponse.json({ watchlists: enriched });
