@@ -29,10 +29,6 @@ export default async function LeadConversionPage() {
       .eq('owner_id', user.id);
 
     const totalListings = listings?.length || 0;
-    const activeListings = listings?.filter((l) => {
-      const status = (l.status || '').toLowerCase();
-      return status !== 'sold' && status !== 'closed';
-    }).length || 0;
     const soldListings = listings?.filter((l) => {
       const status = (l.status || '').toLowerCase();
       return status === 'sold' || status === 'closed';

@@ -9,7 +9,7 @@ import type {
   UserAnalytics,
   WholesalerStats,
 } from '@/lib/analytics';
-import { isInvestorPro, isWholesalerPro, isPro, getUpgradeUrl } from '@/lib/analytics/proGate';
+import { isPro as checkIsPro, getUpgradeUrl } from '@/lib/analytics/proGate';
 
 type UserAnalyticsProps = {
   stats: UserAnalytics;
@@ -494,7 +494,11 @@ function AdvancedAnalyticsSection({ isPro, userProfile }: { isPro: boolean; user
   ];
 
   const handleCardClick = (href: string) => {
-    if (isPro(userProfile)) {
+    // Use the isPro prop that comes from the analytics API (which checks the database)
+    // Fallback to checking userProfile if isPro prop is not available
+    const userIsPro = isPro ?? checkIsPro(userProfile);
+    
+    if (userIsPro) {
       router.push(href);
     } else {
       const upgradeUrl = getUpgradeUrl(userProfile?.segment || userProfile?.role);
