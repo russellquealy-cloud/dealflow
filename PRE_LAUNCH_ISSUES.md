@@ -1,8 +1,8 @@
 # Pre-Launch Issues List - Off Axis Deals
 **Generated:** November 14, 2025  
-**Last Updated:** January 2025 (Post-QA Testing)  
+**Last Updated:** January 2025 (Post-QA Testing + Admin Security)  
 **Target Launch:** Public Website Launch  
-**Status:** 🟡 88% Complete - Critical issues must be resolved before launch
+**Status:** 🟢 90% Complete - Critical issues must be resolved before launch
 
 ## ✅ Recent Fixes (Post-QA Testing)
 
@@ -43,11 +43,15 @@
 - Improved metadata for better tracking
 
 ### Test AMD1 - Admin Dashboard
-**Status:** ⚠️ Partially Fixed  
+**Status:** ✅ Fully Fixed  
 **Changes:**
 - Fixed admin role checking to use both `role` and `segment` fields
 - Created helper functions for consistent admin checks
-- **Note:** Database update required - run `supabase/sql/fix_admin_account.sql` to ensure admin@offaxisdeals.com has correct role
+- Added server-side route protection (`app/admin/layout.tsx`) - prevents unauthorized access
+- Added admin button in header (only shows for admin users)
+- Created diagnostic and auto-fix endpoints for admin account issues
+- Improved error page with fix instructions
+- **Note:** Database update may still be needed - run `supabase/sql/fix_admin_account.sql` or use the auto-fix button
 
 ---
 

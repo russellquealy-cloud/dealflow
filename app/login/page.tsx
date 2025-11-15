@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import { logger } from '@/lib/logger';
 import { useAuth } from '@/providers/AuthProvider';
+import { checkIsAdminClient } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,45 @@ function LoginInner() {
       return;
     }
 
+    // If redirecting to admin, check if user is actually an admin first
+    // This prevents redirect loops when non-admin users try to access /admin
+    if (next === '/admin' || next.startsWith('/admin/')) {
+      const checkAdminAndRedirect = async () => {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, segment')
+            .eq('id', session.user.id)
+            .single();
+          
+          const isAdmin = checkIsAdminClient(profile);
+          
+          if (!isAdmin) {
+            // User is not admin, redirect to home instead of /admin to prevent loop
+            logger.warn('Non-admin user attempted to access admin page, redirecting to home');
+            setAutoRedirected(true);
+            router.replace('/');
+            return;
+          }
+        } catch (error) {
+          logger.error('Error checking admin status:', error);
+          // On error, redirect to home to be safe
+          setAutoRedirected(true);
+          router.replace('/');
+          return;
+        }
+        
+        // User is admin, proceed with redirect
+        setAutoRedirected(true);
+        console.log('🔐 Already signed in (admin), redirecting to:', next);
+        router.replace(next);
+      };
+      
+      checkAdminAndRedirect();
+      return;
+    }
+
+    // For non-admin routes, proceed normally
     setAutoRedirected(true);
     console.log('🔐 Already signed in, redirecting to:', next);
     router.replace(next);
