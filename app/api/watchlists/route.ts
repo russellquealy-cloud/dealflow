@@ -138,6 +138,13 @@ export async function GET(request: NextRequest) {
     }
 
       // Fetch listings separately to avoid join issues
+      // Use the authenticated user's Supabase client to ensure RLS policies work correctly
+      console.log('📋 Fetching listings for watchlist:', {
+        listingIds: listingIds,
+        listingCount: listingIds.length,
+        userId: user.id,
+      });
+
       const { data: listingsData, error: listingsError } = await supabase
         .from('listings')
         .select('id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until')
@@ -147,15 +154,32 @@ export async function GET(request: NextRequest) {
         console.error('❌ listings select error (for watchlist)', {
           error_code: listingsError.code,
           error_message: listingsError.message,
+          error_details: listingsError.details,
+          error_hint: listingsError.hint,
           listing_ids: listingIds,
+          user_id: user.id,
         });
         // Continue even if listings fail - return watchlist items with null listings
       } else {
         console.log('✅ Fetched listings for watchlist:', {
           requestedIds: listingIds.length,
           foundListings: listingsData?.length || 0,
-          listingIds: listingsData?.map(l => l.id) || [],
+          foundListingIds: listingsData?.map(l => l.id) || [],
+          missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
         });
+        
+        // Log if any listings are missing
+        const missingIds = listingIds.filter(id => !listingsData?.some(l => l.id === id));
+        if (missingIds.length > 0) {
+          console.warn('⚠️ Some listings not found:', {
+            missingIds,
+            possibleReasons: [
+              'Listing was deleted',
+              'RLS policy blocking access',
+              'Listing ID mismatch',
+            ],
+          });
+        }
       }
 
     // Create a map of listing ID to listing data

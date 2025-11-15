@@ -9,13 +9,18 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  console.log('🔒 Admin page: COMPONENT RENDERING - NO REDIRECTS');
+
   useEffect(() => {
+    console.log('🔒 Admin page: useEffect running - checking admin status');
     const checkAdmin = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // No session - redirect to login (but don't set next=/admin to prevent loops)
-          window.location.href = '/login';
+          // No session - but DON'T redirect, just show loading state
+          console.log('🔒 Admin page: No session, showing access denied');
+          setIsAdmin(false);
+          setLoading(false);
           return;
         }
 
@@ -45,12 +50,11 @@ export default function AdminDashboard() {
           isAdmin: userIsAdmin,
         });
         
-        // Don't redirect - let the page show diagnostic info if not admin
-        // The page will show "Access Denied" with diagnostic tools
+        // NO REDIRECTS - just set the state and let the page render
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
-        // Don't redirect on error - show diagnostic info instead
+        // NO REDIRECTS on error either
       } finally {
         setLoading(false);
       }

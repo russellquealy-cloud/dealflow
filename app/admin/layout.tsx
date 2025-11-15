@@ -11,19 +11,21 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // ABSOLUTELY NO REDIRECTS - Page will always load
+  console.log('🔒 Admin layout: RENDERING - NO REDIRECTS');
+  
   try {
     const supabase = await createSupabaseServer();
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError || !session) {
-      // No session - redirect to login (without next parameter to prevent loops)
-      console.log('🔒 Admin layout: No session, redirecting to login');
-      redirect('/login');
+      console.log('🔒 Admin layout: No session, but ALLOWING PAGE TO LOAD');
+      return <>{children}</>;
     }
 
-    console.log(`🔒 Admin layout: Checking admin status for user ${session.user.email} (${session.user.id})`);
+    console.log(`🔒 Admin layout: User ${session.user.email} has session, ALLOWING PAGE TO LOAD`);
 
-    // Check if user is admin
+    // Check if user is admin (but don't redirect based on result)
     const userIsAdmin = await isAdmin(session.user.id, supabase);
 
     // Get profile for detailed logging
@@ -33,29 +35,15 @@ export default async function AdminLayout({
       .eq('id', session.user.id)
       .maybeSingle();
 
-    console.log(`🔒 Admin layout: Profile check result:`, {
-      userEmail: session.user.email,
-      userId: session.user.id,
-      profileRole: profile?.role,
-      profileSegment: profile?.segment,
-      isAdmin: userIsAdmin,
-    });
+    console.log(`🔒 Admin layout: Profile check - role: ${profile?.role}, segment: ${profile?.segment}, isAdmin: ${userIsAdmin}`);
+    console.log('🔒 Admin layout: ALLOWING PAGE TO LOAD - NO REDIRECT');
 
-    if (!userIsAdmin) {
-      // User is logged in but not admin
-      // Allow page to load so diagnostic tools can be used, but log the issue
-      console.warn(`🔒 Admin layout: User ${session.user.email} is NOT admin (role: ${profile?.role}, segment: ${profile?.segment}). Allowing page load for diagnostics.`);
-      // Don't redirect - let the page show diagnostic info and fix button
-      // The page itself will show an "Access Denied" message with diagnostic tools
-    }
-
-    // User is admin - allow access
-    console.log(`🔒 Admin layout: User ${session.user.email} is admin, allowing access`);
+    // ALWAYS return children - NEVER redirect
     return <>{children}</>;
   } catch (error) {
-    // On any error, redirect to listings to be safe
-    console.error('🔒 Admin layout error:', error);
-    redirect('/listings');
+    // On any error, STILL allow page to load
+    console.error('🔒 Admin layout error (but still allowing page load):', error);
+    return <>{children}</>;
   }
 }
 
