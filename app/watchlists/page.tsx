@@ -19,6 +19,7 @@ export default function WatchlistsPage() {
   const { session, loading: authLoading } = useAuth();
   const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const authToken = useMemo(() => session?.access_token ?? null, [session]);
 
   useEffect(() => {
@@ -43,13 +44,20 @@ export default function WatchlistsPage() {
       .then(async (response) => {
         if (!response.ok) {
           const errorText = await response.text().catch(() => '');
-          throw new Error(`Failed to load watchlists: ${response.status} ${errorText}`);
+          const errorMessage = `Failed to load watchlists: ${response.status} ${errorText}`;
+          console.error('Error loading watchlists:', errorMessage);
+          setError(errorMessage);
+          setWatchlists([]);
+          return;
         }
         const data = await response.json();
         setWatchlists(data.watchlists || []);
+        setError(null);
       })
       .catch((error) => {
         console.error('Error loading watchlists:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load watchlists');
+        setWatchlists([]);
       })
       .finally(() => {
         setLoading(false);
@@ -80,13 +88,76 @@ export default function WatchlistsPage() {
   if (loading || authLoading) {
     return (
       <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <div>Loading watchlists...</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
+          <div>Loading watchlists...</div>
+        </div>
       </div>
     );
   }
 
   if (!session) {
     return null;
+  }
+
+  if (error) {
+    return (
+      <main style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{
+          border: '1px solid #dc2626',
+          borderRadius: 12,
+          padding: 24,
+          background: '#fef2f2',
+          color: '#991b1b'
+        }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 600 }}>Error Loading Watchlist</h2>
+          <p style={{ margin: 0, fontSize: 14 }}>{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              // Retry loading
+              const headers: HeadersInit = {};
+              if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+              }
+              fetch('/api/watchlists', {
+                credentials: 'include',
+                headers,
+              })
+                .then(async (response) => {
+                  if (!response.ok) {
+                    const errorText = await response.text().catch(() => '');
+                    setError(`Failed to load watchlists: ${response.status} ${errorText}`);
+                    return;
+                  }
+                  const data = await response.json();
+                  setWatchlists(data.watchlists || []);
+                  setError(null);
+                })
+                .catch((err) => {
+                  setError(err instanceof Error ? err.message : 'Failed to load watchlists');
+                })
+                .finally(() => {
+                  setLoading(false);
+                });
+            }}
+            style={{
+              marginTop: 16,
+              padding: '8px 16px',
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </main>
+    );
   }
 
   return (

@@ -96,6 +96,34 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
     setMessage(null);
 
     try {
+      // Geocode the address first to get coordinates
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+      
+      const addressString = [form.address, form.city, form.state, form.zip]
+        .filter(Boolean)
+        .join(', ');
+      
+      if (addressString) {
+        try {
+          const geocodeResponse = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: addressString }),
+          });
+          
+          if (geocodeResponse.ok) {
+            const geocodeData = await geocodeResponse.json();
+            if (geocodeData.lat && geocodeData.lng) {
+              latitude = geocodeData.lat;
+              longitude = geocodeData.lng;
+            }
+          }
+        } catch (geocodeError) {
+          console.warn('Geocoding failed, listing will be created without coordinates:', geocodeError);
+        }
+      }
+
       // Create the listing first
       const listingData = {
         title: form.title || `${form.beds} bed, ${form.baths} bath in ${form.city}`,
@@ -115,8 +143,9 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
         owner_id: ownerId,
         contact_email: "russell.quealy@gmail.com", // You can make this dynamic
         contact_phone: "555-0123", // You can make this dynamic
-        latitude: null, // Will be geocoded later
-        longitude: null, // Will be geocoded later
+        latitude,
+        longitude,
+        status: 'live' as const, // Set status to 'live' so listing appears in search
       };
 
       const { data: listing, error: listingError } = await supabase
@@ -197,80 +226,80 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <form onSubmit={onSubmit} className="space-y-8">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      <form onSubmit={onSubmit} className="space-y-6 sm:space-y-8">
         {/* Property Details Section */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold mb-6 text-gray-900">Property Details</h2>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-gray-900">Property Details</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Property Title</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Property Title</label>
               <input 
                 name="title" 
                 value={form.title} 
                 onChange={onChange} 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                 placeholder="e.g., Beautiful 3BR Home in Downtown"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Price</label>
               <input 
                 name="price" 
                 type="number" 
                 value={form.price} 
                 onChange={onChange} 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                 placeholder="250000"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Address</label>
               <input 
                 name="address" 
                 value={form.address} 
                 onChange={onChange} 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                 placeholder="123 Main Street"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">City</label>
               <input 
                 name="city" 
                 value={form.city} 
                 onChange={onChange} 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                 placeholder="Tucson"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">State</label>
               <input 
                 name="state" 
                 value={form.state} 
                 onChange={onChange} 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                 placeholder="AZ"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">ZIP Code</label>
               <input 
                 name="zip" 
                 value={form.zip} 
                 onChange={onChange} 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                 placeholder="85701"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
               <select

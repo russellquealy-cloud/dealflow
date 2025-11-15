@@ -17,9 +17,13 @@ const AuthContext = React.createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = React.useState<Session | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [initialized, setInitialized] = React.useState(false);
 
   const refreshSession = React.useCallback(async () => {
-    setLoading(true);
+    // Don't set loading to true if already initialized to prevent flicker
+    if (!initialized) {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase.auth.getSession();
       if (error) {
@@ -33,8 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
     } finally {
       setLoading(false);
+      setInitialized(true);
     }
-  }, []);
+  }, [initialized]);
 
   React.useEffect(() => {
     let isMounted = true;

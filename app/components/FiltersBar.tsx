@@ -15,8 +15,17 @@ type Props = { value: Filters; onChange: (f: Filters) => void };
 
 type Opt = { label: string; value: number };
 
-const labelCss: React.CSSProperties = { fontSize: 12, color: '#475569', marginBottom: 4 };
-const selectCss: React.CSSProperties = { width: '100%', height: 36, border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 8px' };
+const labelCss: React.CSSProperties = { fontSize: 13, color: '#475569', marginBottom: 6, fontWeight: 500 };
+const selectCss: React.CSSProperties = { 
+  width: '100%', 
+  height: 44, 
+  minHeight: 44,
+  border: '1px solid #cbd5e1', 
+  borderRadius: 8, 
+  padding: '0 12px',
+  fontSize: 15,
+  touchAction: 'manipulation',
+};
 
 // “+” caps included
 const bedOptions: Opt[]  = [1,2,3,4,5,6,7].map((n,i,a)=>({ label: i===a.length-1?`${n}+`:`${n}`, value: n }));
@@ -88,23 +97,105 @@ export default function FiltersBar({ value, onChange }: Props) {
 
   const mobile = (
     <div style={{ position: 'relative' }}>
-      <button onClick={() => setOpen((v) => !v)} style={{ height: 40, border: '1px solid #cbd5e1', borderRadius: 10, width: '100%' }} aria-expanded={open}>
-        Filters
+      <button 
+        onClick={() => setOpen((v) => !v)} 
+        style={{ 
+          height: 44, 
+          minHeight: 44,
+          border: '1px solid #cbd5e1', 
+          borderRadius: 10, 
+          width: '100%',
+          padding: '0 16px',
+          fontSize: 15,
+          fontWeight: 500,
+          background: '#fff',
+          cursor: 'pointer',
+          touchAction: 'manipulation',
+        }} 
+        aria-expanded={open}
+        aria-label="Toggle filters"
+      >
+        {open ? '✕ Close Filters' : '☰ Filters'}
       </button>
       {open && (
-        <div
-          style={{ position: 'absolute', zIndex: 30, top: 46, left: 0, right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 12, display: 'grid', gap: 10 }}
-        >
-          <NumberSelect label="Min Beds (1+)" value={value.minBeds} options={bedOptions} onChange={(v) => set({ minBeds: v })} />
-          <NumberSelect label="Max Beds"         value={value.maxBeds} options={bedOptions} onChange={(v) => set({ maxBeds: v })} />
-          <NumberSelect label="Min Baths (1+)"  value={value.minBaths} options={bathOptions} onChange={(v) => set({ minBaths: v })} />
-          <NumberSelect label="Max Baths"        value={value.maxBaths} options={bathOptions} onChange={(v) => set({ maxBaths: v })} />
-          <NumberSelect label="Min Price"        value={value.minPrice} options={priceOptions} onChange={(v) => set({ minPrice: v })} />
-          <NumberSelect label="Max Price"        value={value.maxPrice} options={priceOptions} onChange={(v) => set({ maxPrice: v })} />
-          <NumberSelect label="Min Sqft"         value={value.minSqft} options={sqftOptions} onChange={(v) => set({ minSqft: v })} />
-          <NumberSelect label="Max Sqft"         value={value.maxSqft} options={sqftOptions} onChange={(v) => set({ maxSqft: v })} />
-          <SortSelect label="Sort" value={value.sortBy} options={sortOptions} onChange={(v) => set({ sortBy: v })} />
-        </div>
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setOpen(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 40,
+            }}
+          />
+          {/* Drawer */}
+          <div
+            style={{ 
+              position: 'fixed', 
+              zIndex: 50, 
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: '#fff', 
+              overflowY: 'auto',
+              padding: '20px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Filters</h2>
+              <button
+                onClick={() => setOpen(false)}
+                style={{
+                  padding: '8px 12px',
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: 24,
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                }}
+                aria-label="Close filters"
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: 16, flex: 1 }}>
+              <NumberSelect label="Min Beds (1+)" value={value.minBeds} options={bedOptions} onChange={(v) => set({ minBeds: v })} />
+              <NumberSelect label="Max Beds" value={value.maxBeds} options={bedOptions} onChange={(v) => set({ maxBeds: v })} />
+              <NumberSelect label="Min Baths (1+)" value={value.minBaths} options={bathOptions} onChange={(v) => set({ minBaths: v })} />
+              <NumberSelect label="Max Baths" value={value.maxBaths} options={bathOptions} onChange={(v) => set({ maxBaths: v })} />
+              <NumberSelect label="Min Price" value={value.minPrice} options={priceOptions} onChange={(v) => set({ minPrice: v })} />
+              <NumberSelect label="Max Price" value={value.maxPrice} options={priceOptions} onChange={(v) => set({ maxPrice: v })} />
+              <NumberSelect label="Min Sqft" value={value.minSqft} options={sqftOptions} onChange={(v) => set({ minSqft: v })} />
+              <NumberSelect label="Max Sqft" value={value.maxSqft} options={sqftOptions} onChange={(v) => set({ maxSqft: v })} />
+              <SortSelect label="Sort" value={value.sortBy} options={sortOptions} onChange={(v) => set({ sortBy: v })} />
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              style={{
+                marginTop: 24,
+                padding: '14px 24px',
+                background: '#3b82f6',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: 'pointer',
+                width: '100%',
+                touchAction: 'manipulation',
+              }}
+            >
+              Apply Filters
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

@@ -98,37 +98,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    // Use join query to get watchlists with listings in one query
-    // The ! indicates a foreign key relationship
-    const { data: watchlistData, error: watchlistError } = await supabase
+    // First, get all watchlist items for the user
+    const { data: watchlistRows, error: watchlistError } = await supabase
       .from('watchlists')
-      .select(`
-        id,
-        user_id,
-        property_id,
-        created_at,
-        listings!property_id (
-          id,
-          owner_id,
-          title,
-          address,
-          city,
-          state,
-          zip,
-          price,
-          bedrooms,
-          bathrooms,
-          home_sqft,
-          arv,
-          repairs,
-          spread,
-          roi,
-          images,
-          cover_image_url,
-          featured,
-          featured_until
-        )
-      `)
+      .select('id, user_id, property_id, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -145,18 +118,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    // Process the joined data
-    type WatchlistWithListing = {
-      id: string;
-      user_id: string;
-      property_id: string;
-      created_at: string;
-      listings: ListingSummary | ListingSummary[] | null;
-    };
-    
-    const enriched = (watchlistData || []).map((item: WatchlistWithListing) => {
-      const listingData = Array.isArray(item.listings) ? item.listings[0] : item.listings;
-      const listing = listingData ? sanitizeListing(listingData as ListingSummary) : null;
+    if (!watchlistRows || watchlistRows.length === 0) {
+      return NextResponse.json({ watchlists: [] });
+    }
+
+    // Get all listing IDs
+    const listingIds = watchlistRows.map((w) => w.property_id).filter(Boolean) as string[];
+
+    if (listingIds.length === 0) {
+      return NextResponse.json({ 
+        watchlists: watchlistRows.map((w) => ({
+          id: w.id,
+          user_id: w.user_id,
+          property_id: w.property_id,
+          created_at: w.created_at,
+          listing: null,
+        }))
+      });
+    }
+
+    // Fetch listings separately to avoid join issues
+    const { data: listingsData, error: listingsError } = await supabase
+      .from('listings')
+      .select('id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until')
+      .in('id', listingIds);
+
+    if (listingsError) {
+      console.error('listings select error (for watchlist)', {
+        error_code: listingsError.code,
+        error_message: listingsError.message,
+        listing_ids: listingIds,
+      });
+      // Continue even if listings fail - return watchlist items with null listings
+    }
+
+    // Create a map of listing ID to listing data
+    const listingsMap = new Map<string, ListingSummary>();
+    (listingsData || []).forEach((listing) => {
+      listingsMap.set(listing.id, listing as ListingSummary);
+    });
+
+    // Enrich watchlist items with listing data
+    const enriched = watchlistRows.map((item) => {
+      const listingData = listingsMap.get(item.property_id);
+      const listing = listingData ? sanitizeListing(listingData) : null;
       
       return {
         id: item.id,

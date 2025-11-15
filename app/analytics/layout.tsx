@@ -15,7 +15,7 @@ export default async function AnalyticsLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login?next=/analytics');
+    redirect('/login?next=/analytics/lead-conversion');
   }
 
   // Fetch user profile

@@ -311,3 +311,55 @@ export async function notifySubscriptionRenewal(options: {
     body: options.body,
   });
 }
+
+export async function notifyBuyerInterest(params: {
+  ownerId: string;
+  listingTitle?: string | null;
+  buyerEmail?: string | null;
+  listingId?: string | null;
+  action?: 'saved' | 'analyzed' | 'viewed';
+}) {
+  const { ownerId, listingTitle, buyerEmail, listingId, action = 'saved' } = params;
+  
+  const actionText = action === 'saved' ? 'saved' : action === 'analyzed' ? 'analyzed' : 'viewed';
+  const title = listingTitle
+    ? `Buyer interest on ${listingTitle}`
+    : 'New buyer interest';
+  
+  const body = buyerEmail
+    ? `${buyerEmail} ${actionText} your listing.`
+    : `A buyer ${actionText} your listing.`;
+
+  await createNotification({
+    userId: ownerId,
+    type: 'buyer_interest',
+    title,
+    body,
+    listingId: listingId ?? null,
+    metadata: { action, buyerEmail: buyerEmail ?? null },
+  });
+}
+
+export async function notifySavedSearchMatch(params: {
+  userId: string;
+  searchName: string;
+  listingTitle?: string | null;
+  listingId?: string | null;
+  matchCount?: number;
+}) {
+  const { userId, searchName, listingTitle, listingId, matchCount = 1 } = params;
+  
+  const title = `New listing matches "${searchName}"`;
+  const body = listingTitle
+    ? `${listingTitle} matches your saved search criteria.`
+    : `${matchCount} new ${matchCount === 1 ? 'listing' : 'listings'} match your saved search.`;
+
+  await createNotification({
+    userId,
+    type: 'market_trend', // Using market_trend for saved search matches
+    title,
+    body,
+    listingId: listingId ?? null,
+    metadata: { searchName, matchCount },
+  });
+}

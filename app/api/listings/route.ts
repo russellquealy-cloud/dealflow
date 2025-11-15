@@ -58,11 +58,13 @@ export async function GET(request: NextRequest) {
     const supabase = await createSupabaseServer();
     
     // Build query with timeout signal
+    // Only show 'live' listings (exclude draft, archived, etc.)
     let query = supabase
       .from('listings')
       .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until', { count: 'exact' })
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
+      .or('status.eq.live,status.is.null') // Include 'live' status or null (for backward compatibility)
       .range(params.offset!, params.offset! + params.limit! - 1);
 
     if (

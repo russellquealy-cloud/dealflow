@@ -682,7 +682,27 @@ export default function AccountPage() {
         </Link>
       </div>
 
-      <h1 style={{ margin: '0 0 24px 0', fontSize: 32, fontWeight: 800 }}>Account Settings</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800 }}>Account Settings</h1>
+        <Link 
+          href="/settings/notifications" 
+          style={{
+            padding: '10px 20px',
+            background: '#f3f4f6',
+            border: '1px solid #d1d5db',
+            borderRadius: 8,
+            color: '#374151',
+            textDecoration: 'none',
+            fontSize: 14,
+            fontWeight: 500,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          🔔 Notification Preferences
+        </Link>
+      </div>
 
       {profile && completeness && (
         <div style={{ ...sectionStyle, marginTop: 0 }}>
