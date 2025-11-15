@@ -11,21 +11,31 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createSupabaseServer();
-  const { data: { session } } = await supabase.auth.getSession();
+  try {
+    const supabase = await createSupabaseServer();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-  if (!session) {
-    redirect('/login?next=/admin');
+    if (sessionError || !session) {
+      // No session - redirect to login (without next parameter to prevent loops)
+      redirect('/login');
+    }
+
+    // Check if user is admin
+    const userIsAdmin = await isAdmin(session.user.id, supabase);
+
+    if (!userIsAdmin) {
+      // User is logged in but not admin - redirect to listings
+      // Use absolute redirect to break any potential loops
+      console.warn(`User ${session.user.email} attempted to access admin but is not admin. Redirecting to listings.`);
+      redirect('/listings');
+    }
+
+    // User is admin - allow access
+    return <>{children}</>;
+  } catch (error) {
+    // On any error, redirect to listings to be safe
+    console.error('Admin layout error:', error);
+    redirect('/listings');
   }
-
-  // Check if user is admin
-  const userIsAdmin = await isAdmin(session.user.id, supabase);
-
-  if (!userIsAdmin) {
-    // Redirect non-admin users to home page
-    redirect('/');
-  }
-
-  return <>{children}</>;
 }
 

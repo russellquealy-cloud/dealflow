@@ -11,18 +11,45 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: profile } = await supabase
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // No session - redirect to login (but don't set next=/admin to prevent loops)
+          window.location.href = '/login';
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role, segment')
           .eq('id', session.user.id)
           .single();
         
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          setIsAdmin(false);
+          setLoading(false);
+          return;
+        }
+        
         // Check both role and segment fields (some accounts may have admin in segment)
-        setIsAdmin(checkIsAdminClient(profile));
+        const userIsAdmin = checkIsAdminClient(profile);
+        setIsAdmin(userIsAdmin);
+        
+        // If not admin, redirect to listings (don't use router.push to avoid loops)
+        if (!userIsAdmin) {
+          console.warn('Non-admin user accessed admin page, redirecting to listings');
+          window.location.href = '/listings';
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+        // On error, redirect to listings
+        window.location.href = '/listings';
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     checkAdmin();
   }, []);
