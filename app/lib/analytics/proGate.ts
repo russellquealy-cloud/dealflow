@@ -15,7 +15,7 @@ export interface UserProfile {
 /**
  * Check if user is Investor Pro
  */
-export function isInvestorPro(profile: UserProfile | null): boolean {
+export function isInvestorPro(profile: UserProfile | null | undefined): boolean {
   if (!profile) return false;
   
   const role = (profile.role || profile.segment || '').toLowerCase();
