@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-
+import { useRouter } from 'next/navigation';
 import type {
   CoreStats,
   InvestorStats,
@@ -9,10 +9,17 @@ import type {
   UserAnalytics,
   WholesalerStats,
 } from '@/lib/analytics';
+import { isInvestorPro, getUpgradeUrl } from '@/lib/analytics/proGate';
 
 type UserAnalyticsProps = {
   stats: UserAnalytics;
   isPro: boolean;
+  userProfile?: {
+    role?: string | null;
+    segment?: string | null;
+    tier?: string | null;
+    membership_tier?: string | null;
+  } | null;
 };
 
 type MetricCardProps = {
@@ -378,21 +385,101 @@ function renderWholesalerSection(stats: WholesalerStats) {
   );
 }
 
-function renderAdvancedSection(isPro: boolean) {
+function AdvancedAnalyticsCard({
+  title,
+  body,
+  href,
+  isPro,
+  onClick,
+}: {
+  title: string;
+  body: string;
+  href: string;
+  isPro: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = React.useState(false);
+  const style: React.CSSProperties = {
+    ...cardBaseStyle,
+    boxShadow: hovered
+      ? '0 16px 32px rgba(15, 23, 42, 0.18)'
+      : cardBaseStyle.boxShadow,
+    transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+    borderColor: isPro ? '#22c55e66' : cardBaseStyle.border as string,
+    cursor: 'pointer',
+  };
+
+  return (
+    <div
+      style={style}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${title} - ${isPro ? 'Click to view' : 'Pro feature - Click to upgrade'}`}
+    >
+      <div>
+        <div style={{ ...metricLabelStyle, color: isPro ? '#22c55e' : metricLabelStyle.color }}>
+          {title}
+        </div>
+        <div style={metricValueRowStyle}>
+          <div style={{ ...metricValueStyle, color: isPro ? '#0f172a' : metricValueStyle.color }}>
+            {isPro ? 'Available' : 'Locked'}
+          </div>
+          {isPro ? (
+            <span style={{ ...trendChipStyle, background: '#22c55e1A', color: '#22c55e' }}>
+              Pro
+            </span>
+          ) : (
+            <span style={{ ...trendChipStyle, background: '#cbd5f533', color: '#64748b' }}>
+              Pro Feature
+            </span>
+          )}
+        </div>
+      </div>
+      <div style={{ marginTop: '12px' }}>
+        <div style={{ color: isPro ? '#475569' : '#94a3b8', fontSize: 13 }}>{body}</div>
+      </div>
+    </div>
+  );
+}
+
+function AdvancedAnalyticsSection({ isPro, userProfile }: { isPro: boolean; userProfile: UserAnalyticsProps['userProfile'] }) {
+  const router = useRouter();
+  
   const cards = [
     {
       title: 'Lead Conversion Trends',
       body: 'Track the funnel from inquiry to closed deal with cohort analysis.',
+      href: '/analytics/lead-conversion',
     },
     {
       title: 'Geographic Heatmap',
       body: 'Visualize buyer interest across your target metros to source smarter.',
+      href: '/analytics/heatmap',
     },
     {
       title: 'CSV & API Export',
       body: 'Sync analytics with your CRM or download data snapshots anytime.',
+      href: '/analytics/export',
     },
   ];
+
+  const handleCardClick = (href: string) => {
+    if (isInvestorPro(userProfile)) {
+      router.push(href);
+    } else {
+      const upgradeUrl = getUpgradeUrl(userProfile?.segment || userProfile?.role);
+      router.push(upgradeUrl);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -417,32 +504,21 @@ function renderAdvancedSection(isPro: boolean) {
       </div>
       <div style={advancedGridStyle}>
         {cards.map((card) => (
-          <MetricCard
+          <AdvancedAnalyticsCard
             key={card.title}
             title={card.title}
-            value={isPro ? 'Available' : 'Locked'}
-            subLabel={
-              isPro ? (
-                <span style={{ ...trendChipStyle, background: '#22c55e1A', color: '#22c55e' }}>
-                  Pro
-                </span>
-              ) : (
-                <span style={{ ...trendChipStyle, background: '#cbd5f533', color: '#64748b' }}>
-                  Pro Feature
-                </span>
-              )
-            }
-            accent={isPro ? '#22c55e' : undefined}
-          >
-            <div style={{ color: isPro ? '#475569' : '#94a3b8', fontSize: 13 }}>{card.body}</div>
-          </MetricCard>
+            body={card.body}
+            href={card.href}
+            isPro={isPro}
+            onClick={() => handleCardClick(card.href)}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-export default function UserAnalyticsDashboard({ stats, isPro }: UserAnalyticsProps) {
+export default function UserAnalyticsDashboard({ stats, isPro, userProfile }: UserAnalyticsProps) {
   return (
     <section style={containerStyle}>
       <div>
@@ -458,7 +534,7 @@ export default function UserAnalyticsDashboard({ stats, isPro }: UserAnalyticsPr
         ? renderInvestorSection(stats as InvestorStats)
         : renderWholesalerSection(stats as WholesalerStats)}
 
-      {renderAdvancedSection(isPro)}
+      <AdvancedAnalyticsSection isPro={isPro} userProfile={userProfile} />
     </section>
   );
 }

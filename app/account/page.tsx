@@ -1202,7 +1202,7 @@ export default function AccountPage() {
               background: '#fff',
             }}
           >
-            <UserAnalyticsDashboard stats={analyticsStats} isPro={isProTier} />
+            <UserAnalyticsDashboard stats={analyticsStats} isPro={isProTier} userProfile={profile} />
           </div>
         );
       })()}

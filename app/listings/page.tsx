@@ -78,6 +78,7 @@ export default function ListingsPage() {
   const [activeMapBounds, setActiveMapBounds] = useState(false);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
   const [mapZoom, setMapZoom] = useState<number | undefined>(undefined);
+  const [mapViewport, setMapViewport] = useState<{ north: number; south: number; east: number; west: number } | undefined>(undefined);
   const [filters, setFilters] = useState<Filters>({
     minPrice: null,
     maxPrice: null,
@@ -430,22 +431,47 @@ export default function ListingsPage() {
         const response = await fetch('/api/geocode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: query, placeId })
+          body: JSON.stringify({ query, placeId })
         });
         
         if (!response.ok) {
-          logger.error('Geocoding failed');
+          const errorText = await response.text();
+          logger.error('Geocoding failed', response.status, errorText);
           return;
         }
         
-        const data = await response.json();
-        if (data.ok && data.lat && data.lng) {
+        const data = await response.json() as {
+          ok: boolean;
+          lat?: number;
+          lng?: number;
+          viewport?: {
+            north: number;
+            south: number;
+            east: number;
+            west: number;
+          };
+          formattedAddress?: string;
+          error?: string;
+        };
+        
+        if (data.ok && typeof data.lat === 'number' && typeof data.lng === 'number') {
           // Move map to geocoded location
           setMapCenter({ lat: data.lat, lng: data.lng });
-          setMapZoom(14);
+          
+          // Use viewport if available (map will use fitBounds for better UX)
+          if (data.viewport) {
+            setMapViewport(data.viewport);
+            // Clear zoom when using viewport (fitBounds will handle it)
+            setMapZoom(undefined);
+          } else {
+            // Fallback to center + zoom if no viewport
+            setMapViewport(undefined);
+            setMapZoom(14);
+          }
+          
           // Also update search query to show the formatted address
-          if (data.formatted_address) {
-            setSearchQuery(data.formatted_address);
+          if (data.formattedAddress) {
+            setSearchQuery(data.formattedAddress);
           }
         } else if (!data.ok) {
           logger.warn('Geocoding returned no results:', data.error);
@@ -641,6 +667,7 @@ export default function ListingsPage() {
           MapComponent={GoogleMapWrapper}
           mapCenter={mapCenter}
           mapZoom={mapZoom}
+          mapViewport={mapViewport}
         />
       </div>
     </div>

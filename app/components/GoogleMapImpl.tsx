@@ -40,6 +40,7 @@ export interface GoogleMapImplProps {
   onPolygonComplete?: (polygon: google.maps.Polygon) => void;
   center?: { lat: number; lng: number };
   zoom?: number;
+  viewport?: { north: number; south: number; east: number; west: number };
   onMarkerClick?: (id: string) => void;
 }
 
@@ -127,6 +128,7 @@ export default function GoogleMapImpl({
   onPolygonComplete,
   center,
   zoom,
+  viewport,
   onMarkerClick,
 }: GoogleMapImplProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -380,7 +382,24 @@ export default function GoogleMapImpl({
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current || !center) return;
+    if (!mapRef.current) return;
+
+    // If viewport is provided, use fitBounds for better UX
+    if (viewport && window.google?.maps) {
+      const bounds = new window.google.maps.LatLngBounds(
+        new window.google.maps.LatLng(viewport.south, viewport.west),
+        new window.google.maps.LatLng(viewport.north, viewport.east)
+      );
+      geocodePanRef.current = true;
+      mapRef.current.fitBounds(bounds);
+      window.setTimeout(() => {
+        geocodePanRef.current = false;
+      }, 150);
+      return;
+    }
+
+    // Otherwise, use center and zoom
+    if (!center) return;
     if (typeof center.lat !== 'number' || typeof center.lng !== 'number') return;
 
     const currentCenter = mapRef.current.getCenter();
@@ -404,7 +423,7 @@ export default function GoogleMapImpl({
     window.setTimeout(() => {
       geocodePanRef.current = false;
     }, 150);
-  }, [center, zoom]);
+  }, [center, zoom, viewport]);
 
   useEffect(() => () => {
     if (debounceRef.current) {

@@ -15,14 +15,16 @@ type Props = {
     onBoundsChange?: (bounds: unknown) => void;
     center?: { lat: number; lng: number };
     zoom?: number;
+    viewport?: { north: number; south: number; east: number; west: number };
     onMarkerClick?: (id: string) => void;
   }>;
   onBoundsChange?: (bounds: unknown) => void;
   mapCenter?: { lat: number; lng: number } | undefined;
   mapZoom?: number | undefined;
+  mapViewport?: { north: number; south: number; east: number; west: number } | undefined;
 };
 
-export default function ListingsSplitClient({ points, listings, MapComponent, onBoundsChange, mapCenter, mapZoom }: Props) {
+export default function ListingsSplitClient({ points, listings, MapComponent, onBoundsChange, mapCenter, mapZoom, mapViewport }: Props) {
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
   const router = useRouter();
   const handleMarkerClick = useCallback(
@@ -85,6 +87,7 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
               onBoundsChange={onBoundsChange}
               center={mapCenter}
               zoom={mapZoom}
+              viewport={mapViewport}
               onMarkerClick={handleMarkerClick}
             />
           </div>
