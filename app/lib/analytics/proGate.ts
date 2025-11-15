@@ -21,7 +21,32 @@ export function isInvestorPro(profile: UserProfile | null | undefined): boolean 
   const role = (profile.role || profile.segment || '').toLowerCase();
   const tier = (profile.tier || profile.membership_tier || '').toLowerCase();
   
-  return role === 'investor' && (tier === 'pro' || tier === 'enterprise');
+  // Check if tier contains 'pro' or 'enterprise' (handles formats like "investor.pro", "pro", etc.)
+  const isProTier = tier.includes('pro') || tier.includes('enterprise');
+  
+  return role === 'investor' && isProTier;
+}
+
+/**
+ * Check if user is Wholesaler Pro
+ */
+export function isWholesalerPro(profile: UserProfile | null | undefined): boolean {
+  if (!profile) return false;
+  
+  const role = (profile.role || profile.segment || '').toLowerCase();
+  const tier = (profile.tier || profile.membership_tier || '').toLowerCase();
+  
+  // Check if tier contains 'pro' or 'enterprise' (handles formats like "wholesaler.pro", "pro", etc.)
+  const isProTier = tier.includes('pro') || tier.includes('enterprise');
+  
+  return role === 'wholesaler' && isProTier;
+}
+
+/**
+ * Check if user is Pro (either Investor or Wholesaler)
+ */
+export function isPro(profile: UserProfile | null | undefined): boolean {
+  return isInvestorPro(profile) || isWholesalerPro(profile);
 }
 
 /**

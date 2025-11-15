@@ -5,10 +5,10 @@ import { getSupabaseServiceRole } from '@/lib/supabase/service';
 export type UserRole = 'investor' | 'wholesaler';
 
 export interface CoreStats {
-  savedListings: number;
-  contactsMade: number;
-  aiAnalyses: number;
-  watchlists: number;
+  savedListings: number; // For investors: saved deals, For wholesalers: active deals
+  contactsMade: number; // For investors: contacts made, For wholesalers: contacts received
+  aiAnalyses: number; // For investors: analyses run, For wholesalers: analyses on their listings
+  watchlists: number; // For investors: watchlists, For wholesalers: not used (0)
 }
 
 export interface TrendStat {
@@ -211,34 +211,125 @@ async function loadWholesalerAnalytics(userId: string): Promise<WholesalerStats>
   const sixtyDaysAgo = new Date(now);
   sixtyDaysAgo.setDate(now.getDate() - 60);
 
-  const savedListings = await countRows(async () => {
+  // Active Deals: Count of active listings owned by this wholesaler
+  const activeDeals = await countRows(async () => {
     const { count, error } = await supabase
-      .from('watchlists')
+      .from('listings')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId);
+      .eq('owner_id', userId)
+      .neq('status', 'sold')
+      .neq('status', 'closed');
     return { count, error };
   });
 
-  const aiAnalyses = await countRows(async () => {
-    const { count, error } = await supabase
+  // Contacts Received: Distinct investors who started conversations on this wholesaler's listings
+  const { data: listingIds } = await supabase
+    .from('listings')
+    .select('id')
+    .eq('owner_id', userId);
+
+  const listingIdArray = (listingIds || []).map((l) => l.id).filter(Boolean);
+  
+  let contactsReceived = 0;
+  if (listingIdArray.length > 0) {
+    const { data: contactsRows } = await supabase
+      .from('messages')
+      .select('from_id, listing_id')
+      .in('listing_id', listingIdArray);
+    
+    contactsReceived = new Set(
+      (contactsRows || [])
+        .map((row) => (row as { from_id?: string | null }).from_id)
+        .filter(Boolean)
+    ).size;
+  }
+
+  // AI Analyses: Number of AI analyzer runs on this wholesaler's listings
+  let aiAnalyses = 0;
+  if (listingIdArray.length > 0) {
+    const { data: analysisRows } = await supabase
       .from('ai_analysis_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId);
-    return { count, error };
-  });
+      .select('listing_id')
+      .in('listing_id', listingIdArray);
+    
+    aiAnalyses = (analysisRows || []).length;
+  }
 
-  const { data: contactsRows } = await supabase
-    .from('messages')
-    .select('from_id')
-    .eq('to_id', userId);
+  // Average Response Time: Time from first investor message to wholesaler's first reply
+  // Get all messages on this wholesaler's listings
+  let avgResponseTimeHours: number | null = null;
+  
+  if (listingIdArray.length > 0) {
+    const { data: allMessages } = await supabase
+      .from('messages')
+      .select('id, from_id, to_id, listing_id, created_at')
+      .in('listing_id', listingIdArray)
+      .order('created_at', { ascending: true });
 
-  const contactsMade = new Set(
-    (contactsRows || [])
-      .map((row) => (row as { from_id?: string | null }).from_id)
-      .filter(Boolean)
-  ).size;
+    if (allMessages && allMessages.length > 0) {
+      // Group by conversation (listing_id + counterpart user)
+      const conversations = new Map<string, Array<{ created_at: string; from_id: string; to_id: string }>>();
+      
+      allMessages.forEach((msg) => {
+        // Determine the counterpart (investor) in this conversation
+        const counterpartId = msg.from_id === userId ? msg.to_id : msg.from_id;
+        const key = `${msg.listing_id || 'none'}_${counterpartId}`;
+        
+        if (!conversations.has(key)) {
+          conversations.set(key, []);
+        }
+        conversations.get(key)!.push({
+          created_at: msg.created_at,
+          from_id: msg.from_id,
+          to_id: msg.to_id,
+        });
+      });
 
-  const watchlistsCount = savedListings;
+      let totalResponseHours = 0;
+      let responseSamples = 0;
+
+      // For each conversation, find first investor message and first wholesaler reply
+      conversations.forEach((messages) => {
+        const sorted = messages.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        
+        // Find first message from investor (not from wholesaler)
+        const firstInvestorMsg = sorted.find((m) => m.from_id !== userId);
+        if (!firstInvestorMsg) return;
+
+        // Find wholesaler's first reply after the first investor message
+        const wholesalerReplies = sorted.filter(
+          (m) => m.from_id === userId && new Date(m.created_at) > new Date(firstInvestorMsg.created_at)
+        );
+        
+        if (wholesalerReplies.length > 0) {
+          const firstReply = wholesalerReplies[0];
+          const investorTime = new Date(firstInvestorMsg.created_at).getTime();
+          const replyTime = new Date(firstReply.created_at).getTime();
+          const diffHours = (replyTime - investorTime) / (1000 * 60 * 60);
+          
+          if (Number.isFinite(diffHours) && diffHours >= 0 && diffHours < 168) { // Max 1 week
+            totalResponseHours += diffHours;
+            responseSamples += 1;
+          }
+        }
+      });
+
+      avgResponseTimeHours =
+        responseSamples > 0 ? Number((totalResponseHours / responseSamples).toFixed(1)) : null;
+    }
+  }
+
+  // For CoreStats compatibility, we'll map:
+  // savedListings -> activeDeals
+  // contactsMade -> contactsReceived
+  // aiAnalyses -> aiAnalyses (on their listings)
+  // watchlists -> 0 (not relevant for wholesalers, but keep for type compatibility)
+
+  const savedListings = activeDeals;
+  const contactsMade = contactsReceived;
+  const watchlistsCount = 0;
 
   const { data: listingsCurrentRows } = await supabase
     .from('listings')
@@ -289,29 +380,6 @@ async function loadWholesalerAnalytics(userId: string): Promise<WholesalerStats>
     previous: previousLeads,
   };
 
-  const { data: responseRows } = await supabase
-    .from('messages')
-    .select('created_at, read_at')
-    .eq('to_id', userId)
-    .not('read_at', 'is', null);
-
-  let totalResponseHours = 0;
-  let responseSamples = 0;
-  (responseRows || []).forEach((row) => {
-    const record = row as { created_at: string; read_at?: string | null };
-    if (!record.read_at) return;
-    const created = new Date(record.created_at).getTime();
-    const read = new Date(record.read_at).getTime();
-    if (Number.isNaN(created) || Number.isNaN(read) || read < created) return;
-    const diffHours = (read - created) / (1000 * 60 * 60);
-    if (Number.isFinite(diffHours)) {
-      totalResponseHours += diffHours;
-      responseSamples += 1;
-    }
-  });
-
-  const avgResponseTimeHours =
-    responseSamples > 0 ? Number((totalResponseHours / responseSamples).toFixed(1)) : null;
 
   const conversionRate =
     listingsPosted.current > 0 ? Math.min(1, currentLeads / listingsPosted.current) : null;

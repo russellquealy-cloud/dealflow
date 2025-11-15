@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/server';
-import { isInvestorPro } from '@/lib/analytics/proGate';
+import { isPro } from '@/lib/analytics/proGate';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,16 +10,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is Investor Pro
+    // Check if user is Pro (Investor or Wholesaler)
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, segment, tier, membership_tier')
       .eq('id', user.id)
       .single();
 
-    if (!isInvestorPro(profile)) {
+    if (!isPro(profile)) {
       return NextResponse.json({ error: 'Pro subscription required' }, { status: 403 });
     }
+
+    const role = (profile?.role || profile?.segment || 'investor').toLowerCase() as 'investor' | 'wholesaler';
+    const isWholesaler = role === 'wholesaler';
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
@@ -38,7 +41,82 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === 'deals') {
-      // Export deals and interactions
+      if (isWholesaler) {
+        // Wholesaler export: their listings and leads
+        const { data: listings } = await supabase
+          .from('listings')
+          .select('id, address, city, state, zip_code, price, bedrooms, bathrooms, square_feet, status, created_at')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false });
+
+        // Get messages on their listings
+        const listingIds = (listings || []).map((l) => l.id).filter(Boolean);
+        const { data: messages } = listingIds.length > 0
+          ? await supabase
+              .from('messages')
+              .select('listing_id, from_id, created_at, body')
+              .in('listing_id', listingIds.slice(0, 1000))
+              .order('created_at', { ascending: false })
+          : { data: null };
+
+        // Filter by date range
+        const filteredListings = startDate
+          ? (listings || []).filter((l) => new Date(l.created_at || '').getTime() >= startDate!.getTime())
+          : listings || [];
+        const filteredMessages = startDate
+          ? (messages || []).filter((m) => new Date(m.created_at).getTime() >= startDate!.getTime())
+          : messages || [];
+
+        // Build CSV
+        const csvRows: string[] = [];
+        csvRows.push('Listing ID,Address,City,State,ZIP,Price,Bedrooms,Bathrooms,Square Feet,Status,Leads Count,First Lead Date');
+
+        const messageCounts = new Map<string, number>();
+        const firstLeadDate = new Map<string, string>();
+
+        filteredMessages.forEach((m) => {
+          if (m.listing_id) {
+            messageCounts.set(m.listing_id, (messageCounts.get(m.listing_id) || 0) + 1);
+            const date = new Date(m.created_at).toISOString().split('T')[0];
+            const existing = firstLeadDate.get(m.listing_id);
+            if (!existing || date < existing) {
+              firstLeadDate.set(m.listing_id, date);
+            }
+          }
+        });
+
+        filteredListings.forEach((listing) => {
+          const leadsCount = messageCounts.get(listing.id) || 0;
+          const firstLead = firstLeadDate.get(listing.id) || '';
+
+          csvRows.push(
+            [
+              listing.id,
+              `"${(listing.address || '').replace(/"/g, '""')}"`,
+              listing.city || '',
+              listing.state || '',
+              listing.zip_code || '',
+              listing.price || '',
+              listing.bedrooms || '',
+              listing.bathrooms || '',
+              listing.square_feet || '',
+              listing.status || 'active',
+              leadsCount,
+              firstLead,
+            ].join(',')
+          );
+        });
+
+        const csv = csvRows.join('\n');
+        return new NextResponse(csv, {
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': `attachment; filename="off-axis-listings-${range}days-${new Date().toISOString().split('T')[0]}.csv"`,
+          },
+        });
+      }
+
+      // Investor export: deals and interactions
       const [watchlistsResult, messagesResult] = await Promise.all([
         supabase
           .from('watchlists')

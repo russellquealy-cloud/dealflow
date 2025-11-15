@@ -1,10 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ExportPage() {
   const [dateRange, setDateRange] = useState<'30' | '90' | 'all'>('30');
   const [exporting, setExporting] = useState<string | null>(null);
+  const [role, setRole] = useState<'investor' | 'wholesaler' | null>(null);
+
+  useEffect(() => {
+    // Fetch user role
+    fetch('/api/analytics')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.stats && data.stats.role) {
+          setRole(data.stats.role);
+        }
+      })
+      .catch(() => {
+        // Default to investor if fetch fails
+        setRole('investor');
+      });
+  }, []);
 
   const handleExport = async (type: 'deals' | 'analytics') => {
     setExporting(type);
@@ -78,8 +94,16 @@ export default function ExportPage() {
       {/* Export Buttons */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
         <ExportButton
-          title="Export My Deals & Interactions (CSV)"
-          description="Download all listings you've saved, messaged about, or analyzed"
+          title={
+            role === 'wholesaler'
+              ? 'Export My Listings & Leads (CSV)'
+              : 'Export My Deals & Interactions (CSV)'
+          }
+          description={
+            role === 'wholesaler'
+              ? 'Download all your listings, leads, and performance metrics'
+              : "Download all listings you've saved, messaged about, or analyzed"
+          }
           onClick={() => handleExport('deals')}
           loading={exporting === 'deals'}
           disabled={!!exporting}
@@ -87,7 +111,11 @@ export default function ExportPage() {
 
         <ExportButton
           title="Export Analytics Summary (CSV)"
-          description="Download aggregated analytics data including conversion rates and market breakdowns"
+          description={
+            role === 'wholesaler'
+              ? 'Download aggregated analytics including conversion rates, response times, and market breakdowns'
+              : 'Download aggregated analytics data including conversion rates and market breakdowns'
+          }
           onClick={() => handleExport('analytics')}
           loading={exporting === 'analytics'}
           disabled={!!exporting}

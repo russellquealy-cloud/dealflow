@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
-import { isInvestorPro } from '@/lib/analytics/proGate';
+import { isPro } from '@/lib/analytics/proGate';
 
 export default async function AnalyticsLayout({
   children,
@@ -25,10 +25,13 @@ export default async function AnalyticsLayout({
     .eq('id', user.id)
     .single();
 
-  // Check if user is Investor Pro
-  if (!isInvestorPro(profile)) {
+  // Check if user is Pro (Investor or Wholesaler)
+  if (!isPro(profile)) {
     redirect('/pricing?highlight=pro');
   }
+
+  const role = (profile?.role || profile?.segment || 'investor').toLowerCase() as 'investor' | 'wholesaler';
+  const isWholesaler = role === 'wholesaler';
 
   const navLinks = [
     { href: '/analytics/lead-conversion', label: 'Lead Conversion Trends' },
@@ -44,7 +47,9 @@ export default async function AnalyticsLayout({
             Advanced Analytics
           </h1>
           <p style={{ margin: 0, color: '#64748b', fontSize: 14 }}>
-            Track your investment performance and optimize your deal flow
+            {isWholesaler 
+              ? 'Track your listing performance and optimize your lead generation'
+              : 'Track your investment performance and optimize your deal flow'}
           </p>
         </div>
 

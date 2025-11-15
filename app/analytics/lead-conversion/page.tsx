@@ -11,8 +11,173 @@ export default async function LeadConversionPage() {
     return null; // Layout will handle redirect
   }
 
-  // Get listings the investor has interacted with
-  // Approximate with watchlists, messages, and analyzer runs
+  // Get user role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, segment')
+    .eq('id', user.id)
+    .single();
+
+  const role = (profile?.role || profile?.segment || 'investor').toLowerCase() as 'investor' | 'wholesaler';
+  const isWholesaler = role === 'wholesaler';
+
+  if (isWholesaler) {
+    // Wholesaler view: Funnel from listing views → contacts → under contract → sold
+    const { data: listings } = await supabase
+      .from('listings')
+      .select('id, city, state, status')
+      .eq('owner_id', user.id);
+
+    const totalListings = listings?.length || 0;
+    const activeListings = listings?.filter((l) => {
+      const status = (l.status || '').toLowerCase();
+      return status !== 'sold' && status !== 'closed';
+    }).length || 0;
+    const soldListings = listings?.filter((l) => {
+      const status = (l.status || '').toLowerCase();
+      return status === 'sold' || status === 'closed';
+    }).length || 0;
+
+    // Get contacts received (distinct investors who messaged about their listings)
+    const listingIds = (listings || []).map((l) => l.id).filter(Boolean);
+    let contactsReceived = 0;
+    if (listingIds.length > 0) {
+      const { data: messages } = await supabase
+        .from('messages')
+        .select('from_id, listing_id')
+        .in('listing_id', listingIds.slice(0, 1000));
+      
+      contactsReceived = new Set(
+        (messages || []).map((m) => m.from_id).filter(Boolean)
+      ).size;
+    }
+
+    // TODO: Get listing views once we have view tracking
+    const listingViews = 0; // Placeholder
+
+    // Market breakdown
+    const marketBreakdown: Record<string, number> = {};
+    if (listings) {
+      listings.forEach((listing) => {
+        const market = listing.city && listing.state 
+          ? `${listing.city}, ${listing.state}`
+          : listing.city || listing.state || 'Unknown';
+        marketBreakdown[market] = (marketBreakdown[market] || 0) + 1;
+      });
+    }
+
+    const hasData = totalListings > 0 || contactsReceived > 0;
+
+    return (
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0' }}>
+        <h2 style={{ margin: '0 0 24px 0', fontSize: 24, fontWeight: 700, color: '#0f172a' }}>
+          Lead Conversion Trends
+        </h2>
+
+        {!hasData ? (
+          <div
+            style={{
+              padding: 48,
+              textAlign: 'center',
+              color: '#64748b',
+              background: '#f8fafc',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
+              No conversion data yet
+            </p>
+            <p style={{ margin: 0, fontSize: 14 }}>
+              Once you post listings and receive inquiries, your conversion trends will appear here.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Funnel Summary */}
+            <div style={{ marginBottom: 32 }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600, color: '#1e293b' }}>
+                Conversion Funnel
+              </h3>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                }}
+              >
+                <FunnelStep
+                  label="Listing Views"
+                  value={listingViews}
+                  color="#3b82f6"
+                  description={listingViews > 0 ? 'Total views on your listings' : 'Coming soon: View tracking will be available soon'}
+                />
+                <FunnelStep
+                  label="Contacts Received"
+                  value={contactsReceived}
+                  color="#0ea5e9"
+                  description="Distinct investors who contacted you about your listings"
+                />
+                <FunnelStep
+                  label="Under Contract / Sold"
+                  value={soldListings}
+                  color={soldListings > 0 ? '#22c55e' : '#94a3b8'}
+                  description={
+                    soldListings > 0
+                      ? 'Listings marked as sold or closed'
+                      : 'Coming soon: This will be powered by post-closing feedback and PropStream data'
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Market Breakdown */}
+            {Object.keys(marketBreakdown).length > 0 && (
+              <div>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600, color: '#1e293b' }}>
+                  Listings by Market
+                </h3>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  {Object.entries(marketBreakdown)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 10)
+                    .map(([market, count]) => (
+                      <div
+                        key={market}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '12px 16px',
+                          background: '#f8fafc',
+                          borderRadius: 8,
+                          border: '1px solid #e2e8f0',
+                        }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 500, color: '#1e293b' }}>
+                          {market}
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#3b82f6' }}>
+                          {count} {count === 1 ? 'listing' : 'listings'}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Investor view (existing implementation)
   const [watchlistsResult, messagesResult] = await Promise.all([
     supabase
       .from('watchlists')

@@ -9,7 +9,7 @@ import type {
   UserAnalytics,
   WholesalerStats,
 } from '@/lib/analytics';
-import { isInvestorPro, getUpgradeUrl } from '@/lib/analytics/proGate';
+import { isInvestorPro, isWholesalerPro, isPro, getUpgradeUrl } from '@/lib/analytics/proGate';
 
 type UserAnalyticsProps = {
   stats: UserAnalytics;
@@ -170,7 +170,30 @@ function MetricCard({ title, value, subLabel, accent, children, grow }: MetricCa
   );
 }
 
-function renderCoreMetrics(stats: CoreStats): React.ReactNode {
+function renderCoreMetrics(stats: CoreStats, role: 'investor' | 'wholesaler', avgResponseTimeHours?: number | null): React.ReactNode {
+  if (role === 'wholesaler') {
+    const metrics = [
+      { label: 'Active Deals', value: stats.savedListings, accent: '#1d4ed8' },
+      { label: 'Contacts Received', value: stats.contactsMade, accent: '#0ea5e9' },
+      { label: 'AI Analyses', value: stats.aiAnalyses, accent: '#22c55e' },
+      { 
+        label: 'Avg Response Time', 
+        value: avgResponseTimeHours != null ? `${avgResponseTimeHours.toFixed(1)}h` : '—', 
+        accent: '#f97316' 
+      },
+    ];
+
+    return metrics.map((metric) => (
+      <MetricCard
+        key={metric.label}
+        title={metric.label}
+        value={typeof metric.value === 'string' ? metric.value : formatNumber(metric.value)}
+        accent={metric.accent}
+      />
+    ));
+  }
+
+  // Investor metrics
   const metrics = [
     { label: 'Saved Deals', value: stats.savedListings, accent: '#1d4ed8' },
     { label: 'Contacts Made', value: stats.contactsMade, accent: '#0ea5e9' },
@@ -471,7 +494,7 @@ function AdvancedAnalyticsSection({ isPro, userProfile }: { isPro: boolean; user
   ];
 
   const handleCardClick = (href: string) => {
-    if (isInvestorPro(userProfile)) {
+    if (isPro(userProfile)) {
       router.push(href);
     } else {
       const upgradeUrl = getUpgradeUrl(userProfile?.segment || userProfile?.role);
@@ -525,7 +548,13 @@ export default function UserAnalyticsDashboard({ stats, isPro, userProfile }: Us
         </p>
       </div>
 
-      <div style={gridStyle}>{renderCoreMetrics(stats)}</div>
+      <div style={gridStyle}>
+        {renderCoreMetrics(
+          stats,
+          stats.role,
+          stats.role === 'wholesaler' ? (stats as WholesalerStats).avgResponseTimeHours : undefined
+        )}
+      </div>
 
       {stats.role === 'investor'
         ? renderInvestorSection(stats as InvestorStats)
