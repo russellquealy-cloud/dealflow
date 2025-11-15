@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/supabase/client';
+import { checkIsAdminClient } from '@/lib/admin';
 
 export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -14,11 +15,12 @@ export default function AdminDashboard() {
       if (session) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, segment')
           .eq('id', session.user.id)
           .single();
         
-        setIsAdmin(profile?.role === 'admin');
+        // Check both role and segment fields (some accounts may have admin in segment)
+        setIsAdmin(checkIsAdminClient(profile));
       }
       setLoading(false);
     };

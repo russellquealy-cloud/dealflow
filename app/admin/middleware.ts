@@ -9,14 +9,15 @@ export async function adminMiddleware() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Check if user is admin
+  // Check if user is admin (check both role and segment fields)
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, segment')
     .eq('id', session.user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const isAdmin = profile?.role === 'admin' || profile?.segment === 'admin';
+  if (!isAdmin) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
