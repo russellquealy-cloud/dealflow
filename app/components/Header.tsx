@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/supabase/client";
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/providers/AuthProvider";
+import { checkIsAdminClient } from "@/lib/admin";
 import PostDealButton from "./PostDealButton";
 
 const wrap: React.CSSProperties = {
@@ -66,6 +67,7 @@ export default function Header() {
   const email = session?.user?.email ?? null;
   const userId = session?.user?.id ?? null;
   const [userRole, setUserRole] = React.useState<string>("");
+  const [isAdmin, setIsAdmin] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState<number>(0);
   const [notificationCount, setNotificationCount] = React.useState<number>(0);
   const [signingOut, setSigningOut] = React.useState(false);
@@ -99,6 +101,10 @@ export default function Header() {
       if (profile) {
         const role = profile.segment || profile.role || "";
         setUserRole(role);
+        // Check if user is admin (check both role and segment)
+        setIsAdmin(checkIsAdminClient(profile));
+      } else {
+        setIsAdmin(false);
       }
     } catch (error) {
       logger.error("Header: exception loading profile", error);
@@ -339,16 +345,17 @@ export default function Header() {
       );
     }
 
-    if (userRole === "admin") {
+    // Show admin link only for admin users (check both role and segment)
+    if (isAdmin) {
       links.push(
-        <Link key="admin" href="/admin" style={{ ...linkStyles, color: "#dc2626" }}>
+        <Link key="admin" href="/admin" style={{ ...linkStyles, color: "#dc2626", fontWeight: 700 }}>
           🔒 Admin
         </Link>
       );
     }
 
     return links;
-  }, [email, userRole, unreadCount, notificationCount]);
+  }, [email, userRole, isAdmin, unreadCount, notificationCount]);
 
   const mobileLinks = React.useMemo(() => {
     const baseMobileLinkStyle: React.CSSProperties = {
@@ -434,13 +441,14 @@ export default function Header() {
       );
     }
 
-    if (userRole === "admin") {
+    // Show admin link only for admin users (check both role and segment)
+    if (isAdmin) {
       items.push(
         <Link
           key="admin"
           href="/admin"
           onClick={closeMobile}
-          style={{ ...baseMobileLinkStyle, borderColor: "#dc2626", color: "#dc2626" }}
+          style={{ ...baseMobileLinkStyle, borderColor: "#dc2626", color: "#dc2626", fontWeight: 700 }}
         >
           🔒 Admin
         </Link>
@@ -475,7 +483,7 @@ export default function Header() {
     }
 
     return items;
-  }, [email, userRole, unreadCount, notificationCount, closeMobile, signOut, signingOut]);
+  }, [email, userRole, isAdmin, unreadCount, notificationCount, closeMobile, signOut, signingOut]);
 
   return (
     <header style={wrap}>
