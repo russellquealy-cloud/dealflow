@@ -33,9 +33,74 @@ export default function AdminDashboard() {
 
   if (!isAdmin) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h1>Access Denied</h1>
-        <p>Admin access required</p>
+      <div style={{ padding: '20px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+        <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
+        <p style={{ marginBottom: '24px' }}>Admin access required</p>
+        
+        <div style={{ 
+          background: '#fef2f2', 
+          border: '1px solid #fecaca', 
+          borderRadius: '8px', 
+          padding: '20px',
+          marginBottom: '24px',
+          textAlign: 'left'
+        }}>
+          <h3 style={{ margin: '0 0 12px 0', color: '#991b1b' }}>Diagnostic Information</h3>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
+            If you believe you should have admin access, you can:
+          </p>
+          <ol style={{ margin: '0 0 16px 0', paddingLeft: '20px', fontSize: '14px' }}>
+            <li style={{ marginBottom: '8px' }}>
+              <strong>Check your account status:</strong> Visit{' '}
+              <a href="/api/admin/diagnose" target="_blank" style={{ color: '#2563eb' }}>
+                /api/admin/diagnose
+              </a>{' '}
+              to see your current role and segment settings.
+            </li>
+            <li style={{ marginBottom: '8px' }}>
+              <strong>Fix admin account:</strong> If you&apos;re logged in as admin@offaxisdeals.com, you can{' '}
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/admin/fix-account', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email: 'admin@offaxisdeals.com' }),
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      alert('✅ Admin account fixed! Please refresh the page.');
+                      window.location.reload();
+                    } else {
+                      alert(`Error: ${data.error || 'Failed to fix account'}`);
+                    }
+                  } catch (error) {
+                    alert(`Error: ${error instanceof Error ? error.message : 'Failed to fix account'}`);
+                  }
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Click here to fix your admin account
+              </button>
+            </li>
+            <li style={{ marginBottom: '8px' }}>
+              <strong>Run SQL script:</strong> Execute the SQL script at{' '}
+              <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>
+                supabase/sql/fix_admin_account.sql
+              </code>{' '}
+              in your Supabase SQL editor.
+            </li>
+          </ol>
+        </div>
       </div>
     );
   }

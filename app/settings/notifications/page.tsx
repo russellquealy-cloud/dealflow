@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/supabase/client';
 
 type PreferenceKey =
   | 'buyer_interest'
@@ -44,8 +45,8 @@ const PREFERENCE_ITEMS: Array<{
   },
   {
     key: 'lead_message',
-    title: 'Lead Message',
-    description: 'Get notified when investors send messages or make offers',
+    title: 'Lead Messages',
+    description: 'Get notified when investors send you messages about your listings. Messages may include questions, offers, or requests for more information.',
   },
   {
     key: 'listing_performance',
@@ -207,9 +208,16 @@ export default function NotificationSettingsPage() {
     async (key: PreferenceKey, value: boolean) => {
       setOptimisticUpdates((prev) => ({ ...prev, [key]: value }));
       try {
+        // Get auth token from session if available
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: HeadersInit = { 'Content-Type': 'application/json' };
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         const response = await fetch('/api/notifications/preferences', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ [key]: value }),
           credentials: 'include',
         });

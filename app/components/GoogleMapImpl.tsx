@@ -48,6 +48,7 @@ const MAP_LIBRARIES: ('drawing' | 'places')[] = ['drawing', 'places'];
 const MAP_CONTAINER_STYLE: React.CSSProperties = {
   width: '100%',
   height: '100%',
+  touchAction: 'none', // Prevent page scroll when panning map on mobile
 };
 const DEFAULT_CENTER: google.maps.LatLngLiteral = {
   lat: 39.8283,

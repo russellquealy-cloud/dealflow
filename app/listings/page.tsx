@@ -463,15 +463,36 @@ export default function ListingsPage() {
             setMapViewport(data.viewport);
             // Clear zoom when using viewport (fitBounds will handle it)
             setMapZoom(undefined);
+            
+            // When using viewport, set map bounds to filter listings by location
+            // This ensures the list matches what's shown on the map
+            setMapBounds({
+              north: data.viewport.north,
+              south: data.viewport.south,
+              east: data.viewport.east,
+              west: data.viewport.west,
+            });
+            setActiveMapBounds(true);
+            
+            // Keep the formatted address in the search bar for display
+            // But we'll filter by map bounds, not text search
+            if (data.formattedAddress) {
+              setSearchQuery(data.formattedAddress);
+            }
           } else {
             // Fallback to center + zoom if no viewport
             setMapViewport(undefined);
             setMapZoom(14);
+            // Clear bounds filtering when using center/zoom
+            setActiveMapBounds(false);
+            setMapBounds(null);
           }
           
-          // Also update search query to show the formatted address
+          // Update search query to show the formatted address (for display only)
+          // But don't use it for filtering - we use map bounds instead
           if (data.formattedAddress) {
-            setSearchQuery(data.formattedAddress);
+            // Keep the formatted address visible but don't filter by it
+            // The search bar will show it, but filtering uses map bounds
           }
         } else if (!data.ok) {
           logger.warn('Geocoding returned no results:', data.error);
@@ -491,8 +512,29 @@ export default function ListingsPage() {
   const filteredListings = useMemo(() => {
     let filtered = allListings as ListingData[];
 
-    // Apply text search
-    if (searchQuery.trim()) {
+    // Apply map bounds filtering FIRST (most important when active)
+    // This ensures the list matches what's shown on the map
+    if (activeMapBounds && mapBounds) {
+      filtered = filtered.filter(listing => {
+        const lat = listing.latitude;
+        const lng = listing.longitude;
+        
+        if (!lat || !lng) {
+          return false;
+        }
+        
+        const isInBounds = lat >= mapBounds.south && 
+                          lat <= mapBounds.north && 
+                          lng >= mapBounds.west && 
+                          lng <= mapBounds.east;
+        
+        return isInBounds;
+      });
+    }
+
+    // Apply text search (only if map bounds are not active)
+    // When map bounds are active, we filter by location, not text
+    if (!activeMapBounds && searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(listing => 
         listing.address?.toLowerCase().includes(query) ||
@@ -526,7 +568,7 @@ export default function ListingsPage() {
     }
 
     return filtered;
-  }, [allListings, searchQuery, filters]);
+  }, [allListings, searchQuery, filters, activeMapBounds, mapBounds]);
 
   // Handle filter changes
   const handleFiltersChange = useCallback((newFilters: Filters) => {

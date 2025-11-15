@@ -89,7 +89,17 @@ function LoginInner() {
         });
 
         if (error) {
-          setMessage(error.message);
+          // Provide user-friendly error messages
+          if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
+            setMessage('⚠️ Too many requests. Please wait a few minutes and try again.');
+          } else if (error.message?.includes('email') || error.message?.includes('invalid')) {
+            setMessage('⚠️ Invalid email address. Please check and try again.');
+          } else if (error.message?.includes('500') || error.message?.includes('server')) {
+            setMessage('⚠️ Email service temporarily unavailable. Please try again in a few minutes or contact support.');
+          } else {
+            setMessage(`⚠️ ${error.message || 'Unable to send magic link. Please try again later.'}`);
+          }
+          logger.error('Magic link error:', error);
         } else {
           setMessage('📧 Check your email for the sign-in link. It may take a few minutes to arrive.');
         }
@@ -119,7 +129,17 @@ function LoginInner() {
       });
 
       if (error) {
-        setMessage(error.message || 'Unable to send reset email.');
+        // Provide user-friendly error messages
+        if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
+          setMessage('⚠️ Too many requests. Please wait a few minutes and try again.');
+        } else if (error.message?.includes('email') || error.message?.includes('invalid')) {
+          setMessage('⚠️ Invalid email address. Please check and try again.');
+        } else if (error.message?.includes('500') || error.message?.includes('server')) {
+          setMessage('⚠️ Email service temporarily unavailable. Please try again in a few minutes or contact support.');
+        } else {
+          setMessage(`⚠️ ${error.message || 'Unable to send reset email. Please try again later.'}`);
+        }
+        logger.error('Password reset error:', error);
         return;
       }
 

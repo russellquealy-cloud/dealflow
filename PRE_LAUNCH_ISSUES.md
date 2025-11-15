@@ -1,7 +1,53 @@
 # Pre-Launch Issues List - Off Axis Deals
 **Generated:** November 14, 2025  
+**Last Updated:** January 2025 (Post-QA Testing)  
 **Target Launch:** Public Website Launch  
 **Status:** 🟡 88% Complete - Critical issues must be resolved before launch
+
+## ✅ Recent Fixes (Post-QA Testing)
+
+### Test A2/A3 - Magic Link & Password Reset
+**Status:** ✅ Fixed (Error Handling Improved)  
+**Changes:**
+- Added user-friendly error messages for magic link and password reset failures
+- Improved error detection for rate limits, invalid emails, and server errors
+- Added detailed logging for debugging email delivery issues
+- **Note:** The 500 errors from Supabase auth endpoints indicate a Supabase SMTP configuration issue that needs to be resolved in Supabase dashboard (not a code issue)
+
+### Test L1/L3 - Listings Search & Map Sync
+**Status:** ✅ Fixed  
+**Changes:**
+- Fixed search geocoding to properly set map bounds and filter listings by location
+- When searching for a location (e.g., "Miami"), the map now recenters and the list filters by map bounds
+- Added map bounds filtering to `filteredListings` useMemo to ensure list matches map markers
+- Clear separation between text search (for address/city matching) and map bounds filtering (for location-based search)
+
+### Test MOB1 - Mobile Map Scroll
+**Status:** ✅ Fixed  
+**Changes:**
+- Added `touchAction: 'none'` to map container CSS to prevent page scroll when panning map
+- Single-finger panning now works correctly on mobile devices
+
+### Test N1 - Notification Preferences
+**Status:** ✅ Fixed  
+**Changes:**
+- Fixed 401 error by adding Authorization header with session token to API requests
+- Clarified "Lead Messages" description to explain that offers are just messages
+- Improved error handling and user feedback
+
+### Test P1 - Stripe Checkout Descriptions
+**Status:** ✅ Fixed  
+**Changes:**
+- Added product name and description generation based on segment (investor/wholesaler) and tier (basic/pro)
+- Added customer email and invoice settings to checkout session
+- Improved metadata for better tracking
+
+### Test AMD1 - Admin Dashboard
+**Status:** ⚠️ Partially Fixed  
+**Changes:**
+- Fixed admin role checking to use both `role` and `segment` fields
+- Created helper functions for consistent admin checks
+- **Note:** Database update required - run `supabase/sql/fix_admin_account.sql` to ensure admin@offaxisdeals.com has correct role
 
 ---
 
@@ -11,7 +57,6 @@
 **Priority:** 🔴 CRITICAL  
 **Impact:** Blocks user onboarding, password recovery, and admin access  
 **Status:** Not Working
-
 **Issues:**
 - Password reset emails not being delivered
 - Magic link emails not being delivered

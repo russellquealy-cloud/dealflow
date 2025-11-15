@@ -98,9 +98,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get product name and description based on segment and tier
+    const getProductInfo = () => {
+      const segmentName = segment === 'investor' ? 'Investor' : 'Wholesaler';
+      const tierName = tier === 'basic' ? 'Basic' : 'Pro';
+      const periodName = period === 'monthly' ? 'Monthly' : 'Yearly';
+      
+      return {
+        name: `Off Axis Deals - ${segmentName} ${tierName} (${periodName})`,
+        description: segment === 'investor'
+          ? tier === 'basic'
+            ? 'Access to property listings, basic search filters, and direct messaging with wholesalers.'
+            : 'Advanced analytics, lead conversion tracking, geographic heatmaps, and CSV/API export capabilities.'
+          : tier === 'basic'
+            ? 'List your properties, receive buyer inquiries, and manage your deals efficiently.'
+            : 'Advanced analytics, lead tracking, performance insights, and priority listing placement.',
+      };
+    };
+
+    const productInfo = getProductInfo();
+
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ 
+        price: priceId, 
+        quantity: 1,
+      }],
       metadata: {
         supabase_user_id: user.id,
         requested_segment: segment,
@@ -110,6 +133,13 @@ export async function POST(req: NextRequest) {
       },
       success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
+      // Add customer-facing information
+      customer_email: user.email || undefined,
+      payment_method_types: ['card'],
+      // Add invoice settings for better branding
+      invoice_creation: {
+        enabled: true,
+      },
     };
 
     // CRITICAL: Never set both customer and customer_email
