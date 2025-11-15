@@ -388,13 +388,11 @@ function renderWholesalerSection(stats: WholesalerStats) {
 function AdvancedAnalyticsCard({
   title,
   body,
-  href,
   isPro,
   onClick,
 }: {
   title: string;
   body: string;
-  href: string;
   isPro: boolean;
   onClick: () => void;
 }) {
@@ -508,7 +506,6 @@ function AdvancedAnalyticsSection({ isPro, userProfile }: { isPro: boolean; user
             key={card.title}
             title={card.title}
             body={card.body}
-            href={card.href}
             isPro={isPro}
             onClick={() => handleCardClick(card.href)}
           />

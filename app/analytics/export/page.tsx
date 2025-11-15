@@ -108,7 +108,7 @@ export default function ExportPage() {
           API Access
         </h3>
         <p style={{ margin: 0, fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>
-          API access for Pro accounts is coming soon. You'll be able to connect Off Axis Deals to your
+          API access for Pro accounts is coming soon. You&apos;ll be able to connect Off Axis Deals to your
           CRM and reporting tools for real-time data synchronization.
         </p>
         <div style={{ marginTop: 16, padding: 12, background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0' }}>

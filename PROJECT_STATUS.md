@@ -2,6 +2,8 @@
 **Generated:** November 8, 2025  
 **Last Updated:** November 14, 2025
 
+> **📋 See [PRE_LAUNCH_ISSUES.md](./PRE_LAUNCH_ISSUES.md) for comprehensive pre-launch checklist and remaining issues**
+
 ## Overall Completion: **~88%**
 
 ---

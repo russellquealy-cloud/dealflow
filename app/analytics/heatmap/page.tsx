@@ -180,7 +180,7 @@ export default async function HeatmapPage() {
               <HeatmapClient points={points} />
             </div>
             <p style={{ margin: '12px 0 0 0', fontSize: 13, color: '#64748b' }}>
-              Showing {points.length} {points.length === 1 ? 'property' : 'properties'} you've engaged with
+              Showing {points.length} {points.length === 1 ? 'property' : 'properties'} you&apos;ve engaged with
             </p>
           </div>
         </>
