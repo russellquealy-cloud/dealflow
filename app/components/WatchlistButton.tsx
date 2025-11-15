@@ -52,8 +52,12 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
   }, [authLoading, session, listingId]);
 
   const toggleWatchlist = async () => {
-    if (!userId || updating || !authToken) return;
+    if (!userId || updating || !authToken) {
+      console.log('Watchlist toggle blocked:', { userId: !!userId, updating, authToken: !!authToken });
+      return;
+    }
 
+    console.log(`⭐ Watchlist: ${isInWatchlist ? 'Removing' : 'Adding'} listing ${listingId}`);
     setUpdating(true);
     try {
       if (isInWatchlist) {
@@ -67,7 +71,14 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
         });
 
         if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.log('✅ Successfully removed from watchlist:', { listingId, response: data });
           setIsInWatchlist(false);
+          // Dispatch event to notify watchlist page to refresh
+          window.dispatchEvent(new CustomEvent('watchlist:updated', { detail: { action: 'remove', listingId } }));
+        } else {
+          const errorText = await response.text().catch(() => '');
+          console.error('❌ Failed to remove from watchlist:', { listingId, status: response.status, error: errorText });
         }
       } else {
         // Add to watchlist
@@ -82,11 +93,18 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
         });
 
         if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.log('✅ Successfully added to watchlist:', { listingId, response: data });
           setIsInWatchlist(true);
+          // Dispatch event to notify watchlist page to refresh
+          window.dispatchEvent(new CustomEvent('watchlist:updated', { detail: { action: 'add', listingId } }));
+        } else {
+          const errorText = await response.text().catch(() => '');
+          console.error('❌ Failed to add to watchlist:', { listingId, status: response.status, error: errorText });
         }
       }
     } catch (error) {
-      console.error('Error toggling watchlist:', error);
+      console.error('❌ Error toggling watchlist:', error);
     } finally {
       setUpdating(false);
     }

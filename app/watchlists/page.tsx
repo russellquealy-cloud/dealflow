@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ListingCard from '@/components/ListingCard';
@@ -22,6 +22,45 @@ export default function WatchlistsPage() {
   const [error, setError] = useState<string | null>(null);
   const authToken = useMemo(() => session?.access_token ?? null, [session]);
 
+  const loadWatchlists = React.useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    const headers: HeadersInit = {};
+    if (session.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    console.log('📋 Loading watchlists...');
+    fetch('/api/watchlists', {
+      credentials: 'include',
+      headers,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          const errorMessage = `Failed to load watchlists: ${response.status} ${errorText}`;
+          console.error('❌ Error loading watchlists:', errorMessage);
+          setError(errorMessage);
+          setWatchlists([]);
+          return;
+        }
+        const data = await response.json();
+        console.log('✅ Watchlists loaded:', { count: data.watchlists?.length || 0, watchlists: data.watchlists });
+        setWatchlists(data.watchlists || []);
+        setError(null);
+      })
+      .catch((error) => {
+        console.error('❌ Error loading watchlists:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load watchlists');
+        setWatchlists([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [session]);
+
   useEffect(() => {
     if (authLoading) {
       return;
@@ -32,37 +71,22 @@ export default function WatchlistsPage() {
       return;
     }
 
-    const headers: HeadersInit = {};
-    if (session.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
-    }
+    loadWatchlists();
+  }, [authLoading, session, router, loadWatchlists]);
 
-    fetch('/api/watchlists', {
-      credentials: 'include',
-      headers,
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => '');
-          const errorMessage = `Failed to load watchlists: ${response.status} ${errorText}`;
-          console.error('Error loading watchlists:', errorMessage);
-          setError(errorMessage);
-          setWatchlists([]);
-          return;
-        }
-        const data = await response.json();
-        setWatchlists(data.watchlists || []);
-        setError(null);
-      })
-      .catch((error) => {
-        console.error('Error loading watchlists:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load watchlists');
-        setWatchlists([]);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [authLoading, session, router]);
+  // Listen for watchlist updates from other pages
+  useEffect(() => {
+    const handleWatchlistUpdate = (event: CustomEvent) => {
+      console.log('📋 Watchlist updated event received:', event.detail);
+      // Reload watchlists when a property is saved/unsaved
+      loadWatchlists();
+    };
+
+    window.addEventListener('watchlist:updated', handleWatchlistUpdate as EventListener);
+    return () => {
+      window.removeEventListener('watchlist:updated', handleWatchlistUpdate as EventListener);
+    };
+  }, [loadWatchlists]);
 
   const handleRemove = async (watchlistId: string, listingId: string) => {
     try {
