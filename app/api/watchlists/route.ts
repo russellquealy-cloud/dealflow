@@ -27,6 +27,7 @@ type ListingSummary = {
   cover_image_url?: string | null;
   featured?: boolean | null;
   featured_until?: string | null;
+  status?: string | null;
   owner_profile?: Record<string, unknown> | null;
 };
 
@@ -171,7 +172,7 @@ export async function GET(request: NextRequest) {
           foundListings: listingsData?.length || 0,
           foundListingIds: listingsData?.map(l => l.id) || [],
           missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
-          listingStatuses: listingsData?.map(l => ({ id: l.id, status: (l as any).status })) || [],
+          listingStatuses: (listingsData as ListingSummary[] | undefined)?.map(l => ({ id: l.id, status: l.status ?? null })) || [],
         });
         
         // Log if any listings are missing
