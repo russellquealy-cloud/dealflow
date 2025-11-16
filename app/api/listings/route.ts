@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10; // Vercel max duration
@@ -57,15 +58,25 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createSupabaseServer();
     
+    // Check if user is admin (admins can see all listings including drafts)
+    const { data: { user } } = await supabase.auth.getUser();
+    const userIsAdmin = user ? await isAdmin(user.id, supabase) : false;
+    
     // Build query with timeout signal
     // Only show 'live' listings (exclude draft, archived, etc.)
+    // Admins can see all listings regardless of status
     let query = supabase
       .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until', { count: 'exact' })
+      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until, status', { count: 'exact' })
       .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
-      .or('status.eq.live,status.is.null') // Include 'live' status or null (for backward compatibility)
-      .range(params.offset!, params.offset! + params.limit! - 1);
+      .not('longitude', 'is', null);
+    
+    // Only filter by status for non-admin users
+    if (!userIsAdmin) {
+      query = query.or('status.eq.live,status.is.null'); // Include 'live' status or null (for backward compatibility)
+    }
+    
+    query = query.range(params.offset!, params.offset! + params.limit! - 1);
 
     if (
       params.south !== undefined &&
@@ -290,12 +301,26 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    console.log(`✅ Listings query completed in ${elapsed}ms: ${listings.length} items, total count: ${count || 0}`);
+    console.log(`✅ Listings query completed in ${elapsed}ms: ${listings.length} items, total count: ${count || 0}${userIsAdmin ? ' (admin view - all statuses)' : ' (public view - live only)'}`);
+
+    // Log diagnostic info for admins
+    if (userIsAdmin && listings.length === 0) {
+      console.log('⚠️ Admin query returned 0 listings. Possible reasons:');
+      console.log('  - No listings have latitude/longitude coordinates');
+      console.log('  - All listings are outside the current map bounds');
+      console.log('  - RLS policies may be blocking access');
+    }
 
     return NextResponse.json({
       items: enrichedListings,
       count: count || data.length,
-      error: null
+      error: null,
+      debug: userIsAdmin ? {
+        isAdmin: true,
+        totalListings: count || 0,
+        filteredListings: listings.length,
+        note: 'Admin can see all listings regardless of status'
+      } : undefined
     });
 
   } catch (error) {
