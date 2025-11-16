@@ -1,30 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { isAdmin } from '@/lib/admin';
+import { getListingsForSearch, type ListingsQueryParams } from '@/lib/listings';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10; // Vercel max duration
 
-interface ListingsQueryParams {
-  limit?: number;
-  offset?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  minBeds?: number;
-  maxBeds?: number;
-  minBaths?: number;
-  maxBaths?: number;
-  minSqft?: number;
-  maxSqft?: number;
-  city?: string;
-  state?: string;
-  search?: string;
-  sortBy?: string;
-  south?: number;
-  north?: number;
-  west?: number;
-  east?: number;
-}
+// Note: ListingsQueryParams is imported from @/lib/listings
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -56,153 +38,32 @@ export async function GET(request: NextRequest) {
       east: searchParams.get('east') ? parseFloat(searchParams.get('east')!) : undefined,
     };
 
-    const supabase = await createSupabaseServer();
-    
-    // Check if user is admin (admins can see all listings including drafts)
-    const { data: { user } } = await supabase.auth.getUser();
-    const userIsAdmin = user ? await isAdmin(user.id, supabase) : false;
-    
-    // Build query with timeout signal
-    // Only show 'live' listings (exclude draft, archived, etc.)
-    // Admins can see all listings regardless of status
-    let query = supabase
-      .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until, status', { count: 'exact' })
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null);
-    
-    // Only filter by status for non-admin users
-    if (!userIsAdmin) {
-      query = query.or('status.eq.live,status.is.null'); // Include 'live' status or null (for backward compatibility)
-    }
-    
-    query = query.range(params.offset!, params.offset! + params.limit! - 1);
+    // Use unified listings helper - single source of truth for map and list views
+    const queryParams: ListingsQueryParams = {
+      minPrice: params.minPrice,
+      maxPrice: params.maxPrice,
+      minBeds: params.minBeds,
+      maxBeds: params.maxBeds,
+      minBaths: params.minBaths,
+      maxBaths: params.maxBaths,
+      minSqft: params.minSqft,
+      maxSqft: params.maxSqft,
+      city: params.city,
+      state: params.state,
+      search: params.search,
+      south: params.south,
+      north: params.north,
+      west: params.west,
+      east: params.east,
+      limit: params.limit,
+      offset: params.offset,
+      sortBy: (params.sortBy as 'newest' | 'price_asc' | 'price_desc' | 'sqft_asc' | 'sqft_desc') || 'newest',
+      requireCoordinates: true, // Map/list views require coordinates
+      includeDrafts: false // Only admins can see drafts via admin flag
+    };
 
-    if (
-      params.south !== undefined &&
-      params.north !== undefined &&
-      params.west !== undefined &&
-      params.east !== undefined
-    ) {
-      query = query
-        .gte('latitude', params.south)
-        .lte('latitude', params.north)
-        .gte('longitude', params.west)
-        .lte('longitude', params.east);
-    }
-
-    // Apply filters only when present (avoid unindexed wildcard searches)
-    if (params.minPrice !== undefined) {
-      query = query.gte('price', params.minPrice);
-    }
-    if (params.maxPrice !== undefined) {
-      query = query.lte('price', params.maxPrice);
-    }
-    if (params.minBeds !== undefined) {
-      query = query.gte('beds', params.minBeds);
-    }
-    if (params.maxBeds !== undefined) {
-      query = query.lte('beds', params.maxBeds);
-    }
-    if (params.minBaths !== undefined) {
-      query = query.gte('baths', params.minBaths);
-    }
-    if (params.maxBaths !== undefined) {
-      query = query.lte('baths', params.maxBaths);
-    }
-    if (params.minSqft !== undefined) {
-      query = query.gte('sqft', params.minSqft);
-    }
-    if (params.maxSqft !== undefined) {
-      query = query.lte('sqft', params.maxSqft);
-    }
-    
-    // Use exact match for city/state (indexed), avoid ilike wildcards
-    if (params.city) {
-      query = query.eq('city', params.city);
-    }
-    if (params.state) {
-      query = query.eq('state', params.state);
-    }
-    
-    // For search, only search in indexed fields (address, city, state) with prefix match
-    // Avoid '%...%' wildcard searches across many columns
-    if (params.search && params.search.trim()) {
-      const rawSearch = params.search.trim();
-
-      // Extract potential city/state parts when the search includes commas (e.g. "Salem, MA")
-      let primaryTerm = rawSearch;
-      let stateFilter: string | undefined;
-
-      const commaIndex = rawSearch.indexOf(',');
-      if (commaIndex !== -1) {
-        primaryTerm = rawSearch.slice(0, commaIndex).trim();
-        const remainder = rawSearch.slice(commaIndex + 1).trim();
-        const stateCandidate = remainder.split(/\s+/)[0];
-        if (stateCandidate && /^[A-Za-z]{2}$/u.test(stateCandidate)) {
-          stateFilter = stateCandidate.toUpperCase();
-        }
-      }
-
-      // Handle inputs like "Salem MA" (space-separated tokens)
-      if (!stateFilter) {
-        const tokens = primaryTerm.split(/\s+/).filter(Boolean);
-        const lastToken = tokens[tokens.length - 1];
-        if (lastToken && /^[A-Za-z]{2}$/u.test(lastToken)) {
-          stateFilter = lastToken.toUpperCase();
-          primaryTerm = tokens.slice(0, -1).join(' ');
-        }
-      }
-
-      const sanitizeForIlike = (value: string) =>
-        value
-          .replace(/[%_]/g, '') // remove wildcard modifiers
-          .replace(/[^A-Za-z0-9\s]/g, ' ') // strip punctuation (commas, etc.)
-          .replace(/\s+/g, ' ')
-          .trim();
-
-      const normalizedTerm = sanitizeForIlike(primaryTerm || rawSearch);
-
-      if (stateFilter) {
-        query = query.eq('state', stateFilter);
-      }
-
-      if (normalizedTerm) {
-        const pattern = `${normalizedTerm}%`;
-        const fragments: string[] = [
-          `address.ilike.${pattern}`,
-          `city.ilike.${pattern}`,
-        ];
-        if (!stateFilter) {
-          fragments.push(`state.ilike.${pattern}`);
-        }
-        query = query.or(fragments.join(','));
-      }
-    }
-
-    query = query.order('featured', { ascending: false, nullsFirst: false });
-
-    const sortBy = params.sortBy || 'newest';
-    switch (sortBy) {
-      case 'price_asc':
-        query = query.order('price', { ascending: true, nullsFirst: false });
-        break;
-      case 'price_desc':
-        query = query.order('price', { ascending: false, nullsFirst: false });
-        break;
-      case 'sqft_asc':
-        query = query.order('sqft', { ascending: true, nullsFirst: false });
-        break;
-      case 'sqft_desc':
-        query = query.order('sqft', { ascending: false, nullsFirst: false });
-        break;
-      default:
-        query = query.order('created_at', { ascending: false, nullsFirst: false });
-        break;
-    }
-
-    // Execute query with timeout
-    const queryPromise = query;
+    // Execute unified query with timeout
+    const queryPromise = getListingsForSearch(queryParams);
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Query timeout after 8 seconds')), 8000);
     });
@@ -232,7 +93,7 @@ export async function GET(request: NextRequest) {
     clearTimeout(timeoutId);
     const elapsed = Date.now() - startTime;
 
-    const { data, error, count } = result as { data: unknown[] | null; error: { message: string; code?: string } | null; count: number | null };
+    const { data, error, count } = result;
 
     if (error) {
       console.error('❌ Listings query error:', error);

@@ -1,6 +1,10 @@
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { isAdmin } from '@/lib/admin';
 
+// Mark admin routes as dynamic since they use cookies for authentication
+// This suppresses the build-time warnings about static generation
+export const dynamic = 'force-dynamic';
+
 /**
  * Server-side layout protection for /admin routes
  * This ensures only admin users can access admin pages
