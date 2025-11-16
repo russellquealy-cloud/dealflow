@@ -7,12 +7,19 @@
 ## ✅ Recent Fixes (Post-QA Testing)
 
 ### Test A2/A3 - Magic Link & Password Reset
-**Status:** ✅ Fixed (Error Handling Improved)  
+**Status:** ✅ Fixed (Code + Flows Updated)  
 **Changes:**
-- Added user-friendly error messages for magic link and password reset failures
-- Improved error detection for rate limits, invalid emails, and server errors
-- Added detailed logging for debugging email delivery issues
-- **Note:** The 500 errors from Supabase auth endpoints indicate a Supabase SMTP configuration issue that needs to be resolved in Supabase dashboard (not a code issue)
+- Migrated browser auth to implicit flow (no PKCE) with `detectSessionInUrl: true`
+- Standardized `emailRedirectTo`/`redirectTo` to `NEXT_PUBLIC_SITE_URL` (`/login`, `/reset-password`)
+- Implemented client `/reset-password` page to update password via recovery session
+- Preserved and improved user-friendly error messages and console diagnostics
+- Removed any need to call `exchangeCodeForSession` in the browser
+- Supabase Auth URL allowlist required:
+  - `http://localhost:3000/login`
+  - `http://localhost:3000/reset-password`
+  - `https://offaxisdeals.com/login`
+  - `https://offaxisdeals.com/reset-password`
+- **Note:** Any 500s from Supabase auth endpoints now likely reflect SMTP/domain configuration issues in Supabase (not code)
 
 ### Test L1/L3 - Listings Search & Map Sync
 **Status:** ✅ Fixed  
@@ -60,20 +67,21 @@
 ### 1. Email Delivery for Authentication
 **Priority:** 🔴 CRITICAL  
 **Impact:** Blocks user onboarding, password recovery, and admin access  
-**Status:** Not Working
+**Status:** Code complete; configuration pending
 **Issues:**
 - Password reset emails not being delivered
 - Magic link emails not being delivered
 - Admin cannot access admin panel without email verification
 
 **Required Actions:**
-- [ ] Verify SendGrid/Supabase email configuration
+- [ ] Verify Supabase SMTP configuration (Namecheap Private Email)
 - [ ] Test email delivery in production environment
 - [ ] Configure email templates for password reset
 - [ ] Configure email templates for magic link
 - [ ] Set up email domain authentication (SPF, DKIM, DMARC)
 - [ ] Test email delivery end-to-end (signup, password reset, magic link)
 - [ ] Add email delivery monitoring/alerting
+ - [ ] Ensure Auth URL allowlist includes `/login` and `/reset-password` on both localhost and production
 
 **Estimated Time:** 1-2 days
 

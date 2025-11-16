@@ -302,6 +302,54 @@ export default function AdminDashboard() {
         border: '1px solid #bbdefb'
       }}>
         <h3 style={{ margin: '0 0 15px 0', color: '#1565c0' }}>Quick Actions</h3>
+        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <button
+            onClick={async () => {
+              try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session?.user?.email) {
+                  alert('❌ No session found. Please log in first.');
+                  return;
+                }
+
+                const response = await fetch('/api/diagnostics/email', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: session.user.email }),
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                  alert(`✅ Email diagnostics completed!\n\nCheck your inbox (${session.user.email}) for test emails.\n\nMagic Link: ${data.results.magicLink.success ? '✅' : '❌'}\nPassword Reset: ${data.results.passwordReset.success ? '✅' : '❌'}`);
+                } else {
+                  const errors = [
+                    data.results.magicLink.error ? `Magic Link: ${data.results.magicLink.error}` : null,
+                    data.results.passwordReset.error ? `Password Reset: ${data.results.passwordReset.error}` : null,
+                  ].filter(Boolean).join('\n');
+                  alert(`⚠️ Email diagnostics completed with errors:\n\n${errors}\n\nCheck console for details.`);
+                }
+                
+                console.log('📧 Email diagnostics result:', data);
+              } catch (error) {
+                console.error('Error running email diagnostics:', error);
+                alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to run diagnostics'}`);
+              }
+            }}
+            style={{
+              padding: '10px 20px',
+              background: '#9c27b0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            📧 Send Test Email to Myself
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
           <Link 
             href="/pricing" 

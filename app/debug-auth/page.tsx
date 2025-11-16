@@ -53,13 +53,15 @@ export default function DebugAuthPage() {
   const testMagicLink = async () => {
     try {
       console.log('🧪 Testing magic link...');
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      const redirectTo = `${siteUrl}/login`;
       const { data, error } = await supabase.auth.signInWithOtp({
         email: 'russell.quealy@gmail.com',
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: redirectTo
         }
       });
-      console.log('🧪 Magic link result:', data, error);
+      console.log('🧪 Magic link result:', { data, error, redirectTo });
     } catch (err) {
       console.error('🧪 Magic link error:', err);
     }

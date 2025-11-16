@@ -36,22 +36,46 @@ function SignupInner() {
     }
     
     try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      const redirectTo = `${siteUrl}/login`;
+
+      console.log('📧 Signup: Requesting confirmation email:', {
+        email,
+        redirectTo,
+        siteUrl,
+      });
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+          emailRedirectTo: redirectTo
         }
       });
 
       if (error) {
+        console.error('❌ Signup email delivery failed:', {
+          error: error.message,
+          code: error.status,
+          email,
+          redirectTo,
+          fullError: error,
+        });
         setMessage(error.message);
       } else {
+        console.log('✅ Signup confirmation email sent successfully:', {
+          email,
+          redirectTo,
+        });
         setMessage('Check your email to confirm your account, then you can sign in.');
       }
     } catch (err) {
+      console.error('❌ Signup exception:', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        email,
+        fullError: err,
+      });
       setMessage('An unexpected error occurred. Please try again.');
-      console.error('Signup error:', err);
     } finally {
       setLoading(false);
     }

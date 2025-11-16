@@ -76,9 +76,15 @@ function LoginInner() {
           setLoading(false);
         }
       } else {
-        // Magic link login with mobile-optimized redirect
+        // Magic link login with consistent redirect URL
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
         const redirectTo = `${siteUrl}/login`;
+
+        logger.log('📧 Requesting magic link:', {
+          email,
+          redirectTo,
+          siteUrl,
+        });
 
         const { error } = await supabase.auth.signInWithOtp({
           email,
@@ -89,6 +95,16 @@ function LoginInner() {
         });
 
         if (error) {
+          // Enhanced error logging
+          logger.error('❌ Magic link email delivery failed:', {
+            error: error.message,
+            code: error.status,
+            email,
+            redirectTo,
+            siteUrl,
+            fullError: error,
+          });
+
           // Provide user-friendly error messages
           if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
             setMessage('⚠️ Too many requests. Please wait a few minutes and try again.');
@@ -97,10 +113,13 @@ function LoginInner() {
           } else if (error.message?.includes('500') || error.message?.includes('server')) {
             setMessage('⚠️ Email service temporarily unavailable. Please try again in a few minutes or contact support.');
           } else {
-            setMessage(`⚠️ ${error.message || 'Unable to send magic link. Please try again later.'}`);
+            setMessage('⚠️ Unable to send magic link. Please try again later.');
           }
-          logger.error('Magic link error:', error);
         } else {
+          logger.log('✅ Magic link email sent successfully:', {
+            email,
+            redirectTo,
+          });
           setMessage('📧 Check your email for the sign-in link. It may take a few minutes to arrive.');
         }
       }
@@ -124,11 +143,28 @@ function LoginInner() {
 
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
       const redirectTo = `${siteUrl}/reset-password`;
+
+      logger.log('🔑 Requesting password reset:', {
+        email: email.trim(),
+        redirectTo,
+        siteUrl,
+      });
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
       });
 
       if (error) {
+        // Enhanced error logging
+        logger.error('❌ Password reset email delivery failed:', {
+          error: error.message,
+          code: error.status,
+          email: email.trim(),
+          redirectTo,
+          siteUrl,
+          fullError: error,
+        });
+
         // Provide user-friendly error messages
         if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
           setMessage('⚠️ Too many requests. Please wait a few minutes and try again.');
@@ -137,15 +173,22 @@ function LoginInner() {
         } else if (error.message?.includes('500') || error.message?.includes('server')) {
           setMessage('⚠️ Email service temporarily unavailable. Please try again in a few minutes or contact support.');
         } else {
-          setMessage(`⚠️ ${error.message || 'Unable to send reset email. Please try again later.'}`);
+          setMessage('⚠️ Unable to send reset email. Please try again later.');
         }
-        logger.error('Password reset error:', error);
         return;
       }
 
+      logger.log('✅ Password reset email sent successfully:', {
+        email: email.trim(),
+        redirectTo,
+      });
       setMessage('🔑 Check your email for a password reset link.');
     } catch (error) {
-      logger.error('Password reset error:', error);
+      logger.error('❌ Password reset exception:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        email: email.trim(),
+        fullError: error,
+      });
       setMessage('Unable to send reset email. Please try again later.');
     } finally {
       setResetting(false);

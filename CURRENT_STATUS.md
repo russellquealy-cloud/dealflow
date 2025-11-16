@@ -6,9 +6,14 @@
 
 ## ✅ Recently Completed (This Session)
 
+### Authentication Flows (Magic Link + Password Reset)
+- ✅ Migrated browser auth to implicit flow (no PKCE) with `detectSessionInUrl: true`
+- ✅ Unified auth redirects to `NEXT_PUBLIC_SITE_URL` (`/login`, `/reset-password`)
+- ✅ Implemented client `app/reset-password/page.tsx` to update password via recovery session
+- ✅ Hardened error handling and user messaging for magic link and reset
+
 ### Admin Dashboard Security & Access
-- ✅ Server-side route protection (`app/admin/layout.tsx`) - prevents unauthorized access
-- ✅ Admin button in header (only shows for admin users)
+- ✅ Admin page accessible by URL; header button intentionally hidden for now
 - ✅ Centralized admin check helpers (`app/lib/admin.ts`)
 - ✅ Diagnostic and auto-fix endpoints for admin account issues
 - ✅ Improved error page with fix instructions
@@ -26,11 +31,13 @@
 
 ### 1. Email Delivery for Authentication ⚠️
 **Priority:** 🔴 CRITICAL  
-**Status:** Code fixed, but Supabase SMTP configuration needed  
+**Status:** Code complete (implicit flow + reset page). Supabase SMTP/domain configuration required  
 **Impact:** Blocks user onboarding, password recovery, admin access
 
 **What's Done:**
 - ✅ Error handling improved in code
+- ✅ Flows updated to implicit; `/reset-password` page implemented
+- ✅ Redirects standardized to `NEXT_PUBLIC_SITE_URL`
 - ✅ User-friendly error messages
 - ✅ Detailed logging for debugging
 
@@ -41,6 +48,11 @@
   - Test email delivery in Supabase dashboard
   - Configure SPF/DKIM/DMARC records for email domain
 - [ ] Test magic link and password reset emails end-to-end
+- [ ] Ensure Supabase Auth URL allowlist includes:
+  - `http://localhost:3000/login`
+  - `http://localhost:3000/reset-password`
+  - `https://offaxisdeals.com/login`
+  - `https://offaxisdeals.com/reset-password`
 
 **Estimated Time:** 1-2 days (mostly configuration, not code)
 
@@ -283,7 +295,7 @@
 
 ## 📝 Notes
 
-- **Admin Dashboard:** Now fully secured and accessible via header button
+- **Admin Dashboard:** Accessible by direct URL; header button intentionally hidden for now
 - **Recent Fixes:** All QA test issues addressed (code-side)
 - **Biggest Risks:** Watchlist display and email configuration (both fixable)
 - **Mobile Work:** Planned for this weekend with screenshots
