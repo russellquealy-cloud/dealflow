@@ -96,7 +96,7 @@ export const supabase = (() => {
               if (cookieOptions.domain) cookieString += `; Domain=${cookieOptions.domain}`;
               
               document.cookie = cookieString;
-            } catch (_error) {
+            } catch {
               // Silent fail on cookie setting errors
             }
           },
@@ -109,7 +109,7 @@ export const supabase = (() => {
                 cookieString += `; Domain=${domain}`;
               }
               document.cookie = cookieString;
-            } catch (_error) {
+            } catch {
               // Silent fail on cookie removal errors
             }
           }
@@ -135,7 +135,7 @@ export const supabase = (() => {
     };
 
     // Handle auth state changes to prevent excessive refreshes
-    supabaseClient.auth.onAuthStateChange((event: string, _session: Session | null) => {
+    supabaseClient.auth.onAuthStateChange((event: string) => {
       // Only log significant events, not every token refresh
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
         logger.log(`🔐 Auth state changed: ${event}`);

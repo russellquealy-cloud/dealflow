@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
       };
     };
 
-    const productInfo = getProductInfo();
+    // const productInfo = getProductInfo(); // Reserved for future use
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",

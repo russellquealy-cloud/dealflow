@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
     const supabase = await createSupabaseServer();
     const now = new Date();
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-    const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    // const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // Reserved for future use
+    // const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Reserved for future use
 
     // Get users with subscriptions expiring soon
     const { data: profiles, error: profilesError } = await supabase

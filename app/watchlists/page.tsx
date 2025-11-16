@@ -223,7 +223,7 @@ export default function WatchlistsPage() {
             <strong>Debug Info:</strong>
             <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
               <li>Check browser console for detailed logs</li>
-              <li>Verify you're logged in</li>
+              <li>Verify you&apos;re logged in</li>
               <li>Check network tab for API response</li>
             </ul>
           </div>
@@ -282,7 +282,7 @@ export default function WatchlistsPage() {
               fontSize: '14px',
               color: '#92400e'
             }}>
-              <strong>Debug Info:</strong> Check browser console for detailed diagnostics about why listings aren't loading.
+              <strong>Debug Info:</strong> Check browser console for detailed diagnostics about why listings aren&apos;t loading.
             </div>
           )}
           <Link href="/listings" style={{

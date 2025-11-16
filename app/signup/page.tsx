@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 function SignupInner() {
   const params = useSearchParams();
-  const next = (params ? params.get('next') : null) ?? '/';
+  // const next = (params ? params.get('next') : null) ?? '/'; // Reserved for future redirect
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

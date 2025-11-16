@@ -62,7 +62,7 @@ function LoginInner() {
               refresh_token: data.session.refresh_token,
               expires_at: data.session.expires_at
             }));
-          } catch (_error) {
+          } catch {
             // Ignore localStorage errors
           }
           

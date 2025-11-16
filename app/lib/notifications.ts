@@ -132,7 +132,7 @@ async function getUserEmail(supabase: SupabaseClient, userId: string): Promise<s
       if (!authError && authData?.user?.email) {
         return authData.user.email;
       }
-    } catch (adminError) {
+    } catch {
       // Admin API might not be available, try profiles table
       logger.log('Admin API not available, trying profiles table', { userId });
     }

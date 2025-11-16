@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/server';
 import { isAdmin } from '@/lib/admin';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';

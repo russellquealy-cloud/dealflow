@@ -8,8 +8,6 @@ import { supabase } from '@/supabase/client';
 export default function SettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
-
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -17,7 +15,6 @@ export default function SettingsPage() {
         router.push('/login?next=/settings');
         return;
       }
-      setUser(session.user);
       setLoading(false);
     };
 
