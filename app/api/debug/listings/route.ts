@@ -7,7 +7,7 @@ import { isAdmin } from '@/lib/admin';
  * GET /api/debug/listings
  * Query params: ?city=Miami&state=FL or ?city=Tucson&state=AZ
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();

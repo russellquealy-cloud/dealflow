@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getListingsForSearch, type ListingsQueryParams } from '@/lib/listings';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10; // Vercel max duration
@@ -35,6 +37,11 @@ export async function GET(request: NextRequest) {
       west: searchParams.get('west') ? parseFloat(searchParams.get('west')!) : undefined,
       east: searchParams.get('east') ? parseFloat(searchParams.get('east')!) : undefined,
     };
+
+    // Get Supabase client and user for owner profiles and admin checks
+    const supabase = await createSupabaseServer();
+    const { data: { user } } = await supabase.auth.getUser();
+    const userIsAdmin = user ? await isAdmin(user.id, supabase) : false;
 
     // Use unified listings helper - single source of truth for map and list views
     const queryParams: ListingsQueryParams = {
