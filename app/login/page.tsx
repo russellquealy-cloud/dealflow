@@ -77,8 +77,8 @@ function LoginInner() {
         }
       } else {
         // Magic link login with mobile-optimized redirect
-        const origin = window.location.origin;
-        const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+        const redirectTo = `${siteUrl}/login`;
 
         const { error } = await supabase.auth.signInWithOtp({
           email,
@@ -122,8 +122,8 @@ function LoginInner() {
       setResetting(true);
       setMessage(null);
 
-      const origin = window.location.origin;
-      const redirectTo = `${origin}/auth/callback`;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      const redirectTo = `${siteUrl}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
       });

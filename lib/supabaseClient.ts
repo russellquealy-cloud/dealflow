@@ -24,9 +24,9 @@ export const supabaseClient = (() => {
       {
         auth: {
           autoRefreshToken: true,
-          detectSessionInUrl: false, // CRITICAL: Prevent URL-based session detection
+          detectSessionInUrl: true,
           persistSession: true,
-          flowType: 'pkce',
+          flowType: 'implicit',
           storageKey: 'dealflow-auth-token',
           storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         },
