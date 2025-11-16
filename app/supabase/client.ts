@@ -1,7 +1,6 @@
 'use client';
 import { createBrowserClient } from '@supabase/ssr';
 import { logger } from '@/lib/logger';
-import type { Session } from '@supabase/supabase-js';
 
 // Debug environment variables
 logger.log('🔍 Environment variables check:', {

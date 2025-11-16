@@ -80,8 +80,9 @@ function AIUsagePanel({ user }: { user: { id: string; email?: string } | null })
   }
 
   const isUnlimited = usage.limit === null;
-  const percentageUsed = isUnlimited ? 0 : usage.limit > 0 ? (usage.used / usage.limit) * 100 : 0;
-  const isLowRemaining = !isUnlimited && usage.remaining !== null && usage.limit !== null && (usage.remaining / usage.limit) < 0.2;
+  const limit = usage.limit ?? 0;
+  const percentageUsed = isUnlimited ? 0 : limit > 0 ? (usage.used / limit) * 100 : 0;
+  const isLowRemaining = !isUnlimited && usage.remaining !== null && usage.limit !== null && (usage.remaining / limit) < 0.2;
   const resetsDate = new Date(usage.resetsOn);
   const resetsFormatted = resetsDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 

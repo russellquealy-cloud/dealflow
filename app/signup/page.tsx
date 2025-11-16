@@ -1,13 +1,13 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+// import { useSearchParams } from 'next/navigation'; // Reserved for future redirect
 import { supabase } from '@/supabase/client';
 
 export const dynamic = 'force-dynamic';
 
 function SignupInner() {
-  const params = useSearchParams();
+  // const params = useSearchParams(); // Reserved for future redirect
   // const next = (params ? params.get('next') : null) ?? '/'; // Reserved for future redirect
 
   const [email, setEmail] = useState('');

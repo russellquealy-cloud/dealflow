@@ -99,24 +99,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Get product name and description based on segment and tier
-    const getProductInfo = () => {
-      const segmentName = segment === 'investor' ? 'Investor' : 'Wholesaler';
-      const tierName = tier === 'basic' ? 'Basic' : 'Pro';
-      const periodName = period === 'monthly' ? 'Monthly' : 'Yearly';
-      
-      return {
-        name: `Off Axis Deals - ${segmentName} ${tierName} (${periodName})`,
-        description: segment === 'investor'
-          ? tier === 'basic'
-            ? 'Access to property listings, basic search filters, and direct messaging with wholesalers.'
-            : 'Advanced analytics, lead conversion tracking, geographic heatmaps, and CSV/API export capabilities.'
-          : tier === 'basic'
-            ? 'List your properties, receive buyer inquiries, and manage your deals efficiently.'
-            : 'Advanced analytics, lead tracking, performance insights, and priority listing placement.',
-      };
-    };
-
-    // const productInfo = getProductInfo(); // Reserved for future use
+    // Reserved for future use:
+    // const getProductInfo = () => {
+    //   const segmentName = segment === 'investor' ? 'Investor' : 'Wholesaler';
+    //   const tierName = tier === 'basic' ? 'Basic' : 'Pro';
+    //   const periodName = period === 'monthly' ? 'Monthly' : 'Yearly';
+    //   
+    //   return {
+    //     name: `Off Axis Deals - ${segmentName} ${tierName} (${periodName})`,
+    //     description: segment === 'investor'
+    //       ? tier === 'basic'
+    //         ? 'Access to property listings, basic search filters, and direct messaging with wholesalers.'
+    //         : 'Advanced analytics, lead conversion tracking, geographic heatmaps, and CSV/API export capabilities.'
+    //       : tier === 'basic'
+    //         ? 'List your properties, receive buyer inquiries, and manage your deals efficiently.'
+    //         : 'Advanced analytics, lead tracking, performance insights, and priority listing placement.',
+    //   };
+    // };
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
