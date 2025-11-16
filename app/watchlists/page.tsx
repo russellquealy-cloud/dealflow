@@ -49,6 +49,17 @@ export default function WatchlistsPage() {
         const data = await response.json();
         console.log('✅ Watchlists loaded:', { count: data.watchlists?.length || 0, watchlists: data.watchlists });
         
+        // Log diagnostic information if available
+        if (data.diagnostics) {
+          console.log('🔍 Watchlist Diagnostics:', {
+            requestedListingIds: data.diagnostics.requestedListingIds,
+            foundListingIds: data.diagnostics.foundListingIds,
+            missingListingIds: data.diagnostics.missingListingIds,
+            errorDetails: data.diagnostics.errorDetails,
+            summary: `${data.diagnostics.foundListingIds.length} found, ${data.diagnostics.missingListingIds.length} missing`,
+          });
+        }
+        
         // Log detailed info about each watchlist item
         if (data.watchlists && data.watchlists.length > 0) {
           data.watchlists.forEach((item: WatchlistItem, index: number) => {

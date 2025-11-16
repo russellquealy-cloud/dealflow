@@ -142,11 +142,21 @@ export default function AdminDashboard() {
 
   const features = [
     {
+      name: 'User Analytics (Pro Features)',
+      description: 'Advanced analytics for Pro users - Lead conversion, heatmaps, and data export',
+      links: [
+        { name: 'Lead Conversion Trends', href: '/analytics/lead-conversion', status: 'exists' },
+        { name: 'Geographic Heatmap', href: '/analytics/heatmap', status: 'exists' },
+        { name: 'CSV & API Export', href: '/analytics/export', status: 'exists' }
+      ]
+    },
+    {
       name: 'Alerts & Watchlists',
       description: 'Property alerts and watchlist management',
       links: [
         { name: 'Alerts', href: '/admin/alerts', status: 'stub' },
-        { name: 'Watchlists', href: '/admin/watchlists', status: 'stub' }
+        { name: 'Watchlists Admin', href: '/admin/watchlists', status: 'exists' },
+        { name: 'User Watchlists', href: '/watchlists', status: 'exists' }
       ]
     },
     {
@@ -161,16 +171,35 @@ export default function AdminDashboard() {
       name: 'Reports & Export',
       description: 'Exportable reports and CRM integration',
       links: [
-        { name: 'Export Reports', href: '/admin/reports', status: 'stub' },
+        { name: 'Export Reports', href: '/admin/reports', status: 'exists' },
         { name: 'CRM Export', href: '/admin/crm-export', status: 'stub' }
       ]
     },
     {
-      name: 'Analytics',
-      description: 'Advanced analytics and market data',
+      name: 'Admin Analytics',
+      description: 'Admin-level analytics and system overview',
       links: [
-        { name: 'Analytics Dashboard', href: '/admin/analytics', status: 'stub' },
+        { name: 'Analytics Dashboard', href: '/admin/analytics', status: 'exists' },
         { name: 'Off-Market Feed', href: '/admin/off-market', status: 'stub' }
+      ]
+    },
+    {
+      name: 'System & Diagnostics',
+      description: 'System health, diagnostics, and admin tools',
+      links: [
+        { name: 'Admin Diagnostics', href: '/api/admin/diagnose', status: 'exists' },
+        { name: 'Fix Admin Account', href: '/api/admin/fix-account', status: 'exists' },
+        { name: 'Email Test', href: '/api/email/test', status: 'exists' },
+        { name: 'Health Check', href: '/api/health', status: 'exists' }
+      ]
+    },
+    {
+      name: 'Support & Communication',
+      description: 'Support system and user communication',
+      links: [
+        { name: 'Support Center', href: '/admin/support', status: 'exists' },
+        { name: 'Feedback System', href: '/admin/feedback', status: 'exists' },
+        { name: 'Contact Sales', href: '/contact-sales', status: 'exists' }
       ]
     },
     {
@@ -179,15 +208,6 @@ export default function AdminDashboard() {
       links: [
         { name: 'Team Seats', href: '/admin/team', status: 'stub' },
         { name: 'White-label Branding', href: '/admin/branding', status: 'stub' }
-      ]
-    },
-    {
-      name: 'Support & Communication',
-      description: 'Support system and user communication',
-      links: [
-        { name: 'Support Center', href: '/admin/support', status: 'stub' },
-        { name: 'Feedback System', href: '/admin/feedback', status: 'stub' },
-        { name: 'Contact Sales', href: '/admin/contact-sales', status: 'exists' }
       ]
     },
     {
@@ -294,7 +314,7 @@ export default function AdminDashboard() {
               fontSize: '14px'
             }}
           >
-            Test Pricing Page
+            Pricing Page
           </Link>
           <Link 
             href="/listings" 
@@ -307,7 +327,7 @@ export default function AdminDashboard() {
               fontSize: '14px'
             }}
           >
-            Test Listings Page
+            Listings Page
           </Link>
           <Link 
             href="/my-listings" 
@@ -320,7 +340,46 @@ export default function AdminDashboard() {
               fontSize: '14px'
             }}
           >
-            Test My Listings
+            My Listings
+          </Link>
+          <Link 
+            href="/analytics/lead-conversion" 
+            style={{
+              padding: '10px 20px',
+              background: '#7b1fa2',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+          >
+            Analytics (Pro)
+          </Link>
+          <Link 
+            href="/account" 
+            style={{
+              padding: '10px 20px',
+              background: '#0288d1',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+          >
+            Account Settings
+          </Link>
+          <Link 
+            href="/watchlists" 
+            style={{
+              padding: '10px 20px',
+              background: '#5c6bc0',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+          >
+            Watchlists
           </Link>
         </div>
       </div>

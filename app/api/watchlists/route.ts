@@ -139,15 +139,19 @@ export async function GET(request: NextRequest) {
 
       // Fetch listings separately to avoid join issues
       // Use the authenticated user's Supabase client to ensure RLS policies work correctly
+      // NOTE: Watchlist should show ALL saved listings regardless of status (live, draft, archived, etc.)
       console.log('📋 Fetching listings for watchlist:', {
         listingIds: listingIds,
         listingCount: listingIds.length,
         userId: user.id,
+        userEmail: user.email,
       });
 
+      // Query listings without status filter - users should see listings they saved regardless of status
+      // This is different from the main listings API which only shows 'live' listings
       const { data: listingsData, error: listingsError } = await supabase
         .from('listings')
-        .select('id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until')
+        .select('id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status')
         .in('id', listingIds);
 
       if (listingsError) {
@@ -158,6 +162,7 @@ export async function GET(request: NextRequest) {
           error_hint: listingsError.hint,
           listing_ids: listingIds,
           user_id: user.id,
+          user_email: user.email,
         });
         // Continue even if listings fail - return watchlist items with null listings
       } else {
@@ -166,6 +171,7 @@ export async function GET(request: NextRequest) {
           foundListings: listingsData?.length || 0,
           foundListingIds: listingsData?.map(l => l.id) || [],
           missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
+          listingStatuses: listingsData?.map(l => ({ id: l.id, status: (l as any).status })) || [],
         });
         
         // Log if any listings are missing
@@ -177,8 +183,35 @@ export async function GET(request: NextRequest) {
               'Listing was deleted',
               'RLS policy blocking access',
               'Listing ID mismatch',
+              'Listing status prevents access (check RLS policies)',
             ],
           });
+          
+          // Try to verify if listings exist by checking with a direct query (for debugging)
+          console.log('🔍 Attempting to verify listing existence...');
+          for (const missingId of missingIds) {
+            const { data: checkData, error: checkError } = await supabase
+              .from('listings')
+              .select('id, status, owner_id')
+              .eq('id', missingId)
+              .maybeSingle();
+            
+            if (checkError) {
+              console.error(`❌ Cannot access listing ${missingId}:`, {
+                error_code: checkError.code,
+                error_message: checkError.message,
+                likelyCause: checkError.code === '42501' ? 'RLS policy blocking access' : 'Other error',
+              });
+            } else if (checkData) {
+              console.log(`✅ Listing ${missingId} exists but wasn't returned in batch query:`, {
+                status: checkData.status,
+                owner_id: checkData.owner_id,
+                note: 'This suggests an RLS policy issue or query filter problem',
+              });
+            } else {
+              console.log(`❌ Listing ${missingId} does not exist in database`);
+            }
+          }
         }
       }
 
@@ -216,7 +249,38 @@ export async function GET(request: NextRequest) {
       itemsWithoutListings: enriched.filter(e => !e.listing).length,
     });
 
-    return NextResponse.json({ watchlists: enriched });
+    // Include diagnostic info to help debug watchlist issues
+    // Always include for now to diagnose the issue, can be removed later
+    const includeDiagnostics = true;
+    
+    const response: {
+      watchlists: typeof enriched;
+      diagnostics?: {
+        requestedListingIds: string[];
+        foundListingIds: string[];
+        missingListingIds: string[];
+        errorDetails?: {
+          code?: string;
+          message?: string;
+        };
+      };
+    } = {
+      watchlists: enriched,
+    };
+
+    if (includeDiagnostics) {
+      response.diagnostics = {
+        requestedListingIds: listingIds,
+        foundListingIds: listingsData?.map(l => l.id) || [],
+        missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
+        errorDetails: listingsError ? {
+          code: listingsError.code,
+          message: listingsError.message,
+        } : undefined,
+      };
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error in watchlists GET:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
