@@ -1,29 +1,45 @@
 # Off Axis Deals - Current Project Status
-**Last Updated:** January 2025  
-**Overall Completion:** ~90% (up from 88%)
+**Last Updated:** February 2025  
+**Overall Completion:** ~92% (up from 90%)
 
 ---
 
 ## ✅ Recently Completed (This Session)
 
-### Authentication Flows (Magic Link + Password Reset)
-- ✅ Migrated browser auth to implicit flow (no PKCE) with `detectSessionInUrl: true`
-- ✅ Unified auth redirects to `NEXT_PUBLIC_SITE_URL` (`/login`, `/reset-password`)
-- ✅ Implemented client `app/reset-password/page.tsx` to update password via recovery session
-- ✅ Hardened error handling and user messaging for magic link and reset
+### Pre-Launch Automation
+- ✅ Created comprehensive pre-launch checklist script (`scripts/prelaunch-check.ts`)
+- ✅ Automated checks for:
+  - Supabase configuration (URL, keys, connection)
+  - Redirect URLs and auth flows
+  - API route accessibility
+  - Admin account verification
+  - Error pages and legal pages
+  - Sitemap/robots.txt
+  - Mobile viewport configuration
+  - Stripe webhook configuration
+  - RLS policies verification
+- ✅ Added npm script: `pnpm prelaunch-check`
 
-### Admin Dashboard Security & Access
-- ✅ Admin page accessible by URL; header button intentionally hidden for now
-- ✅ Centralized admin check helpers (`app/lib/admin.ts`)
-- ✅ Diagnostic and auto-fix endpoints for admin account issues
-- ✅ Improved error page with fix instructions
+### Mobile App Export Preparation
+- ✅ Created universal API client abstraction (`app/lib/api/client.ts`)
+- ✅ Created storage abstraction layer (`app/lib/storage/index.ts`)
+- ✅ Extracted reusable UI components (`app/components/ui/`)
+  - Button, Input, Select, TextArea components
+  - Universal patterns for web and React Native
+- ✅ Organized screen-level component structure (`app/screens/`)
+- ✅ Created comprehensive Expo migration checklist (`docs/EXPO_MIGRATION_CHECKLIST.md`)
+- ✅ Created mobile preparation summary documentation
 
-### QA Fixes (Previously Completed)
-- ✅ Magic link & password reset error handling
-- ✅ Listings search & map sync
-- ✅ Mobile map scroll fix
-- ✅ Notification preferences (401 fix + descriptions)
-- ✅ Stripe checkout descriptions
+### Previous Session Fixes
+- ✅ Authentication flows (magic link + password reset) - code complete
+- ✅ Admin dashboard security & access controls
+- ✅ Mobile UX improvements (map scroll, spacing, touch targets)
+- ✅ Notification system wiring
+- ✅ Messaging UI improvements (read receipts, unread indicators)
+- ✅ AI usage visibility (user and admin dashboards)
+- ✅ Saved search UX improvements
+- ✅ Admin tooling (user moderation, flags, audit logs)
+- ✅ Browser compatibility fixes
 
 ---
 
@@ -31,7 +47,7 @@
 
 ### 1. Email Delivery for Authentication ⚠️
 **Priority:** 🔴 CRITICAL  
-**Status:** Code complete (implicit flow + reset page). Supabase SMTP/domain configuration required  
+**Status:** Code complete. Supabase SMTP/domain configuration required  
 **Impact:** Blocks user onboarding, password recovery, admin access
 
 **What's Done:**
@@ -40,6 +56,8 @@
 - ✅ Redirects standardized to `NEXT_PUBLIC_SITE_URL`
 - ✅ User-friendly error messages
 - ✅ Detailed logging for debugging
+- ✅ Email diagnostics endpoint (`/api/diagnostics/email`)
+- ✅ Admin test email button
 
 **What's Needed:**
 - [ ] **Supabase Dashboard Configuration:**
@@ -82,78 +100,51 @@
 
 ## 🟠 HIGH PRIORITY (Should Fix Before Launch)
 
-### 3. Mobile UX Improvements 🟠
+### 3. Mobile UX Final Review 🟠
 **Priority:** 🟠 HIGH  
-**Status:** Partially fixed (map scroll done, more needed)  
-**Impact:** Poor mobile user experience
+**Status:** Most fixes complete, final review needed  
+**Impact:** User experience on mobile devices
 
 **What's Done:**
 - ✅ Mobile map scroll fixed (touchAction: 'none')
 - ✅ Mobile filters drawer improved
+- ✅ Touch-safe buttons (44px minimum height)
+- ✅ Mobile spacing improvements
+- ✅ Session guard to prevent auth flicker
+- ✅ Responsive layouts for key screens
 
 **What's Needed:**
-- [ ] Review mobile layouts with screenshots (you mentioned this weekend)
-- [ ] Fix My Listings edit form spacing on mobile
-- [ ] Optimize filter drawers for mobile (may already be done)
-- [ ] Fix mobile auth refresh flicker
-- [ ] Test all core flows on mobile devices
-- [ ] Optimize touch targets and spacing
+- [ ] Final mobile layout review with screenshots
+- [ ] Test all core flows on physical mobile devices
+- [ ] Verify touch targets meet accessibility standards
+- [ ] Test on various screen sizes (iPhone SE to iPad)
 
-**Estimated Time:** 2-3 days
+**Estimated Time:** 1-2 days
 
 ---
 
 ### 4. Notification System Completion 🟠
 **Priority:** 🟠 HIGH  
-**Status:** Partially complete  
-**Impact:** Users miss important updates
+**Status:** Core system complete, some events wired  
+**Impact:** Users may miss important updates
 
 **What's Done:**
 - ✅ Notification preferences UI working
 - ✅ In-app notifications page
 - ✅ Email delivery working for customer service/sales
 - ✅ Navigation link added to account page
+- ✅ Centralized notification dispatcher
+- ✅ Event wiring for:
+  - ✅ Lead messages
+  - ✅ Buyer interest (watchlist)
+  - ✅ Repair estimate ready
+  - ✅ Subscription renewal reminders
+  - ✅ Saved search matches
 
 **What's Needed:**
-- [ ] Wire notification events for:
-  - [ ] Buyer interest (when investors save/view listings)
-  - [ ] Saved search matches (when new listings match saved searches)
-  - [ ] Subscription renewal reminders
-  - [ ] Feedback requests
-  - [ ] Repair estimate completion
-- [ ] Test all notification triggers
-- [ ] Ensure email delivery works for all notification types
-
-**Estimated Time:** 2-3 days
-
----
-
-### 5. Messaging Polish 🟠
-**Priority:** 🟠 HIGH  
-**Status:** Functional but needs polish  
-**Impact:** User experience degradation
-
-**What's Needed:**
-- [ ] Add read receipt indicators in message threads
-- [ ] Improve messaging layout and spacing
-- [ ] Add visual indicators for message read/unread status
-- [ ] Show "Conversation with [First Name]" instead of "Conversation with partner"
-- [ ] Test messaging flow on mobile
-
-**Estimated Time:** 1 day
-
----
-
-### 6. AI Usage Reporting 🟠
-**Priority:** 🟠 HIGH  
-**Status:** Quotas enforced but not visible  
-**Impact:** Users cannot track their usage
-
-**What's Needed:**
-- [ ] Add AI usage display to user account page
-- [ ] Show remaining quota vs. used quota
-- [ ] Add AI usage reporting to admin dashboard
-- [ ] Display usage warnings when approaching limits
+- [ ] Test all notification triggers end-to-end
+- [ ] Verify email delivery for all notification types
+- [ ] Add push notification support (future)
 
 **Estimated Time:** 1 day
 
@@ -161,27 +152,17 @@
 
 ## 🟡 MEDIUM PRIORITY (Nice to Have Before Launch)
 
-### 7. Saved Search UX Improvements 🟡
+### 5. Monthly Cleanup Job for AI Usage 🟡
 **Priority:** 🟡 MEDIUM  
-**Status:** Functional but needs UX work
+**Status:** Endpoint created, needs scheduling  
+**Impact:** Database growth over time
+
+**What's Done:**
+- ✅ Cleanup endpoint created (`/api/cron/cleanup-ai-usage`)
+- ✅ Logic to delete AI usage data older than 30 days
 
 **What's Needed:**
-- [ ] Redesign saved search creation flow
-- [ ] Add "Save current search" quick action
-- [ ] Improve saved search management UI
-- [ ] Optimize mobile layout
-
-**Estimated Time:** 1-2 days
-
----
-
-### 8. Monthly Cleanup Job for AI Usage 🟡
-**Priority:** 🟡 MEDIUM  
-**Status:** Function created but not scheduled
-
-**What's Needed:**
-- [ ] Set up Supabase cron job for monthly cleanup
-- [ ] OR set up Vercel cron job
+- [ ] Set up Supabase cron job OR Vercel cron job
 - [ ] Test cleanup job execution
 - [ ] Monitor cleanup job logs
 
@@ -189,31 +170,21 @@
 
 ---
 
-### 9. Admin Tooling Expansion 🟡
+### 6. Browser Compatibility Testing 🟡
 **Priority:** 🟡 MEDIUM  
-**Status:** Basic dashboard only
+**Status:** Basic compatibility checker added  
+**Impact:** User experience across browsers
+
+**What's Done:**
+- ✅ Browser compatibility checker component
+- ✅ Firefox/Safari autocomplete fixes
+- ✅ CSS compatibility improvements
 
 **What's Needed:**
-- [ ] Add user moderation actions (suspend, ban, verify)
-- [ ] Add content moderation tools
-- [ ] Create report workflow for flagged content
-- [ ] Add system audit logs
-- [ ] Add notification + AI usage reporting to admin
-
-**Estimated Time:** 3-5 days
-
----
-
-### 10. Browser Compatibility Testing 🟡
-**Priority:** 🟡 MEDIUM  
-**Status:** Not fully tested
-
-**What's Needed:**
-- [ ] Test on Chrome, Firefox, Safari, Edge
+- [ ] Full testing on Chrome, Firefox, Safari, Edge
 - [ ] Test on mobile browsers (iOS Safari, Android Chrome)
 - [ ] Verify autocomplete works consistently
 - [ ] Test map functionality across browsers
-- [ ] Fix any browser-specific issues
 
 **Estimated Time:** 1-2 days
 
@@ -222,14 +193,15 @@
 ## 📊 Progress Summary
 
 ### By Category:
-- **Authentication & User Management:** 90% ✅ (email delivery config needed)
+- **Authentication & User Management:** 92% ✅ (email delivery config needed)
 - **Listings Management & Map:** 90% ✅ (watchlist display fix needed)
 - **Payments & Subscriptions:** 95% ✅
-- **Messaging:** 85% ⚠️ (needs polish)
-- **Notifications & Alerts:** 80% ⚠️ (event wiring needed)
-- **Tools & Insights:** 80% ⚠️ (watchlist display, AI usage reporting)
-- **Mobile & UX Polish:** 70% ⚠️ (more mobile work needed)
-- **Admin & Reporting:** 50% ⚠️ (basic dashboard done, needs expansion)
+- **Messaging:** 90% ✅ (read receipts, unread indicators complete)
+- **Notifications & Alerts:** 85% ✅ (core events wired)
+- **Tools & Insights:** 85% ✅ (AI usage reporting complete, watchlist display issue)
+- **Mobile & UX Polish:** 85% ✅ (major improvements complete)
+- **Admin & Reporting:** 75% ✅ (user moderation, flags, audit logs added)
+- **Mobile App Preparation:** 100% ✅ (infrastructure ready for Expo migration)
 
 ---
 
@@ -240,16 +212,13 @@
 2. **Configure Supabase Email** (1-2 days) - Blocks onboarding
 
 ### Week 2: High Priority Polish
-3. **Mobile UX Review** (2-3 days) - You mentioned screenshots this weekend
-4. **Notification Event Wiring** (2-3 days) - Complete notification system
-5. **Messaging Polish** (1 day) - Read receipts, better layout
-6. **AI Usage Reporting** (1 day) - Show quotas to users
+3. **Mobile UX Final Review** (1-2 days) - Test on physical devices
+4. **Notification Testing** (1 day) - Verify all triggers work
 
 ### Week 3: Medium Priority + Testing
-7. **Saved Search UX** (1-2 days)
-8. **Admin Tooling** (3-5 days) - If needed for launch
-9. **Browser Testing** (1-2 days)
-10. **Cleanup Job Setup** (0.5 days)
+5. **Cleanup Job Setup** (0.5 days)
+6. **Browser Testing** (1-2 days)
+7. **Run Pre-Launch Checklist** (0.5 days)
 
 ---
 
@@ -259,50 +228,79 @@
 - Watchlist fix: 1 day
 - Email config: 1-2 days
 
-**Recommended (Critical + High Priority):** 7-10 days
+**Recommended (Critical + High Priority):** 4-5 days
 - Critical blockers: 2-3 days
-- High priority polish: 5-7 days
+- High priority polish: 2 days
 
-**Full Polish (All Priorities):** 16-24 days
+**Full Polish (All Priorities):** 6-8 days
 - Critical: 2-3 days
-- High: 5-7 days
-- Medium: 5-8 days
-- Testing: 3-5 days
+- High: 2 days
+- Medium: 2-3 days
 
 ---
 
 ## 🚀 Launch Readiness
 
-**Current Status:** ~90% Complete
+**Current Status:** ~92% Complete
 
 **Can Launch After:**
 - ✅ Watchlist display fixed
 - ✅ Email delivery configured
-- ✅ Mobile UX reviewed (this weekend)
+- ✅ Mobile UX final review complete
 
 **Should Launch After:**
 - ✅ Above items
-- ✅ Notification events wired
-- ✅ Messaging polish
-- ✅ AI usage reporting
+- ✅ Notification system tested
+- ✅ Pre-launch checklist passes
 
 **Nice to Have:**
-- Admin tooling expansion
-- Saved search UX improvements
-- Browser compatibility testing
+- Cleanup job scheduled
+- Browser compatibility fully tested
+- Advanced admin features
+
+---
+
+## 🛠️ New Tools & Infrastructure
+
+### Pre-Launch Automation
+- **Script:** `scripts/prelaunch-check.ts`
+- **Command:** `pnpm prelaunch-check [baseUrl]`
+- **Checks:** 15+ automated checks for launch readiness
+- **Output:** Formatted report with success/warning/error status
+
+### Mobile App Preparation
+- **API Client:** Universal API abstraction (`app/lib/api/client.ts`)
+- **Storage:** Universal storage service (`app/lib/storage/index.ts`)
+- **UI Components:** Reusable components (`app/components/ui/`)
+- **Screens:** Organized structure (`app/screens/`)
+- **Documentation:** Complete Expo migration guide
 
 ---
 
 ## 📝 Notes
 
-- **Admin Dashboard:** Accessible by direct URL; header button intentionally hidden for now
-- **Recent Fixes:** All QA test issues addressed (code-side)
+- **Admin Dashboard:** Fully functional with user moderation, flags, and audit logs
+- **Recent Fixes:** All major QA issues addressed
 - **Biggest Risks:** Watchlist display and email configuration (both fixable)
-- **Mobile Work:** Planned for this weekend with screenshots
+- **Mobile Work:** Major improvements complete, final review needed
 - **Code Quality:** All recent changes are production-ready
+- **Mobile Export:** Infrastructure ready for React Native migration
 
 ---
 
-**Last Updated:** January 2025  
-**Next Review:** After watchlist fix and email configuration
+## 🧪 Testing
 
+### Automated Checks
+- Run `pnpm prelaunch-check` before deployment
+- Review output for errors and warnings
+- Fix critical issues before launch
+
+### Manual Testing
+- See `TEST_MATRIX.md` for comprehensive test matrix
+- Test all critical user flows
+- Verify mobile experience on physical devices
+
+---
+
+**Last Updated:** February 2025  
+**Next Review:** After watchlist fix and email configuration

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { isAdmin } from '@/lib/admin';
-import { getUserSubscriptionTier } from '@/app/lib/subscription';
-import { getPlanLimits } from '@/app/lib/subscription';
+import { getUserSubscriptionTier } from '@/lib/subscription';
+import { getPlanLimits } from '@/lib/subscription';
 import type { SubscriptionTier } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
