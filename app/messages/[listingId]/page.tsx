@@ -497,7 +497,6 @@ export default function MessagesPage() {
               padding: '12px',
               marginBottom: 16,
               background: '#fff',
-              minHeight: 300,
               maxHeight: 'calc(100vh - 400px)',
               overflowY: 'auto',
               display: 'flex',
