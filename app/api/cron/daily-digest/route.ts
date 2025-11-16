@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { sendViaSMTP } from '@/lib/email';
+import { notifySavedSearchMatch } from '@/lib/notifications';
 
 /**
  * Daily Deals Digest Email Cron Job
@@ -124,6 +125,22 @@ export async function GET(request: NextRequest) {
         // Skip if no new listings
         if (!listings || listings.length === 0) {
           continue;
+        }
+
+        // Send in-app notification for market trend
+        try {
+          const firstListing = listings[0] as { id: string; title?: string };
+          await notifySavedSearchMatch({
+            userId: user.id,
+            searchName: search.name || 'Your saved search',
+            listingTitle: firstListing.title || null,
+            listingId: firstListing.id,
+            matchCount: listings.length,
+            supabaseClient: supabase,
+          });
+        } catch (notificationError) {
+          console.error(`Failed to send market trend notification for search ${search.id}:`, notificationError);
+          // Continue with email even if notification fails
         }
 
         // Send email

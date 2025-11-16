@@ -180,7 +180,17 @@ export default function AdminDashboard() {
       description: 'Admin-level analytics and system overview',
       links: [
         { name: 'Analytics Dashboard', href: '/admin/analytics', status: 'exists' },
+        { name: 'AI Usage Reporting', href: '/admin/ai-usage', status: 'exists' },
         { name: 'Off-Market Feed', href: '/admin/off-market', status: 'stub' }
+      ]
+    },
+    {
+      name: 'User & Content Moderation',
+      description: 'User management, flags, and content moderation tools',
+      links: [
+        { name: 'User Moderation', href: '/admin/users', status: 'exists' },
+        { name: 'Flags & Reports', href: '/admin/flags', status: 'exists' },
+        { name: 'Audit Logs', href: '/admin/audit-logs', status: 'exists' }
       ]
     },
     {

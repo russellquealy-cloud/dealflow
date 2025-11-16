@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileLayout from "@/components/MobileLayout";
 import { AuthProvider } from "@/providers/AuthProvider";
+import BrowserCompatibilityChecker from "@/components/BrowserCompatibilityChecker";
 
 const BASE_URL = "https://www.offaxisdeals.com";
 const DEFAULT_TITLE = "Off Axis Deals | Real Estate Investment Marketplace";
@@ -125,6 +126,7 @@ export default function RootLayout({
               {/* IMPORTANT: this div owns page scrolling/clipping, not the header */}
               <main style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>{children}</main>
               <Footer />
+              <BrowserCompatibilityChecker />
             </div>
           </MobileLayout>
         </AuthProvider>

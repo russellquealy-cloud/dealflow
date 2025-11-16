@@ -23,11 +23,12 @@ const selectCss: React.CSSProperties = {
   border: '1px solid #cbd5e1', 
   borderRadius: 8, 
   padding: '0 12px',
-  fontSize: 15,
+  fontSize: 16,
   touchAction: 'manipulation',
+  boxSizing: 'border-box'
 };
 
-// “+” caps included
+// "+" caps included
 const bedOptions: Opt[]  = [1,2,3,4,5,6,7].map((n,i,a)=>({ label: i===a.length-1?`${n}+`:`${n}`, value: n }));
 const bathOptions: Opt[] = [1,1.5,2,2.5,3,3.5,4,5].map((n,i,a)=>({ label: i===a.length-1?`${n}+`:`${n}`, value: n }));
 const priceOptions: Opt[] = [25000,50000,75000,100000,125000,150000,175000,200000,250000,300000,400000,500000,750000,1000000,1500000,2000000]
@@ -106,11 +107,12 @@ export default function FiltersBar({ value, onChange }: Props) {
           borderRadius: 10, 
           width: '100%',
           padding: '0 16px',
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: 500,
           background: '#fff',
           cursor: 'pointer',
           touchAction: 'manipulation',
+          boxSizing: 'border-box'
         }} 
         aria-expanded={open}
         aria-label="Toggle filters"
@@ -146,26 +148,35 @@ export default function FiltersBar({ value, onChange }: Props) {
               padding: '20px 16px',
               display: 'flex',
               flexDirection: 'column',
+              gap: '20px'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: 8 
+            }}>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Filters</h2>
               <button
                 onClick={() => setOpen(false)}
                 style={{
                   padding: '8px 12px',
+                  minHeight: '44px',
+                  minWidth: '44px',
                   border: 'none',
                   background: 'transparent',
                   fontSize: 24,
                   cursor: 'pointer',
                   color: '#6b7280',
+                  touchAction: 'manipulation'
                 }}
                 aria-label="Close filters"
               >
                 ✕
               </button>
             </div>
-            <div style={{ display: 'grid', gap: 16, flex: 1 }}>
+            <div style={{ display: 'grid', gap: 20, flex: 1 }}>
               <NumberSelect label="Min Beds (1+)" value={value.minBeds} options={bedOptions} onChange={(v) => set({ minBeds: v })} />
               <NumberSelect label="Max Beds" value={value.maxBeds} options={bedOptions} onChange={(v) => set({ maxBeds: v })} />
               <NumberSelect label="Min Baths (1+)" value={value.minBaths} options={bathOptions} onChange={(v) => set({ minBaths: v })} />
@@ -179,8 +190,9 @@ export default function FiltersBar({ value, onChange }: Props) {
             <button
               onClick={() => setOpen(false)}
               style={{
-                marginTop: 24,
+                marginTop: 8,
                 padding: '14px 24px',
+                minHeight: '44px',
                 background: '#3b82f6',
                 color: '#fff',
                 border: 'none',
@@ -189,7 +201,7 @@ export default function FiltersBar({ value, onChange }: Props) {
                 fontWeight: 600,
                 cursor: 'pointer',
                 width: '100%',
-                touchAction: 'manipulation',
+                touchAction: 'manipulation'
               }}
             >
               Apply Filters
@@ -202,8 +214,20 @@ export default function FiltersBar({ value, onChange }: Props) {
 
   return (
     <>
-      <div className="hidden md:block">{desktop}</div>
-      <div className="md:hidden">{mobile}</div>
+      <div style={{ display: 'none' }}>
+        <style>{`
+          @media (min-width: 768px) {
+            .filters-desktop { display: block !important; }
+            .filters-mobile { display: none !important; }
+          }
+          @media (max-width: 767px) {
+            .filters-desktop { display: none !important; }
+            .filters-mobile { display: block !important; }
+          }
+        `}</style>
+      </div>
+      <div className="filters-desktop">{desktop}</div>
+      <div className="filters-mobile">{mobile}</div>
     </>
   );
 }

@@ -10,6 +10,166 @@ import Link from 'next/link';
 import type { SubscriptionTier } from '@/lib/stripe';
 import { getProfileCompleteness, type AnyProfile, type UserRole, type ProfileCompletenessResult } from '@/lib/profileCompleteness';
 
+// AI Usage Panel Component
+function AIUsagePanel({ user }: { user: { id: string; email?: string } | null }) {
+  const [usage, setUsage] = useState<{
+    used: number;
+    limit: number | null;
+    remaining: number | null;
+    resetsOn: string;
+    tier?: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const loadUsage = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const headers: HeadersInit = {};
+        if (session.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch('/api/ai-usage', {
+          headers,
+          credentials: 'include',
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          console.error('Failed to load AI usage');
+          setLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+        setUsage(data);
+      } catch (error) {
+        console.error('Error loading AI usage:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsage();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div style={{
+        border: '1px solid #e5e7eb',
+        borderRadius: 12,
+        padding: 24,
+        marginBottom: 24,
+        background: '#fff'
+      }}>
+        <div style={{ color: '#64748b' }}>Loading AI usage...</div>
+      </div>
+    );
+  }
+
+  if (!usage) {
+    return null;
+  }
+
+  const isUnlimited = usage.limit === null;
+  const percentageUsed = isUnlimited ? 0 : usage.limit > 0 ? (usage.used / usage.limit) * 100 : 0;
+  const isLowRemaining = !isUnlimited && usage.remaining !== null && usage.limit !== null && (usage.remaining / usage.limit) < 0.2;
+  const resetsDate = new Date(usage.resetsOn);
+  const resetsFormatted = resetsDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  return (
+    <div style={{
+      border: isLowRemaining ? '1px solid #f59e0b' : '1px solid #e5e7eb',
+      borderRadius: 12,
+      padding: 24,
+      marginBottom: 24,
+      background: isLowRemaining ? '#fffbeb' : '#fff'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>AI Usage</h2>
+        {isLowRemaining && (
+          <span style={{
+            padding: '4px 12px',
+            borderRadius: 12,
+            background: '#fef3c7',
+            color: '#92400e',
+            fontSize: 12,
+            fontWeight: 600
+          }}>
+            ⚠️ Low Remaining
+          </span>
+        )}
+      </div>
+
+      {isUnlimited ? (
+        <div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: '#059669', marginBottom: 8 }}>
+            Unlimited
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: 14 }}>
+            You have unlimited AI analyses on your current plan.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: isLowRemaining ? '#dc2626' : '#1f2937' }}>
+                {usage.used}
+              </div>
+              <div style={{ fontSize: 14, color: '#6b7280' }}>of {usage.limit} used</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 24, fontWeight: 600, color: isLowRemaining ? '#dc2626' : '#059669' }}>
+                {usage.remaining}
+              </div>
+              <div style={{ fontSize: 14, color: '#6b7280' }}>remaining</div>
+            </div>
+          </div>
+
+          <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden', marginBottom: 12 }}>
+            <div
+              style={{
+                width: `${Math.min(100, percentageUsed)}%`,
+                height: '100%',
+                background: isLowRemaining ? '#f59e0b' : percentageUsed > 80 ? '#dc2626' : '#059669',
+                borderRadius: 999,
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+
+          {isLowRemaining && (
+            <div style={{
+              padding: 12,
+              borderRadius: 8,
+              background: '#fef3c7',
+              border: '1px solid #fcd34d',
+              marginBottom: 12
+            }}>
+              <p style={{ margin: 0, fontSize: 14, color: '#92400e', fontWeight: 500 }}>
+                ⚠️ You have less than 20% of your AI usage remaining. Consider upgrading your plan for more analyses.
+              </p>
+            </div>
+          )}
+
+          <div style={{ fontSize: 13, color: '#6b7280' }}>
+            Resets on {resetsFormatted}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const sectionStyle: CSSProperties = {
   marginTop: 24,
   padding: 16,
@@ -1038,6 +1198,9 @@ export default function AccountPage() {
           )}
         </div>
       </form>
+
+      {/* AI Usage */}
+      <AIUsagePanel user={user} />
 
       {/* Subscription Level */}
       <div style={{ 

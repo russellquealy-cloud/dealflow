@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = React.useState<Session | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [initialized, setInitialized] = React.useState(false);
+  const subscriptionRef = React.useRef<{ subscription: { unsubscribe: () => void } } | null>(null);
 
   const refreshSession = React.useCallback(async () => {
     // Don't set loading to true if already initialized to prevent flicker
@@ -52,32 +53,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     init();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, newSession: Session | null) => {
-        if (event === "TOKEN_REFRESHED") {
-          return;
-        }
+    // Only set up auth state change listener once
+    if (!subscriptionRef.current) {
+      const { data: subscription } = supabase.auth.onAuthStateChange(
+        (event: AuthChangeEvent, newSession: Session | null) => {
+          // Ignore TOKEN_REFRESHED events to prevent flicker
+          if (event === "TOKEN_REFRESHED") {
+            return;
+          }
 
-        if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-          logger.log(`🔐 AuthProvider event: ${event}`);
-          mobileSessionManager.handleAuthEvent(event, newSession);
-          setSession(newSession);
-          setLoading(false);
-          return;
-        }
+          if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+            logger.log(`🔐 AuthProvider event: ${event}`);
+            mobileSessionManager.handleAuthEvent(event, newSession);
+            setSession(newSession);
+            setLoading(false);
+            setInitialized(true);
+            return;
+          }
 
-        if (event === "SIGNED_OUT") {
-          logger.log("🔐 AuthProvider event: SIGNED_OUT");
-          mobileSessionManager.handleAuthEvent(event, null);
-          setSession(null);
-          setLoading(false);
+          if (event === "SIGNED_OUT") {
+            logger.log("🔐 AuthProvider event: SIGNED_OUT");
+            mobileSessionManager.handleAuthEvent(event, null);
+            setSession(null);
+            setLoading(false);
+            setInitialized(true);
+          }
         }
-      }
-    );
+      );
+      subscriptionRef.current = subscription;
+    }
 
     return () => {
       isMounted = false;
-      subscription?.subscription.unsubscribe();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.subscription.unsubscribe();
+        subscriptionRef.current = null;
+      }
     };
   }, [refreshSession]);
 
@@ -96,4 +107,3 @@ export function useAuth() {
   }
   return context;
 }
-

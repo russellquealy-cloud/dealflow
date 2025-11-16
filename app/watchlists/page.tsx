@@ -24,6 +24,7 @@ export default function WatchlistsPage() {
 
   const loadWatchlists = React.useCallback(async () => {
     if (!session) {
+      console.log('📋 Watchlist: No session, skipping load');
       return;
     }
 
@@ -32,58 +33,86 @@ export default function WatchlistsPage() {
       headers['Authorization'] = `Bearer ${session.access_token}`;
     }
 
-    console.log('📋 Loading watchlists...');
-    fetch('/api/watchlists', {
-      credentials: 'include',
-      headers,
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => '');
-          const errorMessage = `Failed to load watchlists: ${response.status} ${errorText}`;
-          console.error('❌ Error loading watchlists:', errorMessage);
-          setError(errorMessage);
-          setWatchlists([]);
-          return;
-        }
-        const data = await response.json();
-        console.log('✅ Watchlists loaded:', { count: data.watchlists?.length || 0, watchlists: data.watchlists });
-        
-        // Log diagnostic information if available
-        if (data.diagnostics) {
-          console.log('🔍 Watchlist Diagnostics:', {
-            requestedListingIds: data.diagnostics.requestedListingIds,
-            foundListingIds: data.diagnostics.foundListingIds,
-            missingListingIds: data.diagnostics.missingListingIds,
-            errorDetails: data.diagnostics.errorDetails,
-            summary: `${data.diagnostics.foundListingIds.length} found, ${data.diagnostics.missingListingIds.length} missing`,
-          });
-        }
-        
-        // Log detailed info about each watchlist item
-        if (data.watchlists && data.watchlists.length > 0) {
-          data.watchlists.forEach((item: WatchlistItem, index: number) => {
-            console.log(`📋 Watchlist item ${index}:`, {
-              id: item.id,
-              property_id: item.property_id,
-              hasListing: !!item.listing,
-              listingId: item.listing?.id,
-              listingTitle: item.listing?.title,
-            });
-          });
-        }
-        
-        setWatchlists(data.watchlists || []);
-        setError(null);
-      })
-      .catch((error) => {
-        console.error('❌ Error loading watchlists:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load watchlists');
-        setWatchlists([]);
-      })
-      .finally(() => {
-        setLoading(false);
+    console.log('📋 Watchlist: Loading watchlists...', {
+      userId: session.user.id,
+      hasToken: !!session.access_token,
+    });
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/watchlists', {
+        credentials: 'include',
+        headers,
       });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        const errorMessage = `Failed to load watchlists: ${response.status} ${errorText}`;
+        console.error('❌ Watchlist: Error loading watchlists', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        });
+        setError(errorMessage);
+        setWatchlists([]);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('✅ Watchlist: Watchlists loaded', {
+        count: data.watchlists?.length || 0,
+        watchlists: data.watchlists,
+      });
+      
+      // Log diagnostic information if available
+      if (data.diagnostics) {
+        console.log('🔍 Watchlist: Diagnostics', {
+          requestedListingIds: data.diagnostics.requestedListingIds,
+          foundListingIds: data.diagnostics.foundListingIds,
+          missingListingIds: data.diagnostics.missingListingIds,
+          errorDetails: data.diagnostics.errorDetails,
+          summary: `${data.diagnostics.foundListingIds.length} found, ${data.diagnostics.missingListingIds.length} missing`,
+        });
+      }
+      
+      // Log detailed info about each watchlist item
+      if (data.watchlists && data.watchlists.length > 0) {
+        console.log('📋 Watchlist: Item details', {
+          totalItems: data.watchlists.length,
+          itemsWithListings: data.watchlists.filter((item: WatchlistItem) => item.listing).length,
+          itemsWithoutListings: data.watchlists.filter((item: WatchlistItem) => !item.listing).length,
+        });
+
+        data.watchlists.forEach((item: WatchlistItem, index: number) => {
+          console.log(`📋 Watchlist item ${index}:`, {
+            id: item.id,
+            property_id: item.property_id,
+            hasListing: !!item.listing,
+            listingId: item.listing?.id,
+            listingTitle: item.listing?.title,
+            listingFields: item.listing ? Object.keys(item.listing) : [],
+          });
+        });
+      } else {
+        console.log('📋 Watchlist: No watchlist items returned');
+      }
+      
+      // Ensure we're setting an array
+      const watchlistArray = Array.isArray(data.watchlists) ? data.watchlists : [];
+      setWatchlists(watchlistArray);
+      setError(null);
+    } catch (error) {
+      console.error('❌ Watchlist: Error loading watchlists', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        fullError: error,
+      });
+      setError(error instanceof Error ? error.message : 'Failed to load watchlists');
+      setWatchlists([]);
+    } finally {
+      setLoading(false);
+    }
   }, [session]);
 
   useEffect(() => {
@@ -102,7 +131,7 @@ export default function WatchlistsPage() {
   // Listen for watchlist updates from other pages
   useEffect(() => {
     const handleWatchlistUpdate = (event: CustomEvent) => {
-      console.log('📋 Watchlist updated event received:', event.detail);
+      console.log('📋 Watchlist: Watchlist updated event received', event.detail);
       // Reload watchlists when a property is saved/unsaved
       loadWatchlists();
     };
@@ -120,6 +149,8 @@ export default function WatchlistsPage() {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
+      console.log('📋 Watchlist: Removing item', { watchlistId, listingId });
+
       const response = await fetch(`/api/watchlists?listingId=${listingId}`, {
         method: 'DELETE',
         credentials: 'include',
@@ -127,12 +158,39 @@ export default function WatchlistsPage() {
       });
 
       if (response.ok) {
+        console.log('✅ Watchlist: Successfully removed item', { watchlistId, listingId });
         setWatchlists(watchlists.filter(w => w.id !== watchlistId));
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('watchlist:updated', { detail: { action: 'remove', listingId } }));
+      } else {
+        console.error('❌ Watchlist: Failed to remove item', {
+          status: response.status,
+          watchlistId,
+          listingId,
+        });
       }
     } catch (error) {
-      console.error('Error removing from watchlist:', error);
+      console.error('❌ Watchlist: Error removing item', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        watchlistId,
+        listingId,
+      });
     }
   };
+
+  // Filter items that have valid listings
+  const itemsWithListings = useMemo(() => {
+    return watchlists.filter((item): item is WatchlistItem & { listing: ListingLike } => {
+      const hasListing = Boolean(item.listing);
+      if (!hasListing) {
+        console.warn('⚠️ Watchlist: Item without listing filtered out', {
+          id: item.id,
+          property_id: item.property_id,
+        });
+      }
+      return hasListing;
+    });
+  }, [watchlists]);
 
   if (loading || authLoading) {
     return (
@@ -160,39 +218,21 @@ export default function WatchlistsPage() {
           color: '#991b1b'
         }}>
           <h2 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 600 }}>Error Loading Watchlist</h2>
-          <p style={{ margin: 0, fontSize: 14 }}>{error}</p>
+          <p style={{ margin: 0, fontSize: 14, marginBottom: 16 }}>{error}</p>
+          <div style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 16, padding: 12, background: '#fee2e2', borderRadius: 6 }}>
+            <strong>Debug Info:</strong>
+            <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
+              <li>Check browser console for detailed logs</li>
+              <li>Verify you're logged in</li>
+              <li>Check network tab for API response</li>
+            </ul>
+          </div>
           <button
             onClick={() => {
               setError(null);
-              setLoading(true);
-              // Retry loading
-              const headers: HeadersInit = {};
-              if (session?.access_token) {
-                headers['Authorization'] = `Bearer ${session.access_token}`;
-              }
-              fetch('/api/watchlists', {
-                credentials: 'include',
-                headers,
-              })
-                .then(async (response) => {
-                  if (!response.ok) {
-                    const errorText = await response.text().catch(() => '');
-                    setError(`Failed to load watchlists: ${response.status} ${errorText}`);
-                    return;
-                  }
-                  const data = await response.json();
-                  setWatchlists(data.watchlists || []);
-                  setError(null);
-                })
-                .catch((err) => {
-                  setError(err instanceof Error ? err.message : 'Failed to load watchlists');
-                })
-                .finally(() => {
-                  setLoading(false);
-                });
+              loadWatchlists();
             }}
             style={{
-              marginTop: 16,
               padding: '8px 16px',
               background: '#dc2626',
               color: 'white',
@@ -218,7 +258,7 @@ export default function WatchlistsPage() {
         </p>
       </div>
 
-      {watchlists.filter((item) => item.listing).length === 0 ? (
+      {itemsWithListings.length === 0 ? (
         <div style={{
           border: '1px solid #e5e7eb',
           borderRadius: 12,
@@ -229,8 +269,22 @@ export default function WatchlistsPage() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</div>
           <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>No Saved Properties</h2>
           <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-              Start saving properties you&apos;re interested in to track them here.
+            {watchlists.length > 0 
+              ? `You have ${watchlists.length} saved ${watchlists.length === 1 ? 'property' : 'properties'}, but ${watchlists.length === 1 ? 'it' : 'they'} ${watchlists.length === 1 ? 'is' : 'are'} not available. This may be due to RLS policies or the listing being deleted.`
+              : 'Start saving properties you\'re interested in to track them here.'}
           </p>
+          {watchlists.length > 0 && (
+            <div style={{ 
+              marginBottom: '24px', 
+              padding: '12px', 
+              background: '#fef3c7', 
+              borderRadius: 8,
+              fontSize: '14px',
+              color: '#92400e'
+            }}>
+              <strong>Debug Info:</strong> Check browser console for detailed diagnostics about why listings aren't loading.
+            </div>
+          )}
           <Link href="/listings" style={{
             display: 'inline-block',
             padding: '12px 24px',
@@ -244,39 +298,53 @@ export default function WatchlistsPage() {
           </Link>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: 20
-        }}>
-            {watchlists.filter((item): item is WatchlistItem & { listing: ListingLike } => Boolean(item.listing)).map((item) => (
-            <div key={item.id} style={{ position: 'relative' }}>
-              <ListingCard listing={item.listing} />
-              <button
-                onClick={() => handleRemove(item.id, item.property_id)}
-                style={{
-                  position: 'absolute',
-                  top: 12,
-                  right: 12,
-                  padding: '6px 12px',
-                  background: '#fff',
-                  border: '1px solid #dc2626',
-                  borderRadius: 6,
-                  color: '#dc2626',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  zIndex: 10,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}
-              >
-                Remove
-              </button>
+        <>
+          {watchlists.length > itemsWithListings.length && (
+            <div style={{
+              marginBottom: 16,
+              padding: 12,
+              background: '#fef3c7',
+              border: '1px solid #fbbf24',
+              borderRadius: 8,
+              fontSize: 14,
+              color: '#92400e'
+            }}>
+              <strong>Note:</strong> {watchlists.length - itemsWithListings.length} saved {watchlists.length - itemsWithListings.length === 1 ? 'property' : 'properties'} {watchlists.length - itemsWithListings.length === 1 ? 'is' : 'are'} not available. Check console for details.
             </div>
-          ))}
-        </div>
+          )}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: 20
+          }}>
+            {itemsWithListings.map((item) => (
+              <div key={item.id} style={{ position: 'relative' }}>
+                <ListingCard listing={item.listing} />
+                <button
+                  onClick={() => handleRemove(item.id, item.property_id)}
+                  style={{
+                    position: 'absolute',
+                    top: 12,
+                    right: 12,
+                    padding: '6px 12px',
+                    background: '#fff',
+                    border: '1px solid #dc2626',
+                    borderRadius: 6,
+                    color: '#dc2626',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </main>
   );
 }
-

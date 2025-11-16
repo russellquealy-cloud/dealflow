@@ -10,6 +10,8 @@ import PostDealButton from '@/components/PostDealButton';
 import { toNum } from '@/lib/format';
 import type { ListItem, MapPoint } from '@/components/ListingsSplitClient';
 import type { BoundsPayload } from '@/components/GoogleMapImpl';
+import { useAuth } from '@/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   initialListings?: ListItem[];
@@ -82,6 +84,11 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
     maxSqft: null,
     sortBy: 'newest'
   });
+  const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
+  const [saveSearchName, setSaveSearchName] = useState('');
+  const [savingSearch, setSavingSearch] = useState(false);
+  const { session } = useAuth();
+  const router = useRouter();
 
   // Debounce bounds changes to prevent excessive updates
   const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -338,42 +345,195 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
     }
   }, [filters, searchQuery, mapBounds, activeMapBounds]);
 
+  const handleSaveSearch = async () => {
+    if (!session) {
+      router.push('/login?next=/listings');
+      return;
+    }
+
+    if (!saveSearchName.trim()) {
+      alert('Please enter a name for this search');
+      return;
+    }
+
+    setSavingSearch(true);
+    try {
+      const currentState = {
+        filters,
+        searchQuery,
+        bounds: activeMapBounds ? mapBounds : null,
+      };
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (session.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch('/api/saved-searches', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: saveSearchName.trim(),
+          criteria: currentState,
+        }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Failed to save search');
+        return;
+      }
+
+      setShowSaveSearchModal(false);
+      setSaveSearchName('');
+      alert('Search saved successfully!');
+    } catch (error) {
+      console.error('Error saving search:', error);
+      alert('Failed to save search');
+    } finally {
+      setSavingSearch(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="text-lg mb-2">Loading listings...</div>
-          <div className="text-sm text-gray-500">Connecting to database...</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 18, marginBottom: 8 }}>Loading listings...</div>
+          <div style={{ fontSize: 14, color: '#6b7280' }}>Connecting to database...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
-        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
-          Find Deals
-        </h1>
+    <div style={{ 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column',
+      minWidth: 0
+    }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '16px',
+        gap: '16px',
+        flexShrink: 0,
+        background: '#fff',
+        zIndex: 30,
+        position: 'relative'
+      }}>
+        <style>{`
+          @media (min-width: 1024px) {
+            .listings-header {
+              flex-direction: row !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              padding: 16px 24px !important;
+            }
+          }
+        `}</style>
+        <div className="listings-header" style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <h1 style={{
+              fontSize: 'clamp(20px, 5vw, 24px)',
+              fontWeight: 700,
+              color: '#111827',
+              margin: 0
+            }}>
+              Find Deals
+            </h1>
+            {session && (
+              <button
+                onClick={() => setShowSaveSearchModal(true)}
+                style={{
+                  padding: '10px 16px',
+                  minHeight: '44px',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 8,
+                  color: '#374151',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  touchAction: 'manipulation',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                💾 Save Search
+              </button>
+            )}
+          </div>
 
-        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center">
-          <div className="flex-1 lg:w-80">
-            <SearchBarClient
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search by address, city, or state..."
-            />
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            width: '100%'
+          }}>
+            <style>{`
+              @media (min-width: 1024px) {
+                .search-container {
+                  flex-direction: row !important;
+                  align-items: center !important;
+                  width: 320px !important;
+                }
+              }
+            `}</style>
+            <div className="search-container" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              width: '100%'
+            }}>
+              <SearchBarClient
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search by address, city, or state..."
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* filters */}
-      <div className="px-4 lg:px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white z-20 relative shadow-sm">
-        <FiltersBar value={filters} onChange={handleFiltersChange} />
+      <div style={{
+        padding: '12px 16px',
+        borderBottom: '1px solid #e5e7eb',
+        flexShrink: 0,
+        background: '#fff',
+        zIndex: 20,
+        position: 'relative',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+      }}>
+        <style>{`
+          @media (min-width: 1024px) {
+            .filters-container {
+              padding: 12px 24px !important;
+            }
+          }
+        `}</style>
+        <div className="filters-container">
+          <FiltersBar value={filters} onChange={handleFiltersChange} />
+        </div>
       </div>
 
       {/* the split fills the rest of the viewport - NO SCROLL */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div style={{
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden'
+      }}>
         <ListingsSplitClient
           points={allPoints}
           listings={filteredListings}
@@ -383,6 +543,99 @@ export default function ListingsClient({ initialListings = [], initialPoints = [
       </div>
 
       <PostDealButton />
+
+      {/* Save Search Modal */}
+      {showSaveSearchModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}
+        onClick={() => setShowSaveSearchModal(false)}
+        >
+          <div style={{
+            background: '#fff',
+            borderRadius: 12,
+            padding: '24px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Save Current Search</h2>
+            <p style={{ margin: '0 0 16px 0', fontSize: 14, color: '#6b7280' }}>
+              Save your current filters and search criteria for quick access later.
+            </p>
+            <input
+              type="text"
+              placeholder="Enter a name for this search (e.g., 'Miami Under $100k')"
+              value={saveSearchName}
+              onChange={(e) => setSaveSearchName(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSaveSearch()}
+              style={{
+                width: '100%',
+                padding: '12px',
+                minHeight: '44px',
+                border: '1px solid #d1d5db',
+                borderRadius: 8,
+                fontSize: '14px',
+                marginBottom: '16px',
+                boxSizing: 'border-box'
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowSaveSearchModal(false);
+                  setSaveSearchName('');
+                }}
+                style={{
+                  padding: '10px 20px',
+                  minHeight: '44px',
+                  background: '#fff',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 8,
+                  color: '#374151',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSearch}
+                disabled={savingSearch || !saveSearchName.trim()}
+                style={{
+                  padding: '10px 20px',
+                  minHeight: '44px',
+                  background: savingSearch || !saveSearchName.trim() ? '#9ca3af' : '#3b82f6',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: savingSearch || !saveSearchName.trim() ? 'not-allowed' : 'pointer',
+                  touchAction: 'manipulation'
+                }}
+              >
+                {savingSearch ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -195,196 +195,258 @@ export default function SavedSearchesPage() {
   }
 
   return (
-    <main style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: 32, fontWeight: 700 }}>Saved Searches</h1>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: 16 }}>
-            Save your favorite search criteria for quick access
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreateForm((prev) => !prev)}
-          style={{
-            padding: '12px 24px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          {showCreateForm ? 'Cancel' : '+ New Search'}
-        </button>
-      </div>
-
-      {showCreateForm && (
-        <div style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: 24,
-          marginBottom: 24,
-          background: '#fff'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>Save Current Search</h3>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <input
-              type="text"
-              placeholder="Enter a name for this search (e.g., 'Miami Under $100k')"
-              value={newSearchName}
-              onChange={(e) => setNewSearchName(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '12px',
-                border: '1px solid #e5e7eb',
-                borderRadius: 8,
-                fontSize: 14,
-              }}
-              onKeyPress={(e) => e.key === 'Enter' && handleCreateFromCurrent()}
-            />
+    <main style={{ 
+      padding: '12px',
+      maxWidth: 1000, 
+      margin: '0 auto',
+      minHeight: 'calc(100vh - 100px)'
+    }}>
+      <style>{`
+        @media (min-width: 768px) {
+          .saved-searches-page {
+            padding: 24px !important;
+          }
+        }
+      `}</style>
+      <div className="saved-searches-page" style={{ 
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%'
+      }}>
+        <div style={{ marginBottom: 20, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: 8 }}>
+            <div>
+              <h1 style={{ margin: '0 0 8px 0', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700 }}>Saved Searches</h1>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: 'clamp(14px, 3vw, 16px)' }}>
+                Save your favorite search criteria for quick access
+              </p>
+            </div>
             <button
-              onClick={handleCreateFromCurrent}
+              onClick={() => setShowCreateForm((prev) => !prev)}
               style={{
                 padding: '12px 24px',
-                background: '#059669',
+                minHeight: '44px',
+                background: showCreateForm ? '#6b7280' : '#3b82f6',
                 color: 'white',
                 border: 'none',
                 borderRadius: 8,
                 fontWeight: 600,
                 cursor: 'pointer',
+                fontSize: '14px',
+                touchAction: 'manipulation',
+                whiteSpace: 'nowrap'
               }}
             >
-              Save
+              {showCreateForm ? 'Cancel' : '+ New Search'}
             </button>
           </div>
-          {criteriaPreview && (
-            <p style={{ margin: '12px 0 0 0', fontSize: 13, color: '#4b5563' }}>
-              {criteriaPreview}
-            </p>
-          )}
-          <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#6b7280' }}>
-            Go to the listings page, apply your filters, then come back here to save them.
-          </p>
         </div>
-      )}
 
-      {searches.length === 0 ? (
-        <div style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: 48,
-          textAlign: 'center',
-          background: '#fff'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>No Saved Searches</h2>
-          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-            Save your search criteria to quickly find properties that match your preferences.
-          </p>
-          <Link href="/listings" style={{
-            display: 'inline-block',
-            padding: '12px 24px',
-            background: '#3b82f6',
-            color: 'white',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: '600'
+        {showCreateForm && (
+          <div style={{
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
+            padding: '20px',
+            marginBottom: 20,
+            background: '#fff',
+            flexShrink: 0
           }}>
-            Start Searching
-          </Link>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {searches.map((search) => (
-            <div
-              key={search.id}
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: 20,
-                background: search.active ? '#fff' : '#f9fafb',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#1a1a1a' }}>
-                    {search.name}
-                  </h3>
-                  {!search.active && (
-                    <span style={{
-                      padding: '2px 8px',
-                      background: '#6b7280',
-                      color: 'white',
-                      borderRadius: 4,
-                      fontSize: 11,
-                      fontWeight: 600,
-                    }}>
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 14, color: '#6b7280' }}>
-                  Created {new Date(search.created_at).toLocaleDateString()}
-                </div>
-                <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
-                  {summarizeCriteria(search.criteria as SavedSearchCriteria)}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => handleApplySearch(search)}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                  }}
-                >
-                  Apply
-                </button>
-                <button
-                  onClick={() => handleToggleActive(search)}
-                  style={{
-                    padding: '8px 16px',
-                    background: search.active ? '#f3f4f6' : '#059669',
-                    color: search.active ? '#6b7280' : 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                  }}
-                >
-                  {search.active ? 'Deactivate' : 'Activate'}
-                </button>
-                <button
-                  onClick={() => handleDelete(search.id)}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#fff',
-                    color: '#dc2626',
-                    border: '1px solid #dc2626',
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>Save Current Search</h3>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Enter a name for this search (e.g., 'Miami Under $100k')"
+                value={newSearchName}
+                onChange={(e) => setNewSearchName(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '12px',
+                  minHeight: '44px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  boxSizing: 'border-box'
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && handleCreateFromCurrent()}
+              />
+              <button
+                onClick={handleCreateFromCurrent}
+                style={{
+                  padding: '12px 24px',
+                  minHeight: '44px',
+                  background: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  touchAction: 'manipulation',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Save
+              </button>
             </div>
-          ))}
-        </div>
-      )}
+            {criteriaPreview && (
+              <p style={{ margin: '12px 0 0 0', fontSize: 13, color: '#4b5563' }}>
+                {criteriaPreview}
+              </p>
+            )}
+            <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#6b7280' }}>
+              Go to the listings page, apply your filters, then come back here to save them.
+            </p>
+          </div>
+        )}
+
+        {searches.length === 0 ? (
+          <div style={{
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
+            padding: '48px 24px',
+            textAlign: 'center',
+            background: '#fff',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+            <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: '600', marginBottom: '8px' }}>No Saved Searches</h2>
+            <p style={{ color: '#6b7280', marginBottom: '24px', fontSize: 'clamp(14px, 3vw, 16px)' }}>
+              Save your search criteria to quickly find properties that match your preferences.
+            </p>
+            <Link href="/listings" style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              minHeight: '44px',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '14px',
+              touchAction: 'manipulation'
+            }}>
+              Start Searching
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, flex: 1, overflowY: 'auto' }}>
+            <style>{`
+              @media (min-width: 768px) {
+                .saved-searches-grid {
+                  grid-template-columns: repeat(2, 1fr) !important;
+                }
+              }
+            `}</style>
+            <div className="saved-searches-grid" style={{ display: 'grid', gap: 12 }}>
+              {searches.map((search) => (
+                <div
+                  key={search.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 12,
+                    padding: '16px',
+                    background: search.active ? '#fff' : '#f9fafb',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <h3 style={{ margin: 0, fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 600, color: '#1a1a1a', flex: 1, minWidth: 0 }}>
+                        {search.name}
+                      </h3>
+                      {!search.active && (
+                        <span style={{
+                          padding: '4px 10px',
+                          background: '#6b7280',
+                          color: 'white',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          Inactive
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
+                      Created {new Date(search.created_at).toLocaleDateString()}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.5 }}>
+                      {summarizeCriteria(search.criteria as SavedSearchCriteria)}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleApplySearch(search)}
+                      style={{
+                        padding: '8px 16px',
+                        minHeight: '44px',
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        flex: 1,
+                        minWidth: '100px',
+                        touchAction: 'manipulation'
+                      }}
+                    >
+                      Apply
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(search)}
+                      style={{
+                        padding: '8px 16px',
+                        minHeight: '44px',
+                        background: search.active ? '#f3f4f6' : '#059669',
+                        color: search.active ? '#6b7280' : 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        flex: 1,
+                        minWidth: '100px',
+                        touchAction: 'manipulation'
+                      }}
+                    >
+                      {search.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(search.id)}
+                      style={{
+                        padding: '8px 16px',
+                        minHeight: '44px',
+                        background: '#fff',
+                        color: '#dc2626',
+                        border: '1px solid #dc2626',
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        flex: 1,
+                        minWidth: '100px',
+                        touchAction: 'manipulation'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
@@ -490,4 +552,3 @@ function summarizeCriteria(criteria: SavedSearchCriteria | Record<string, unknow
 
   return details.join(' · ') || 'All listings';
 }
-

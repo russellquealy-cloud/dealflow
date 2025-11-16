@@ -4,6 +4,7 @@ import { getUserSubscriptionTier } from '@/lib/subscription';
 import { getAuthUser } from '@/lib/auth/server';
 import { checkAndIncrementAiUsage } from '@/lib/ai/usage';
 import type { SubscriptionTier } from '@/lib/stripe';
+import { notifyRepairEstimateReady } from '@/lib/notifications';
 
 export async function POST(request: NextRequest) {
   let subscriptionTier: SubscriptionTier = 'FREE';
@@ -79,6 +80,39 @@ export async function POST(request: NextRequest) {
       planTier: subscriptionTier,
       isTestAccount: isAdmin || isTestAccount,
     });
+
+    // Notify if repair estimate was completed for a listing
+    // Check if input has listingId (may be in metadata or direct field)
+    const listingId = 'listingId' in input && typeof input.listingId === 'string' 
+      ? input.listingId 
+      : null;
+
+    if (role === 'wholesaler' && input.questionType === 'repair_estimate' && listingId) {
+      try {
+        const { data: listingData } = await supabase
+          .from('listings')
+          .select('owner_id, title')
+          .eq('id', listingId)
+          .maybeSingle();
+
+        if (listingData?.owner_id && listingData.owner_id === user.id) {
+          const repairCost = result.result && typeof result.result === 'object' && 'answer' in result.result
+            ? typeof result.result.answer === 'number' ? result.result.answer : null
+            : null;
+
+          await notifyRepairEstimateReady({
+            ownerId: listingData.owner_id,
+            listingTitle: typeof listingData.title === 'string' ? listingData.title : null,
+            listingId,
+            repairCost,
+            supabaseClient: supabase,
+          });
+        }
+      } catch (notificationError) {
+        console.error('Failed to send repair estimate notification', notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
 
     return NextResponse.json(result);
 

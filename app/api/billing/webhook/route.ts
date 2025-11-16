@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature, getPlanFromPriceId } from '@/lib/stripe';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import Stripe from 'stripe';
+import { notifySubscriptionRenewal } from '@/lib/notifications';
 
 export async function POST(request: NextRequest) {
   try {
@@ -213,20 +214,34 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 
   // Update current period end
   // Update user profile
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const periodEnd = new Date((subscription as any).current_period_end * 1000);
   await supabase
     .from('profiles')
     .update({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+      current_period_end: periodEnd.toISOString(),
     })
     .eq('id', userId);
 
   console.log(`Updated user ${userId} payment period`);
+
+  // Send renewal confirmation notification
+  try {
+    await notifySubscriptionRenewal({
+      ownerId: userId,
+      title: 'Subscription Renewed Successfully',
+      body: `Your ${plan.segment} ${plan.tier} subscription has been renewed. Thank you for your continued support!`,
+      supabaseClient: supabase,
+    });
+  } catch (notificationError) {
+    console.error('Failed to send renewal notification', notificationError);
+  }
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
+  const supabase = await createSupabaseServer();
   const customerId = invoice.customer;
-
+  
   // Get user ID
   const Stripe = (await import('stripe')).default;
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -239,7 +254,16 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 
   console.log(`Payment failed for user ${userId}`);
-  
-  // You might want to send an email notification here
-  // or implement retry logic
+
+  // Send payment failure notification
+  try {
+    await notifySubscriptionRenewal({
+      ownerId: userId,
+      title: 'Payment Failed - Action Required',
+      body: 'We were unable to process your subscription payment. Please update your payment method to avoid service interruption.',
+      supabaseClient: supabase,
+    });
+  } catch (notificationError) {
+    console.error('Failed to send payment failure notification', notificationError);
+  }
 }
