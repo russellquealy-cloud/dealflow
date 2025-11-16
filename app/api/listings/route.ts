@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
-import { isAdmin } from '@/lib/admin';
 import { getListingsForSearch, type ListingsQueryParams } from '@/lib/listings';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +29,7 @@ export async function GET(request: NextRequest) {
       city: searchParams.get('city') || undefined,
       state: searchParams.get('state') || undefined,
       search: searchParams.get('search') || undefined,
-      sortBy: searchParams.get('sortBy') || undefined,
+      sortBy: (searchParams.get('sortBy') as 'newest' | 'price_asc' | 'price_desc' | 'sqft_asc' | 'sqft_desc' | undefined) || undefined,
       south: searchParams.get('south') ? parseFloat(searchParams.get('south')!) : undefined,
       north: searchParams.get('north') ? parseFloat(searchParams.get('north')!) : undefined,
       west: searchParams.get('west') ? parseFloat(searchParams.get('west')!) : undefined,
@@ -126,7 +124,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const listings = data as Array<Record<string, unknown>>;
+    const listings = data as unknown as Array<Record<string, unknown>>;
     const ownerIds = Array.from(
       new Set(
         listings

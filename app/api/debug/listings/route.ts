@@ -13,9 +13,8 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     const userIsAdmin = user ? await isAdmin(user.id, supabase) : false;
 
-    const { searchParams } = new URL(request.url);
-    const city = searchParams.get('city') || undefined;
-    const state = searchParams.get('state') || undefined;
+    // Note: city and state filters could be added here if needed for future filtering
+    // const { searchParams } = new URL(request.url);
 
     // Get total count
     const { count: totalCount } = await supabase

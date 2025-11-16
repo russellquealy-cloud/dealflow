@@ -303,7 +303,7 @@ export default function WatchlistsPage() {
             }}>
               <strong>⚠️ Unavailable Properties:</strong> {itemsWithoutListings.length} saved {itemsWithoutListings.length === 1 ? 'property' : 'properties'} {itemsWithoutListings.length === 1 ? 'is' : 'are'} no longer available. This may be because the listing was deleted or is no longer accessible.
               <div style={{ marginTop: 12, fontSize: 12, color: '#78350f' }}>
-                {itemsWithoutListings.map((item, idx) => (
+                {itemsWithoutListings.map((item) => (
                   <div key={item.id} style={{ marginBottom: 8, padding: 8, background: '#fde68a', borderRadius: 4 }}>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>Property ID: {item.property_id}</div>
                     <div style={{ fontSize: 11, color: '#92400e' }}>
