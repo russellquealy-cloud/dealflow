@@ -18,8 +18,11 @@ type ListingSummary = {
   state?: string | null;
   zip?: string | null;
   price?: number | null;
+  beds?: number | null;  // Alternative column name
   bedrooms?: number | null;
+  baths?: number | null;  // Alternative column name
   bathrooms?: number | null;
+  sqft?: number | null;  // Alternative column name
   home_sqft?: number | null;
   arv?: number | null;
   repairs?: number | null;
@@ -42,6 +45,12 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
     return [];
   })();
 
+  // Handle both beds/bedrooms and baths/bathrooms column names for compatibility
+  // ROOT CAUSE FIX: Database may use 'beds'/'baths' while API expects 'bedrooms'/'bathrooms'
+  const beds = listing.beds ?? listing.bedrooms ?? null;
+  const baths = listing.baths ?? listing.bathrooms ?? null;
+  const sqft = listing.sqft ?? listing.home_sqft ?? null;
+
   return {
     id: listing.id,
     title: listing.title ?? null,
@@ -50,10 +59,12 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
     state: listing.state ?? null,
     zip: listing.zip ?? null,
     price: listing.price ?? null,
-    bedrooms: listing.bedrooms ?? null,
-    baths: listing.bathrooms ?? null,
-    bathrooms: listing.bathrooms ?? null,
-    home_sqft: listing.home_sqft ?? null,
+    bedrooms: typeof beds === 'number' ? beds : listing.bedrooms ?? null,
+    beds: typeof beds === 'number' ? beds : null,
+    baths: typeof baths === 'number' ? baths : listing.bathrooms ?? null,
+    bathrooms: typeof baths === 'number' ? baths : listing.bathrooms ?? null,
+    home_sqft: typeof sqft === 'number' ? sqft : listing.home_sqft ?? null,
+    sqft: typeof sqft === 'number' ? sqft : null,
     arv: listing.arv ?? null,
     repairs: listing.repairs ?? null,
     spread: listing.spread ?? null,
@@ -182,10 +193,53 @@ export async function GET(request: NextRequest) {
 
     // Query listings without status filter - users should see listings they saved regardless of status
     // This is different from the main listings API which only shows 'live' listings
+    // NOTE: Watchlist items link to listings.id via watchlists.property_id
+    // We query by listings.id using the property_id values from watchlist rows
+    // ROOT CAUSE FIX: Query all columns including both beds/bedrooms and baths/bathrooms for compatibility
     const { data: listingsData, error: listingsError } = await supabase
       .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status')
+      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status')
       .in('id', listingIds);
+    
+    // If query returns empty but we have listingIds, check if RLS is blocking
+    if (!listingsError && (!listingsData || listingsData.length === 0) && listingIds.length > 0) {
+      logger.warn('⚠️ Watchlist GET: No listings returned but listingIds provided', {
+        listingIds,
+        possibleCauses: [
+          'RLS policy blocking access',
+          'Listings do not exist',
+          'ID type mismatch (UUID vs text)',
+        ],
+      });
+      
+      // Try to verify one listing exists (for debugging)
+      const testId = listingIds[0];
+      const { data: testListing, error: testError } = await supabase
+        .from('listings')
+        .select('id, status, owner_id')
+        .eq('id', testId)
+        .maybeSingle();
+      
+      if (testError) {
+        logger.error('❌ Watchlist GET: Cannot access test listing', {
+          listingId: testId,
+          error_code: testError.code,
+          error_message: testError.message,
+          likelyCause: testError.code === '42501' ? 'RLS policy blocking' : 'Other error',
+        });
+      } else if (testListing) {
+        logger.log('✅ Watchlist GET: Test listing exists but not returned in batch query', {
+          listingId: testId,
+          status: testListing.status,
+          owner_id: testListing.owner_id,
+          note: 'This suggests RLS or query filter issue',
+        });
+      } else {
+        logger.log('❌ Watchlist GET: Test listing does not exist', {
+          listingId: testId,
+        });
+      }
+    }
 
     if (listingsError) {
       logger.error('❌ Watchlist GET: Error fetching listings', {
@@ -431,7 +485,7 @@ export async function POST(request: NextRequest) {
     const { data: listingData, error: listingError } = await supabase
       .from('listings')
       .select(
-        'id, owner_id, title, address, city, state, zip, price, bedrooms, bathrooms, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+        'id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
       )
       .eq('id', listingId)
       .maybeSingle();

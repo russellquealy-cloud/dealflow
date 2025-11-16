@@ -179,6 +179,7 @@ export default function WatchlistsPage() {
   };
 
   // Filter items that have valid listings
+  // ROOT CAUSE FIX: Keep items without listings but mark them for display
   const itemsWithListings = useMemo(() => {
     return watchlists.filter((item): item is WatchlistItem & { listing: ListingLike } => {
       const hasListing = Boolean(item.listing);
@@ -190,6 +191,11 @@ export default function WatchlistsPage() {
       }
       return hasListing;
     });
+  }, [watchlists]);
+  
+  // Items without listings (for showing "unavailable" message)
+  const itemsWithoutListings = useMemo(() => {
+    return watchlists.filter(item => !item.listing);
   }, [watchlists]);
 
   if (loading || authLoading) {
@@ -258,7 +264,7 @@ export default function WatchlistsPage() {
         </p>
       </div>
 
-      {itemsWithListings.length === 0 ? (
+      {itemsWithListings.length === 0 && itemsWithoutListings.length === 0 ? (
         <div style={{
           border: '1px solid #e5e7eb',
           borderRadius: 12,
@@ -269,22 +275,8 @@ export default function WatchlistsPage() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</div>
           <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>No Saved Properties</h2>
           <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-            {watchlists.length > 0 
-              ? `You have ${watchlists.length} saved ${watchlists.length === 1 ? 'property' : 'properties'}, but ${watchlists.length === 1 ? 'it' : 'they'} ${watchlists.length === 1 ? 'is' : 'are'} not available. This may be due to RLS policies or the listing being deleted.`
-              : 'Start saving properties you\'re interested in to track them here.'}
+            Start saving properties you&apos;re interested in to track them here.
           </p>
-          {watchlists.length > 0 && (
-            <div style={{ 
-              marginBottom: '24px', 
-              padding: '12px', 
-              background: '#fef3c7', 
-              borderRadius: 8,
-              fontSize: '14px',
-              color: '#92400e'
-            }}>
-              <strong>Debug Info:</strong> Check browser console for detailed diagnostics about why listings aren&apos;t loading.
-            </div>
-          )}
           <Link href="/listings" style={{
             display: 'inline-block',
             padding: '12px 24px',
@@ -299,50 +291,78 @@ export default function WatchlistsPage() {
         </div>
       ) : (
         <>
-          {watchlists.length > itemsWithListings.length && (
+          {itemsWithoutListings.length > 0 && (
             <div style={{
               marginBottom: 16,
-              padding: 12,
+              padding: 16,
               background: '#fef3c7',
               border: '1px solid #fbbf24',
               borderRadius: 8,
               fontSize: 14,
               color: '#92400e'
             }}>
-              <strong>Note:</strong> {watchlists.length - itemsWithListings.length} saved {watchlists.length - itemsWithListings.length === 1 ? 'property' : 'properties'} {watchlists.length - itemsWithListings.length === 1 ? 'is' : 'are'} not available. Check console for details.
+              <strong>⚠️ Unavailable Properties:</strong> {itemsWithoutListings.length} saved {itemsWithoutListings.length === 1 ? 'property' : 'properties'} {itemsWithoutListings.length === 1 ? 'is' : 'are'} no longer available. This may be because the listing was deleted or is no longer accessible.
+              <div style={{ marginTop: 12, fontSize: 12, color: '#78350f' }}>
+                {itemsWithoutListings.map((item, idx) => (
+                  <div key={item.id} style={{ marginBottom: 8, padding: 8, background: '#fde68a', borderRadius: 4 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Property ID: {item.property_id}</div>
+                    <div style={{ fontSize: 11, color: '#92400e' }}>
+                      Saved on: {new Date(item.created_at).toLocaleDateString()}
+                    </div>
+                    <button
+                      onClick={() => handleRemove(item.id, item.property_id)}
+                      style={{
+                        marginTop: 8,
+                        padding: '4px 12px',
+                        background: '#fff',
+                        border: '1px solid #dc2626',
+                        borderRadius: 4,
+                        color: '#dc2626',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Remove from Watchlist
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: 20
-          }}>
-            {itemsWithListings.map((item) => (
-              <div key={item.id} style={{ position: 'relative' }}>
-                <ListingCard listing={item.listing} />
-                <button
-                  onClick={() => handleRemove(item.id, item.property_id)}
-                  style={{
-                    position: 'absolute',
-                    top: 12,
-                    right: 12,
-                    padding: '6px 12px',
-                    background: '#fff',
-                    border: '1px solid #dc2626',
-                    borderRadius: 6,
-                    color: '#dc2626',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    zIndex: 10,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
+          {itemsWithListings.length > 0 && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: 20
+            }}>
+              {itemsWithListings.map((item) => (
+                <div key={item.id} style={{ position: 'relative' }}>
+                  <ListingCard listing={item.listing} />
+                  <button
+                    onClick={() => handleRemove(item.id, item.property_id)}
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      padding: '6px 12px',
+                      background: '#fff',
+                      border: '1px solid #dc2626',
+                      borderRadius: 6,
+                      color: '#dc2626',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      zIndex: 10,
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </main>
