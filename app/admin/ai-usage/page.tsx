@@ -97,7 +97,7 @@ export default function AdminAIUsagePage() {
             .limit(100);
 
           if (profiles) {
-            const usagePromises = profiles.map(async (profile) => {
+            const usagePromises = profiles.map(async (profile: { id: string; email: string | null; tier: string | null; segment: string | null }) => {
               const response = await fetch(`/api/ai-usage?userId=${profile.id}`, {
                 headers,
                 credentials: 'include',

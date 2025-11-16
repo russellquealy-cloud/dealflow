@@ -157,7 +157,12 @@ async function checkWatchlistAPI() {
       addResult('Watchlist API', 'error', `Unexpected status: ${response.status}`);
     }
   } catch (error) {
-    addResult('Watchlist API', 'error', `Failed to reach endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to reach endpoint (dev server may not be running)'
+      : `Failed to reach endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Watchlist API', status, message);
   }
 }
 
@@ -176,7 +181,7 @@ async function checkStripeWebhooks() {
     addResult('Stripe Webhooks', 'success', 'STRIPE_WEBHOOK_SECRET is configured');
   }
 
-  // Check webhook endpoint exists
+    // Check webhook endpoint exists
   try {
     const response = await fetch(`${baseUrl}/api/billing/webhook`, {
       method: 'POST',
@@ -191,7 +196,12 @@ async function checkStripeWebhooks() {
       addResult('Stripe Webhook Endpoint', 'success', 'Webhook endpoint exists');
     }
   } catch (error) {
-    addResult('Stripe Webhook Endpoint', 'error', `Failed to check endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to check endpoint (dev server may not be running)'
+      : `Failed to check endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Stripe Webhook Endpoint', status, message);
   }
 
   addResult('Stripe Secret Key', 'success', 'STRIPE_SECRET_KEY is set');
@@ -259,7 +269,7 @@ async function checkAdminAccount() {
     });
     const { data: admins, error } = await supabase
       .from('profiles')
-      .select('id, email, role, segment')
+      .select('id, role, segment')
       .or('role.eq.admin,segment.eq.admin')
       .limit(5);
 
@@ -271,8 +281,8 @@ async function checkAdminAccount() {
     if (!admins || admins.length === 0) {
       addResult('Admin Account', 'error', 'No admin accounts found');
     } else {
-      const adminEmails = admins.map(a => a.email || 'N/A').join(', ');
-      addResult('Admin Account', 'success', `Found ${admins.length} admin account(s): ${adminEmails}`);
+      const adminIds = admins.map(a => a.id.substring(0, 8) + '...').join(', ');
+      addResult('Admin Account', 'success', `Found ${admins.length} admin account(s) (IDs: ${adminIds})`);
     }
   } catch (error) {
     addResult('Admin Account', 'error', `Error checking admin accounts: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -292,7 +302,12 @@ async function checkMobileViewport() {
       addResult('Mobile Viewport', 'warning', 'Viewport meta tag not found in HTML');
     }
   } catch (error) {
-    addResult('Mobile Viewport', 'error', `Failed to check viewport: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to check viewport (dev server may not be running)'
+      : `Failed to check viewport: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Mobile Viewport', status, message);
   }
 }
 
@@ -307,7 +322,12 @@ async function checkErrorPages() {
       addResult('Error Page 404', 'warning', `Unexpected status for 404: ${response.status}`);
     }
   } catch (error) {
-    addResult('Error Page 404', 'error', `Failed to check 404: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to check 404 (dev server may not be running)'
+      : `Failed to check 404: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Error Page 404', status, message);
   }
 
   // Note: 500 page is harder to test without causing an actual error
@@ -329,7 +349,12 @@ async function checkSitemapRobots() {
       addResult('Robots.txt', 'warning', `robots.txt returned status ${robotsResponse.status}`);
     }
   } catch (error) {
-    addResult('Robots.txt', 'error', `Failed to fetch robots.txt: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to fetch robots.txt (dev server may not be running)'
+      : `Failed to fetch robots.txt: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Robots.txt', status, message);
   }
 
   // Check sitemap.xml
@@ -343,7 +368,11 @@ async function checkSitemapRobots() {
       addResult('Sitemap.xml', 'warning', `sitemap.xml returned status ${sitemapResponse.status}`);
     }
   } catch (error) {
-    addResult('Sitemap.xml', 'warning', `Could not check sitemap.xml: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const message = isLocalhost 
+      ? 'Could not check sitemap.xml (dev server may not be running)'
+      : `Could not check sitemap.xml: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Sitemap.xml', 'warning', message);
   }
 }
 
@@ -363,7 +392,12 @@ async function checkTermsPrivacy() {
         addResult(`${page.name} Page`, 'error', `${page.name} page returned status ${response.status}`);
       }
     } catch (error) {
-      addResult(`${page.name} Page`, 'error', `Failed to check ${page.name} page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const isLocalhost = baseUrl.includes('localhost');
+      const status = isLocalhost ? 'warning' : 'error';
+      const message = isLocalhost 
+        ? `Failed to check ${page.name} page (dev server may not be running)`
+        : `Failed to check ${page.name} page: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      addResult(`${page.name} Page`, status, message);
     }
   }
 }
@@ -390,7 +424,12 @@ async function checkMapLoads() {
       addResult('Map Integration', 'error', `Listings page returned status ${response.status}`);
     }
   } catch (error) {
-    addResult('Map Integration', 'error', `Failed to check map: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to check map (dev server may not be running)'
+      : `Failed to check map: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Map Integration', status, message);
   }
 
   addResult('Google Maps API Key', 'success', 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set');
@@ -412,7 +451,12 @@ async function checkMessaging() {
       addResult('Messaging API', 'warning', `Unexpected status: ${response.status}`);
     }
   } catch (error) {
-    addResult('Messaging API', 'error', `Failed to reach endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to reach endpoint (dev server may not be running)'
+      : `Failed to reach endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Messaging API', status, message);
   }
 
   // Check messages page
@@ -424,7 +468,12 @@ async function checkMessaging() {
       addResult('Messages Page', 'warning', `Messages page returned status ${response.status}`);
     }
   } catch (error) {
-    addResult('Messages Page', 'error', `Failed to check messages page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to check messages page (dev server may not be running)'
+      : `Failed to check messages page: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Messages Page', status, message);
   }
 }
 
@@ -444,7 +493,12 @@ async function checkNotifications() {
       addResult('Notifications API', 'warning', `Unexpected status: ${response.status}`);
     }
   } catch (error) {
-    addResult('Notifications API', 'error', `Failed to reach endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to reach endpoint (dev server may not be running)'
+      : `Failed to reach endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Notifications API', status, message);
   }
 
   // Check notifications page
@@ -458,7 +512,12 @@ async function checkNotifications() {
       addResult('Notifications Page', 'warning', `Notifications page returned status ${response.status}`);
     }
   } catch (error) {
-    addResult('Notifications Page', 'error', `Failed to check notifications page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const isLocalhost = baseUrl.includes('localhost');
+    const status = isLocalhost ? 'warning' : 'error';
+    const message = isLocalhost 
+      ? 'Failed to check notifications page (dev server may not be running)'
+      : `Failed to check notifications page: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    addResult('Notifications Page', status, message);
   }
 }
 
@@ -538,10 +597,15 @@ async function checkAPIRoutes() {
       }
     } catch (error) {
       clearTimeout(timeoutId);
+      const isLocalhost = baseUrl.includes('localhost');
       if (error instanceof Error && error.name === 'AbortError') {
         addResult(`API Route ${route.path}`, 'error', 'Request timed out');
       } else {
-        addResult(`API Route ${route.path}`, 'error', `Failed to reach: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const status = isLocalhost ? 'warning' : 'error';
+        const message = isLocalhost 
+          ? 'Failed to reach (dev server may not be running)'
+          : `Failed to reach: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        addResult(`API Route ${route.path}`, status, message);
       }
       routeResults.push({ route: route.path, status: 0, ok: false });
     }
@@ -561,6 +625,12 @@ async function checkAPIRoutes() {
 async function runChecks() {
   console.log('Running pre-launch checks...\n');
   console.log(`Base URL: ${baseUrl}\n`);
+  
+  const isLocalhost = baseUrl.includes('localhost');
+  if (isLocalhost) {
+    console.log('⚠️  Note: Checking localhost. Make sure your dev server is running (pnpm dev)\n');
+    console.log('   Fetch failures will be shown as warnings, not errors.\n');
+  }
 
   await checkSupabaseKeys();
   await checkRedirectUrls();
