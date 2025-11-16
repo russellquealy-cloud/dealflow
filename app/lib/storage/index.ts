@@ -226,6 +226,6 @@ export function createStorage(adapter?: StorageAdapter): StorageService {
 // Export default instance
 export const storage = getStorage();
 
-// Export types
-export type { StorageAdapter, StorageService };
+// StorageAdapter is already exported as interface above (line 15)
+// StorageService is a class and doesn't need a type export
 
