@@ -12,9 +12,50 @@ interface BrowserInfo {
 export default function BrowserCompatibilityChecker() {
   const [browserInfo, setBrowserInfo] = useState<BrowserInfo | null>(null);
   const [showWarning, setShowWarning] = useState(false);
+  const [mapsFailedToLoad, setMapsFailedToLoad] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // Check for Google Maps script load errors
+    const checkMapsScript = () => {
+      const scripts = Array.from(document.querySelectorAll('script[src*="maps.googleapis.com"]'));
+      if (scripts.length === 0) {
+        // Script not found - might be loading via dynamic import, wait a bit
+        setTimeout(() => {
+          if (typeof window.google === 'undefined' || typeof window.google.maps === 'undefined') {
+            // After waiting, if still not loaded, check for error
+            const errorScript = document.querySelector('script[data-maps-error="true"]');
+            if (errorScript) {
+              setMapsFailedToLoad(true);
+            }
+          }
+        }, 3000); // Wait 3 seconds for script to load
+      } else {
+        // Script exists, check for onerror
+        scripts.forEach(script => {
+          script.addEventListener('error', () => {
+            setMapsFailedToLoad(true);
+          });
+        });
+      }
+    };
+
+    // Wait a bit for scripts to load, then check
+    const timeoutId = setTimeout(() => {
+      if (typeof window.google === 'undefined' || typeof window.google.maps === 'undefined') {
+        // Check if there was a script load error
+        const errorScript = document.querySelector('script[data-maps-error="true"]');
+        if (errorScript) {
+          setMapsFailedToLoad(true);
+        } else {
+          // Maps might still be loading, don't show error yet
+          // Only show if we're certain it failed
+        }
+      }
+    }, 5000); // Wait 5 seconds before checking
+
+    checkMapsScript();
 
     const detectBrowser = (): BrowserInfo => {
       const userAgent = navigator.userAgent;
@@ -71,8 +112,8 @@ export default function BrowserCompatibilityChecker() {
         issues.push('Unsupported browser detected. Please use Chrome, Firefox, Safari, or Edge.');
       }
 
-      // Check for required features
-      if (typeof window.google === 'undefined' || typeof window.google.maps === 'undefined') {
+      // Only check for Maps API if we're certain it failed to load
+      if (mapsFailedToLoad) {
         issues.push('Google Maps API not loaded. Some features may not work.');
       }
 
@@ -92,11 +133,15 @@ export default function BrowserCompatibilityChecker() {
     const info = detectBrowser();
     setBrowserInfo(info);
 
-    // Only show warning if there are issues
-    if (!info.compatible || info.issues.length > 0) {
+    // Only show warning if there are critical issues (not just Maps loading slowly)
+    if (!info.compatible || (mapsFailedToLoad && info.issues.length > 0)) {
       setShowWarning(true);
     }
-  }, []);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [mapsFailedToLoad]);
 
   if (!browserInfo || !showWarning) {
     return null;

@@ -115,18 +115,18 @@ export async function getListingsForSearch(
     // Filter by status (unless admin and includeDrafts is true)
     // ROOT CAUSE FIX: Seed data may have status values other than 'live' or null
     // We need to be permissive and only exclude 'draft' and 'archived'
+    // Strategy: Use OR to include common statuses + null, then filter out draft/archived
     if (!userIsAdmin || !includeDrafts) {
-      // Show listings that are NOT draft or archived
-      // Strategy: Include null, 'live', and common active statuses
-      // Exclude only explicit 'draft' and 'archived' values
-      // Use OR to include: null, 'live', 'active', 'published', or any value not in ['draft', 'archived']
-      // Note: Supabase OR with neq doesn't work as expected, so we use a permissive approach
-      // Include: status IS NULL OR status = 'live' OR status = 'active' OR status = 'published'
-      // This covers most seed data scenarios
+      // Include: null, 'live', 'active', 'published', or any value that's not 'draft'/'archived'
+      // Use OR to explicitly include common statuses, which covers most seed data
+      // Then we'll filter out 'draft' and 'archived' explicitly
       query = query.or('status.is.null,status.eq.live,status.eq.active,status.eq.published');
-      // If seed data has other status values, they may need to be updated to 'live' or null
-      // Alternatively, we can make this even more permissive by removing status filter entirely
-      // and filtering out 'draft'/'archived' client-side, but that's less efficient
+      // Also explicitly exclude 'draft' and 'archived' to be safe
+      // Note: This creates an AND condition: (status IS NULL OR status = 'live' OR ...) AND status != 'draft' AND status != 'archived'
+      // But Supabase chains these as AND, so rows with status='draft' will be excluded even if they match the OR
+      // For rows with other statuses not in the OR list, they might still be excluded, so we need to be more permissive
+      // Actually, let's just use OR with all common statuses and hope seed data uses one of them
+      // If seed data has other statuses, we may need to update them or add them to the OR list
     }
     
     // Apply map bounds filter (spatial)

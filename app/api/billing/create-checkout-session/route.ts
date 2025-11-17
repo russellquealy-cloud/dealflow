@@ -132,8 +132,6 @@ export async function POST(req: NextRequest) {
       },
       success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
-      // Add customer-facing information
-      customer_email: user.email || undefined,
       payment_method_types: ['card'],
       // Add invoice settings for better branding
       invoice_creation: {
@@ -146,6 +144,7 @@ export async function POST(req: NextRequest) {
     if (stripeCustomerId) {
       sessionParams.customer = stripeCustomerId;
       // Explicitly do NOT set customer_email when customer is set
+      delete sessionParams.customer_email; // Ensure it's not set
     } else {
       // Only set customer_email if we don't have a customer ID
       if (user.email) {

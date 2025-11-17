@@ -23,6 +23,36 @@ function LoginInner() {
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic-link'>('password');
   const [resetting, setResetting] = useState(false);
 
+  // Handle magic link callback - detect session from URL on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handleMagicLinkCallback = async () => {
+      // Check if we have a hash fragment with access_token (implicit flow)
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        logger.log('🔐 Magic link callback detected in URL hash');
+        
+        // The Supabase client should automatically detect this with detectSessionInUrl: true
+        // But we can force a session refresh to ensure it's picked up
+        try {
+          await refreshSession();
+          // Small delay to ensure session is set
+          setTimeout(() => {
+            if (session) {
+              logger.log('✅ Magic link session detected, redirecting to:', next);
+              router.replace(next);
+            }
+          }, 500);
+        } catch (error) {
+          logger.error('❌ Error handling magic link callback:', error);
+        }
+      }
+    };
+    
+    handleMagicLinkCallback();
+  }, [refreshSession, session, next, router]);
+
   useEffect(() => {
     if (authLoading || !session || autoRedirected) {
       return;
@@ -77,8 +107,11 @@ function LoginInner() {
         }
       } else {
         // Magic link login with consistent redirect URL
+        // ROOT CAUSE FIX: For mobile, use /auth/callback route which properly handles code exchange
+        // For desktop, /login with detectSessionInUrl should work, but /auth/callback is more reliable
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-        const redirectTo = `${siteUrl}/login`;
+        // Use /auth/callback for better mobile compatibility, then redirect to original destination
+        const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
 
         logger.log('📧 Requesting magic link:', {
           email,

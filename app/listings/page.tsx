@@ -379,6 +379,25 @@ export default function ListingsPage() {
         if (!isMounted) return;
 
         clearTimeout(skeletonTimeout);
+        
+        // Defensive logging: compare map markers vs list items
+        logger.log('📊 Listings loaded', {
+          itemsCount: items.length,
+          pointsCount: points.length,
+          itemsIds: items.map(i => i.id).slice(0, 5),
+          pointsIds: points.map(p => p.id).slice(0, 5),
+          note: 'If pointsCount > itemsCount, some listings may be filtered out client-side'
+        });
+        
+        if (points.length > items.length) {
+          logger.warn('⚠️ Map has more markers than list items', {
+            pointsCount: points.length,
+            itemsCount: items.length,
+            difference: points.length - items.length,
+            note: 'This suggests client-side filtering is excluding some listings'
+          });
+        }
+        
         setAllListings(items);
         setAllPoints(points);
         setLoading(false);
@@ -436,7 +455,9 @@ export default function ListingsPage() {
         
         if (!response.ok) {
           const errorText = await response.text();
-          logger.error('Geocoding failed', response.status, errorText);
+          logger.error('Geocoding failed', { status: response.status, error: errorText, query });
+          // Show user-friendly error message
+          setError({ message: `Could not find location: ${query}`, code: 'GEOCODE_ERROR' });
           return;
         }
         
@@ -455,11 +476,14 @@ export default function ListingsPage() {
         };
         
         if (data.ok && typeof data.lat === 'number' && typeof data.lng === 'number') {
+          logger.log('✅ Geocoding successful', { query, lat: data.lat, lng: data.lng, viewport: data.viewport });
+          
           // Move map to geocoded location
           setMapCenter({ lat: data.lat, lng: data.lng });
           
           // Use viewport if available (map will use fitBounds for better UX)
           if (data.viewport) {
+            logger.log('📍 Setting map viewport and bounds', data.viewport);
             setMapViewport(data.viewport);
             // Clear zoom when using viewport (fitBounds will handle it)
             setMapZoom(undefined);
@@ -474,13 +498,24 @@ export default function ListingsPage() {
             });
             setActiveMapBounds(true);
             
+            // Trigger a refresh of listings with the new bounds
+            // This ensures the list updates to match the map viewport
+            setTimeout(() => {
+              handleMapBoundsChange({
+                north: data.viewport!.north,
+                south: data.viewport!.south,
+                east: data.viewport!.east,
+                west: data.viewport!.west,
+              });
+            }, 100);
+            
             // Keep the formatted address in the search bar for display
-            // But we'll filter by map bounds, not text search
             if (data.formattedAddress) {
               setSearchQuery(data.formattedAddress);
             }
           } else {
             // Fallback to center + zoom if no viewport
+            logger.log('📍 Setting map center and zoom (no viewport)', { lat: data.lat, lng: data.lng });
             setMapViewport(undefined);
             setMapZoom(14);
             // Clear bounds filtering when using center/zoom
@@ -488,14 +523,13 @@ export default function ListingsPage() {
             setMapBounds(null);
           }
           
-          // Update search query to show the formatted address (for display only)
-          // But don't use it for filtering - we use map bounds instead
+          // Update search query to show the formatted address
           if (data.formattedAddress) {
-            // Keep the formatted address visible but don't filter by it
-            // The search bar will show it, but filtering uses map bounds
+            setSearchQuery(data.formattedAddress);
           }
         } else if (!data.ok) {
           logger.warn('Geocoding returned no results:', data.error);
+          setError({ message: data.error || `Could not find location: ${query}`, code: 'GEOCODE_NO_RESULTS' });
         }
       } catch (error) {
         logger.error('Error geocoding:', error);

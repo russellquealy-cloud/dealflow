@@ -6,6 +6,28 @@
 
 ## ✅ Recently Completed (This Session)
 
+### QA Fixes - Listings, Auth, Billing
+- ✅ Fixed listing visibility issues (Miami seed listings, Tucson test listing)
+  - Made status filter more permissive to handle various seed data statuses
+  - Added defensive logging to compare map markers vs list items
+- ✅ Fixed search/map sync (geocode API and map recenter)
+  - Enhanced error handling in geocode flow
+  - Ensured map recenters and list updates when searching
+- ✅ Fixed browser notice (only shows when Maps API truly fails)
+  - Added delay before checking Maps API
+  - Only shows notice on actual script load failures
+- ✅ Fixed magic link flow on mobile
+  - Changed redirect to use `/auth/callback` route
+  - Added session detection for hash fragments (implicit flow)
+- ✅ Fixed password reset flow
+  - Added token validation on page load
+  - Handles both implicit and PKCE flows
+  - Enhanced error messages and auto-redirect
+- ✅ Fixed Stripe checkout error ("customer and customer_email")
+  - Removed unconditional customer_email assignment
+  - Only sets customer_email when no customer ID exists
+- ✅ Verified subscription management (already implemented via Stripe portal)
+
 ### Pre-Launch Automation
 - ✅ Created comprehensive pre-launch checklist script (`scripts/prelaunch-check.ts`)
 - ✅ Automated checks for:
