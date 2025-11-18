@@ -404,6 +404,10 @@ function renderWholesalerSection(stats: WholesalerStats) {
       <MetricCard title="Conversion Rate" value="" grow>
         {renderConversionBar(stats.conversionRate ?? null)}
       </MetricCard>
+
+      <MetricCard title="Hot Markets" value="" grow>
+        {renderHotMarkets(stats.hotMarkets)}
+      </MetricCard>
     </div>
   );
 }

@@ -107,22 +107,20 @@ function LoginInner() {
         }
       } else {
         // Magic link login with consistent redirect URL
-        // ROOT CAUSE FIX: For mobile, use /auth/callback route which properly handles code exchange
-        // For desktop, /login with detectSessionInUrl should work, but /auth/callback is more reliable
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-        // Use /auth/callback for better mobile compatibility, then redirect to original destination
-        const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
+        // ROOT CAUSE FIX: Use /auth/callback route which properly handles code exchange
+        // Always build redirect from NEXT_PUBLIC_SITE_URL (no hard-coded domains)
+        const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/auth/callback`;
 
         logger.log('📧 Requesting magic link:', {
           email,
-          redirectTo,
-          siteUrl,
+          redirectUrl,
+          siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
         });
 
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: { 
-            emailRedirectTo: redirectTo,
+            emailRedirectTo: redirectUrl,
             shouldCreateUser: true // Allow new user creation via magic link
           },
         });
@@ -133,8 +131,8 @@ function LoginInner() {
             error: error.message,
             code: error.status,
             email,
-            redirectTo,
-            siteUrl,
+            redirectUrl,
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
             fullError: error,
           });
 
@@ -151,7 +149,7 @@ function LoginInner() {
         } else {
           logger.log('✅ Magic link email sent successfully:', {
             email,
-            redirectTo,
+            redirectUrl,
           });
           setMessage('📧 Check your email for the sign-in link. It may take a few minutes to arrive.');
         }

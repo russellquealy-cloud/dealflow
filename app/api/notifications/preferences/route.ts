@@ -45,10 +45,8 @@ async function fetchOrCreatePreferences(
 
   if (error) {
     console.error('Failed to load notification preferences', error);
-    throw NextResponse.json(
-      { error: 'Failed to load notification preferences' },
-      { status: 500 }
-    );
+    // Don't throw NextResponse here - throw a regular Error that can be caught
+    throw new Error(`Failed to load notification preferences: ${error.message}`);
   }
 
   if (data) {
@@ -63,10 +61,8 @@ async function fetchOrCreatePreferences(
 
   if (insertError || !inserted) {
     console.error('Failed to create notification preferences', insertError);
-    throw NextResponse.json(
-      { error: 'Failed to create notification preferences' },
-      { status: 500 }
-    );
+    // Don't throw NextResponse here - throw a regular Error that can be caught
+    throw new Error(`Failed to create notification preferences: ${insertError?.message || 'Unknown error'}`);
   }
 
   return inserted as NotificationPreferences & { id: string; user_id: string };

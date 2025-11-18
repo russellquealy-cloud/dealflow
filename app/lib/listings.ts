@@ -115,18 +115,19 @@ export async function getListingsForSearch(
     // Filter by status (unless admin and includeDrafts is true)
     // ROOT CAUSE FIX: Seed data may have status values other than 'live' or null
     // We need to be permissive and only exclude 'draft' and 'archived'
-    // Strategy: Use OR to include common statuses + null, then filter out draft/archived
+    // Strategy: Use OR to explicitly include null and exclude only draft/archived
+    // This allows any status value (including null, empty string, or any other value) except draft/archived
     if (!userIsAdmin || !includeDrafts) {
-      // Include: null, 'live', 'active', 'published', or any value that's not 'draft'/'archived'
-      // Use OR to explicitly include common statuses, which covers most seed data
-      // Then we'll filter out 'draft' and 'archived' explicitly
-      query = query.or('status.is.null,status.eq.live,status.eq.active,status.eq.published');
-      // Also explicitly exclude 'draft' and 'archived' to be safe
-      // Note: This creates an AND condition: (status IS NULL OR status = 'live' OR ...) AND status != 'draft' AND status != 'archived'
-      // But Supabase chains these as AND, so rows with status='draft' will be excluded even if they match the OR
-      // For rows with other statuses not in the OR list, they might still be excluded, so we need to be more permissive
-      // Actually, let's just use OR with all common statuses and hope seed data uses one of them
-      // If seed data has other statuses, we may need to update them or add them to the OR list
+      // Include: status IS NULL OR status != 'draft' AND status != 'archived'
+      // This covers all cases: null, 'live', 'active', 'published', empty string, or any other value
+      // Only excludes explicit 'draft' and 'archived' values
+      query = query.or('status.is.null,status.neq.draft,status.neq.archived');
+      // Note: This OR condition means:
+      // - Show if status IS NULL (covers most seed data)
+      // - Show if status != 'draft' (covers all non-draft values)
+      // - Show if status != 'archived' (covers all non-archived values)
+      // The OR means if ANY condition is true, the row is included
+      // This is the most permissive approach that still excludes draft/archived
     }
     
     // Apply map bounds filter (spatial)

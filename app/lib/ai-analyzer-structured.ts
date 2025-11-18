@@ -480,7 +480,12 @@ export async function analyzeStructured(
     timestamp: new Date().toISOString(),
   };
   
-  await cacheAnalysis(userId, questionKey, analysisResult, supabase);
+  // Extract listingId from input if available (for wholesaler analytics)
+  const listingId = 'listingId' in input && typeof input.listingId === 'string' 
+    ? input.listingId 
+    : null;
+  
+  await cacheAnalysis(userId, questionKey, analysisResult, supabase, listingId);
   
   return analysisResult;
 }
@@ -736,14 +741,18 @@ async function cacheAnalysis(
   userId: string,
   questionKey: string,
   result: AnalysisResult,
-  supabaseClient?: SupabaseClient
+  supabaseClient?: SupabaseClient,
+  listingId?: string | null
 ): Promise<void> {
   try {
     const supabase = supabaseClient ?? (await createClient());
     
+    // ROOT CAUSE FIX: Always create a log entry so analytics can count it
+    // For investors: log with user_id (counts in their analytics)
+    // For wholesalers: log with listing_id if available (counts in their analytics)
     await supabase.from('ai_analysis_logs').insert({
       user_id: userId,
-      listing_id: null, // Not tied to specific listing
+      listing_id: listingId || null, // Include listing_id if available for wholesaler analytics
       analysis_type: questionKey,
       input_data: { questionKey },
       output_data: result,

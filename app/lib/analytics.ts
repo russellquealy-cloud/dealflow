@@ -41,6 +41,7 @@ export interface WholesalerStats extends CoreStats {
     sold: number;
     total: number;
   };
+  hotMarkets: HotMarketStat[]; // Markets where investors are searching
 }
 
 export type UserAnalytics = InvestorStats | WholesalerStats;
@@ -244,15 +245,30 @@ async function loadWholesalerAnalytics(userId: string): Promise<WholesalerStats>
     ).size;
   }
 
-  // AI Analyses: Number of AI analyzer runs on this wholesaler's listings
+  // AI Analyses: Number of AI analyzer runs by this wholesaler
+  // Count both analyses on their listings AND analyses they ran themselves (user_id match)
   let aiAnalyses = 0;
+  
+  // Count analyses by user_id (wholesaler's own analyses)
+  const { count: userAnalysesCount } = await supabase
+    .from('ai_analysis_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  
+  aiAnalyses = userAnalysesCount ?? 0;
+  
+  // Also count analyses on their listings (if any listings exist)
+  // This ensures we capture all analyses related to this wholesaler
   if (listingIdArray.length > 0) {
-    const { data: analysisRows } = await supabase
+    const { data: listingAnalysesRows } = await supabase
       .from('ai_analysis_logs')
-      .select('listing_id')
+      .select('id')
       .in('listing_id', listingIdArray);
     
-    aiAnalyses = (analysisRows || []).length;
+    // Combine counts, but avoid double-counting (analyses with both user_id and listing_id)
+    const listingAnalysesCount = (listingAnalysesRows || []).length;
+    // Use the larger count to avoid double-counting analyses that match both criteria
+    aiAnalyses = Math.max(aiAnalyses, listingAnalysesCount);
   }
 
   // Average Response Time: Time from first investor message to wholesaler's first reply
@@ -401,6 +417,54 @@ async function loadWholesalerAnalytics(userId: string): Promise<WholesalerStats>
   });
   const totalListings = activeCount + soldCount;
 
+  // Hot Markets: Aggregate investor saved searches by location
+  // This shows wholesalers where investors are actively searching
+  const { data: investorSearches } = await supabase
+    .from('saved_searches')
+    .select('criteria, profiles!inner(segment, role)')
+    .eq('profiles.segment', 'investor')
+    .eq('active', true)
+    .gte('created_at', toIsoDate(sixtyDaysAgo));
+
+  const marketCounts = new Map<string, number>();
+  (investorSearches || []).forEach((search) => {
+    const criteria = search.criteria as Record<string, unknown> | null;
+    if (!criteria) return;
+    
+    // Extract location from criteria (could be city, state, bounds, or searchQuery)
+    const city = typeof criteria.city === 'string' ? criteria.city : null;
+    const state = typeof criteria.state === 'string' ? criteria.state : null;
+    const searchQuery = typeof criteria.searchQuery === 'string' ? criteria.searchQuery : null;
+    
+    // Try to extract location from search query (e.g., "Miami, FL")
+    let location = '';
+    if (city && state) {
+      location = `${city}, ${state}`;
+    } else if (city) {
+      location = city;
+    } else if (state) {
+      location = state;
+    } else if (searchQuery) {
+      // Try to parse "City, State" from search query
+      const match = searchQuery.match(/([^,]+),\s*([A-Z]{2})/);
+      if (match) {
+        location = `${match[1].trim()}, ${match[2]}`;
+      } else {
+        location = searchQuery.split(',')[0]?.trim() || 'Unknown';
+      }
+    } else {
+      return; // Skip if no location info
+    }
+    
+    const current = marketCounts.get(location) ?? 0;
+    marketCounts.set(location, current + 1);
+  });
+
+  const hotMarkets: HotMarketStat[] = Array.from(marketCounts.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5); // Top 5 markets
+
   const coreStats: CoreStats = {
     ...DEFAULT_CORE_STATS,
     savedListings,
@@ -421,6 +485,7 @@ async function loadWholesalerAnalytics(userId: string): Promise<WholesalerStats>
       sold: soldCount,
       total: totalListings,
     },
+    hotMarkets,
   };
 }
 

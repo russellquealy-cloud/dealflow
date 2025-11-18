@@ -133,10 +133,8 @@ export async function POST(req: NextRequest) {
       success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
       payment_method_types: ['card'],
-      // Add invoice settings for better branding
-      invoice_creation: {
-        enabled: true,
-      },
+      // Note: invoice_creation can only be enabled for 'payment' mode, not 'subscription' mode
+      // Invoices are automatically created for subscriptions, so we don't need to set this
     };
 
     // CRITICAL: Never set both customer and customer_email
