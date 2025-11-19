@@ -19,16 +19,57 @@ export default function ResetPasswordPage() {
   // Check if we have a valid reset token from URL
   React.useEffect(() => {
     const checkToken = async () => {
+      // Wait longer for Supabase client to process the URL hash (it needs time to parse and set session)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Check for access_token in URL hash (implicit flow)
+      // Supabase password reset emails typically include: #access_token=...&type=recovery&...
       const hash = typeof window !== 'undefined' ? window.location.hash : '';
-      if (hash && hash.includes('access_token')) {
-        logger.log('🔑 Password reset token detected in URL');
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      
+      logger.log('🔑 Checking for reset token:', {
+        hash: hash ? hash.substring(0, 50) + '...' : 'none',
+        search: urlParams?.toString() || 'none',
+        fullUrl: typeof window !== 'undefined' ? window.location.href.substring(0, 100) + '...' : 'none'
+      });
+      
+      // First, check if Supabase has already processed the token and created a session
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (session && !sessionError) {
+          logger.log('✅ Valid session found (Supabase processed token), token is valid');
+          setTokenValid(true);
+          return;
+        }
+      } catch (err) {
+        logger.error('❌ Error checking session:', err);
+      }
+      
+      // Check hash for access_token (implicit flow - most common for password reset)
+      if (hash && (hash.includes('access_token') || hash.includes('type=recovery'))) {
+        logger.log('🔑 Password reset token detected in URL hash');
+        // The Supabase client should automatically process this with detectSessionInUrl: true
+        // Give it a moment, then check session again
+        await new Promise(resolve => setTimeout(resolve, 300));
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            logger.log('✅ Session created after processing hash, token is valid');
+            setTokenValid(true);
+            return;
+          }
+        } catch (err) {
+          logger.error('❌ Error checking session after hash processing:', err);
+        }
+        // Even without session yet, if we have the token in hash, it should be valid
+        // The session will be created when we call updateUser
+        logger.log('✅ Token in hash detected, allowing password reset (session will be created on update)');
         setTokenValid(true);
         return;
       }
       
       // Check for code in URL query (PKCE flow)
-      const code = searchParams?.get('code');
+      const code = searchParams?.get('code') || urlParams?.get('code');
       if (code) {
         logger.log('🔑 Password reset code detected in URL');
         try {
@@ -41,17 +82,22 @@ export default function ResetPasswordPage() {
             return;
           }
           setTokenValid(true);
+          return;
         } catch (err) {
           logger.error('❌ Error exchanging reset code:', err);
           setTokenValid(false);
           setError('Invalid or expired reset link. Please request a new password reset.');
+          return;
         }
-        return;
       }
       
-      // No token found - might be expired or invalid
-      setTokenValid(false);
-      setError('No reset token found. Please request a new password reset link.');
+      // If we get here and still no token, but we haven't explicitly failed, 
+      // allow the user to try (updateUser will validate)
+      if (tokenValid === null) {
+        logger.warn('⚠️ No reset token found in URL, but allowing attempt (updateUser will validate)');
+        // Don't set to false - let updateUser handle validation
+        // This handles edge cases where token format is unexpected
+      }
     };
     
     checkToken();
@@ -71,10 +117,14 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (!tokenValid) {
+    // If token validation is still in progress, try anyway (updateUser will fail if invalid)
+    // If token is explicitly invalid, show error
+    if (tokenValid === false) {
       setError('Invalid or expired reset token. Please request a new password reset link.');
       return;
     }
+    
+    // If tokenValid is null (still checking), proceed anyway - updateUser will validate
 
     setLoading(true);
     try {
@@ -135,8 +185,11 @@ export default function ResetPasswordPage() {
         <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800, color: '#111827', textAlign: 'center' }}>
           Reset Your Password
         </h1>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: 14, textAlign: 'center' }}>
+        <p style={{ margin: 0, color: '#6b7280', fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
           Enter a new password for your Off Axis Deals account.
+        </p>
+        <p style={{ margin: 0, color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
+          Password reset links are valid for 1 hour after being sent.
         </p>
         {tokenValid === false && (
           <div style={{
@@ -149,6 +202,19 @@ export default function ResetPasswordPage() {
             fontSize: 14
           }}>
             ⚠️ Invalid or expired reset link. Please <a href="/login" style={{ color: '#3b82f6', textDecoration: 'underline' }}>request a new password reset</a>.
+          </div>
+        )}
+        {tokenValid === null && (
+          <div style={{
+            marginTop: 16,
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            color: '#0369a1',
+            fontSize: 14
+          }}>
+            🔍 Validating reset link...
           </div>
         )}
 

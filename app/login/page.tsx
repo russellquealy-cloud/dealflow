@@ -213,7 +213,7 @@ function LoginInner() {
         email: email.trim(),
         redirectTo,
       });
-      setMessage('🔑 Check your email for a password reset link.');
+      setMessage('🔑 Check your email for a password reset link. The link will be valid for 1 hour, giving you plenty of time to check your email and reset your password.');
     } catch (error) {
       logger.error('❌ Password reset exception:', {
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -74,8 +74,20 @@ ${NEXT_PUBLIC_SITE_URL}/reset-password
 <p><a href="{{ .RedirectTo }}?token={{ .TokenHash }}">Reset Password</a></p>
 <p>Or copy and paste this URL into your browser:</p>
 <p>{{ .RedirectTo }}?token={{ .TokenHash }}</p>
-<p>This link will expire in 1 hour.</p>
+<p>This link will expire in 1 hour, giving you plenty of time to check your email and reset your password.</p>
 ```
+
+**Password Reset Token Expiration:**
+- **Default:** 1 hour (3600 seconds)
+- **Minimum Recommended:** 5 minutes (300 seconds) - gives users time to check email and click link
+- **Location to Configure:** Supabase Dashboard → Authentication → Settings → Password Reset
+- **How to Change:**
+  1. Go to Supabase Dashboard
+  2. Navigate to Authentication → Settings
+  3. Scroll to "Password Reset" section
+  4. Adjust "Token Expiry" (in seconds)
+  5. Recommended: Keep at 1 hour (3600) or minimum 5 minutes (300)
+  6. Click "Save"
 
 ---
 

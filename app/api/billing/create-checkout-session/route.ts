@@ -133,6 +133,10 @@ export async function POST(req: NextRequest) {
       success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
       payment_method_types: ['card'],
+      // Enable promo codes in Stripe checkout
+      // Users can enter promo codes during checkout in the Stripe-hosted page
+      // Promo codes must be created in Stripe Dashboard → Products → Coupons
+      allow_promotion_codes: true,
       // Note: invoice_creation can only be enabled for 'payment' mode, not 'subscription' mode
       // Invoices are automatically created for subscriptions, so we don't need to set this
     };

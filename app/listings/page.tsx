@@ -478,36 +478,33 @@ export default function ListingsPage() {
         if (data.ok && typeof data.lat === 'number' && typeof data.lng === 'number') {
           logger.log('✅ Geocoding successful', { query, lat: data.lat, lng: data.lng, viewport: data.viewport });
           
-          // Move map to geocoded location
-          setMapCenter({ lat: data.lat, lng: data.lng });
-          
           // Use viewport if available (map will use fitBounds for better UX)
           if (data.viewport) {
             logger.log('📍 Setting map viewport and bounds', data.viewport);
             setMapViewport(data.viewport);
             // Clear zoom when using viewport (fitBounds will handle it)
             setMapZoom(undefined);
+            // Also set center for fallback
+            setMapCenter({ lat: data.lat, lng: data.lng });
             
             // When using viewport, set map bounds to filter listings by location
             // This ensures the list matches what's shown on the map
-            setMapBounds({
+            const newBounds = {
               north: data.viewport.north,
               south: data.viewport.south,
               east: data.viewport.east,
               west: data.viewport.west,
-            });
+            };
+            setMapBounds(newBounds);
             setActiveMapBounds(true);
             
             // Trigger a refresh of listings with the new bounds
             // This ensures the list updates to match the map viewport
+            // Use a longer delay to ensure map has time to update
             setTimeout(() => {
-              handleMapBoundsChange({
-                north: data.viewport!.north,
-                south: data.viewport!.south,
-                east: data.viewport!.east,
-                west: data.viewport!.west,
-              });
-            }, 100);
+              logger.log('🔄 Triggering map bounds change after geocode', newBounds);
+              handleMapBoundsChange(newBounds);
+            }, 300);
             
             // Keep the formatted address in the search bar for display
             if (data.formattedAddress) {
@@ -517,6 +514,7 @@ export default function ListingsPage() {
             // Fallback to center + zoom if no viewport
             logger.log('📍 Setting map center and zoom (no viewport)', { lat: data.lat, lng: data.lng });
             setMapViewport(undefined);
+            setMapCenter({ lat: data.lat, lng: data.lng });
             setMapZoom(14);
             // Clear bounds filtering when using center/zoom
             setActiveMapBounds(false);
@@ -540,7 +538,7 @@ export default function ListingsPage() {
     return () => {
       window.removeEventListener('df:geocode', handleGeocode);
     };
-  }, []);
+  }, [handleMapBoundsChange]);
 
   // Apply filters to listings
   const filteredListings = useMemo(() => {

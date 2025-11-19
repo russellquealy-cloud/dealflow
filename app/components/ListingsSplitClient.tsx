@@ -156,27 +156,39 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
           </div>
 
           {/* LIST */}
-          <div style={{
-            border: '1px solid #e5e7eb',
-            borderRadius: 12,
-            background: '#fff',
-            minWidth: 0,
-            overflowY: 'auto',
-            padding: '16px',
-            display: mobileView === 'map' ? 'none' : 'block',
-            height: mobileView === 'list' ? 'calc(100vh - 280px)' : '35vh',
-          }}>
+          <div 
+            className="listings-list-container-outer"
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 12,
+              background: '#fff',
+              minWidth: 0,
+              overflowY: 'auto',
+              padding: '16px',
+              // On desktop (>=1024px), always show. On mobile, respect mobileView toggle
+              display: 'block',
+              height: '100%',
+            }}
+          >
             <style>{`
+              @media (max-width: 1023px) {
+                .listings-list-container-outer {
+                  display: none !important;
+                }
+                .listings-list-container-outer.mobile-list-view {
+                  display: block !important;
+                  height: calc(100vh - 280px) !important;
+                }
+              }
               @media (min-width: 1024px) {
-                .listings-list-container {
+                .listings-list-container-outer {
                   display: block !important;
                   height: 100% !important;
                 }
               }
             `}</style>
-            <div className="listings-list-container" style={{
-              display: mobileView === 'map' ? 'none' : 'block',
-              height: mobileView === 'list' ? 'calc(100vh - 280px)' : '35vh',
+            <div style={{
+              height: '100%',
             }}>
               <div style={{
                 display: 'grid',
