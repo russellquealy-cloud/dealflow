@@ -95,11 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
     };
     
     // Check if Places API returned an error status
-    if (textJson.status && textJson.status !== "OK" && textJson.status !== "ZERO_RESULTS") {
-      console.error("GEOCODE_ERROR: Places Text Search returned error status", textJson.status);
-      // Fall through to geocoding API
-    }
-
+    // Note: We'll still try to parse results even if status is not "OK" (some APIs return partial results)
     const pick = (
       r: {
         geometry?: {
@@ -131,7 +127,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
       };
     };
 
-    let hit = Array.isArray(textJson?.results) && textJson.results.length > 0 ? pick(textJson.results[0]) : null;
+    // Try to get result from Places Text Search, even if status is not "OK"
+    let hit = null;
+    if (textJson?.status === "OK" || textJson?.status === "ZERO_RESULTS") {
+      // Only use results if status is explicitly OK or ZERO_RESULTS
+      hit = Array.isArray(textJson?.results) && textJson.results.length > 0 ? pick(textJson.results[0]) : null;
+    } else if (textJson?.status) {
+      // If status is an error (e.g., "REQUEST_DENIED", "INVALID_REQUEST"), log it but continue to fallback
+      console.warn("GEOCODE_WARNING: Places Text Search returned status:", textJson.status, "- falling back to Geocoding API");
+    }
 
     if (!hit) {
       const geoRes = await fetch(geoUrl, { method: "GET", cache: "no-store" });
@@ -159,14 +163,23 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
       // Check if Geocoding API returned an error status
       if (geoJson.status && geoJson.status !== "OK" && geoJson.status !== "ZERO_RESULTS") {
         console.error("GEOCODE_ERROR: Geocoding API returned error status", geoJson.status);
-        return NextResponse.json({ ok: false, error: "Geocoding failed" }, { status: 400 });
+        // Provide more specific error message
+        const errorMsg = geoJson.status === "REQUEST_DENIED" 
+          ? "Geocoding service denied request. Please check API key configuration."
+          : geoJson.status === "INVALID_REQUEST"
+          ? "Invalid geocoding request. Please check the query format."
+          : `Geocoding failed: ${geoJson.status}`;
+        return NextResponse.json({ ok: false, error: errorMsg }, { status: 400 });
       }
       
       hit = Array.isArray(geoJson?.results) && geoJson.results.length > 0 ? pick(geoJson.results[0]) : null;
     }
 
     if (!hit) {
-      return NextResponse.json({ ok: false, error: "Geocoding failed" }, { status: 400 });
+      return NextResponse.json({ 
+        ok: false, 
+        error: `Could not find location: ${query}. Please try a more specific location (e.g., "Miami, FL" instead of "Miami").` 
+      }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true, ...hit });

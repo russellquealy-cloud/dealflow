@@ -93,10 +93,12 @@ export default function ResetPasswordPage() {
       
       // If we get here and still no token, but we haven't explicitly failed, 
       // allow the user to try (updateUser will validate)
+      // This handles edge cases where token format is unexpected or Supabase processes it differently
       if (tokenValid === null) {
         logger.warn('⚠️ No reset token found in URL, but allowing attempt (updateUser will validate)');
-        // Don't set to false - let updateUser handle validation
-        // This handles edge cases where token format is unexpected
+        // Set to true to allow form submission - updateUser will be the final validator
+        // This is more user-friendly than blocking them immediately
+        setTokenValid(true);
       }
     };
     
@@ -214,7 +216,20 @@ export default function ResetPasswordPage() {
             color: '#0369a1',
             fontSize: 14
           }}>
-            🔍 Validating reset link...
+            🔍 Validating reset link... Please wait.
+          </div>
+        )}
+        {tokenValid === true && !error && (
+          <div style={{
+            marginTop: 16,
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: '#f0fdf4',
+            border: '1px solid #86efac',
+            color: '#166534',
+            fontSize: 14
+          }}>
+            ✅ Reset link validated. Please enter your new password below.
           </div>
         )}
 

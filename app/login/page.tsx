@@ -109,7 +109,8 @@ function LoginInner() {
         // Magic link login with consistent redirect URL
         // ROOT CAUSE FIX: Use /auth/callback route which properly handles code exchange
         // Always build redirect from NEXT_PUBLIC_SITE_URL (no hard-coded domains)
-        const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/auth/callback`;
+        // Include next parameter to redirect user to intended destination after login
+        const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/auth/callback?next=${encodeURIComponent(next)}`;
 
         logger.log('📧 Requesting magic link:', {
           email,
