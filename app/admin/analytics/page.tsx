@@ -60,16 +60,16 @@ export default function AdminAnalytics() {
 
       // Filter by date if needed
       const filteredListings = startDate
-        ? (listingsResult.data || []).filter((l) => new Date(l.created_at || '').getTime() >= startDate!.getTime())
+        ? (listingsResult.data || []).filter((l: { created_at?: string | null }) => new Date(l.created_at || '').getTime() >= startDate!.getTime())
         : listingsResult.data || [];
       const filteredUsers = startDate
-        ? (usersResult.data || []).filter((u) => new Date(u.created_at || '').getTime() >= startDate!.getTime())
+        ? (usersResult.data || []).filter((u: { created_at?: string | null }) => new Date(u.created_at || '').getTime() >= startDate!.getTime())
         : usersResult.data || [];
       const filteredMessages = startDate
-        ? (messagesResult.data || []).filter((m) => new Date(m.created_at).getTime() >= startDate!.getTime())
+        ? (messagesResult.data || []).filter((m: { created_at: string }) => new Date(m.created_at).getTime() >= startDate!.getTime())
         : messagesResult.data || [];
       const filteredWatchlists = startDate
-        ? (watchlistsResult.data || []).filter((w) => new Date(w.created_at).getTime() >= startDate!.getTime())
+        ? (watchlistsResult.data || []).filter((w: { created_at: string }) => new Date(w.created_at).getTime() >= startDate!.getTime())
         : watchlistsResult.data || [];
 
       // Calculate status breakdown

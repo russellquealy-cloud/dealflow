@@ -37,18 +37,22 @@ export default function AdminAlerts() {
           schema: 'public',
           table: 'user_alerts',
         },
-        (payload) => {
+        (payload: {
+          eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+          new?: Record<string, unknown>;
+          old?: Record<string, unknown>;
+        }) => {
           console.log('Alert change detected:', payload);
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' && payload.new) {
             setAlerts((prev) => [payload.new as Record<string, unknown>, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
             setAlerts((prev) =>
               prev.map((alert) =>
-                alert.id === payload.new.id ? (payload.new as Record<string, unknown>) : alert
+                alert.id === payload.new?.id ? (payload.new as Record<string, unknown>) : alert
               )
             );
-          } else if (payload.eventType === 'DELETE') {
-            setAlerts((prev) => prev.filter((alert) => alert.id !== payload.old.id));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setAlerts((prev) => prev.filter((alert) => alert.id !== payload.old?.id));
           }
         }
       )

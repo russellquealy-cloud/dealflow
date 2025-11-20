@@ -69,7 +69,6 @@ export default function SearchBarClient({
   const containerRef = useRef<HTMLFormElement | null>(null);
   const debounceRef = useRef<number | null>(null);
   const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
-  const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
 
   useEffect(() => {
     setQ(value);
@@ -174,7 +173,7 @@ export default function SearchBarClient({
           // Fall back to old API if new API fails (403, 401, etc.)
           if (response.status === 403 || response.status === 401) {
             console.log('Falling back to old AutocompleteService API');
-            fetchSuggestionsOldAPI(input);
+            setUsingNewAPI(false);
             return;
           }
           clearSuggestions();
@@ -203,7 +202,8 @@ export default function SearchBarClient({
         console.warn('AutocompleteSuggestion error:', error);
         // Fall back to old API on any error
         console.log('Falling back to old AutocompleteService API due to error');
-        fetchSuggestionsOldAPI(input);
+        // Note: Will fallback via fetchSuggestions callback
+        setUsingNewAPI(false);
       }
     },
     [clearSuggestions, browserCompatible, usingNewAPI]

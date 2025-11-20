@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Test RLS by checking if we can read our own watchlists first
-    const { data: testRead, error: testError } = await supabase
+    const { error: testError } = await supabase
       .from('watchlists')
       .select('id')
       .eq('user_id', user.id)
