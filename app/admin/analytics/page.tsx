@@ -1,42 +1,168 @@
 'use client';
-// @ts-nocheck
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/supabase/client';
 
+interface AnalyticsData {
+  totalListings: number;
+  activeListings: number;
+  totalUsers: number;
+  totalMessages: number;
+  totalWatchlists: number;
+  usersByRole: { investor: number; wholesaler: number; admin: number };
+  usersByTier: { free: number; basic: number; pro: number; enterprise: number };
+  listingsByStatus: Record<string, number>;
+  recentActivity: Array<{ type: string; count: number; date: string }>;
+}
+
 export default function AdminAnalytics() {
-  const [analytics, setAnalytics] = useState({
+  const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalListings: 0,
+    activeListings: 0,
     totalUsers: 0,
-    totalViews: 0,
-    totalContacts: 0
+    totalMessages: 0,
+    totalWatchlists: 0,
+    usersByRole: { investor: 0, wholesaler: 0, admin: 0 },
+    usersByTier: { free: 0, basic: 0, pro: 0, enterprise: 0 },
+    listingsByStatus: {},
+    recentActivity: [],
   });
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('30');
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
+      
+      // Calculate date filter
+      const now = new Date();
+      let startDate: Date | null = null;
+      if (dateRange !== 'all') {
+        const days = parseInt(dateRange, 10);
+        startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      }
+
+      // Load all data in parallel
+      const [
+        listingsResult,
+        usersResult,
+        messagesResult,
+        watchlistsResult,
+        profilesResult,
+      ] = await Promise.all([
+        supabase.from('listings').select('id, status, created_at', { count: 'exact' }),
+        supabase.from('profiles').select('id, role, segment, tier, created_at', { count: 'exact' }),
+        supabase.from('messages').select('id, created_at', { count: 'exact' }),
+        supabase.from('watchlists').select('id, created_at', { count: 'exact' }),
+        supabase.from('profiles').select('role, segment, tier'),
+      ]);
+
+      // Filter by date if needed
+      const filteredListings = startDate
+        ? (listingsResult.data || []).filter((l) => new Date(l.created_at || '').getTime() >= startDate!.getTime())
+        : listingsResult.data || [];
+      const filteredUsers = startDate
+        ? (usersResult.data || []).filter((u) => new Date(u.created_at || '').getTime() >= startDate!.getTime())
+        : usersResult.data || [];
+      const filteredMessages = startDate
+        ? (messagesResult.data || []).filter((m) => new Date(m.created_at).getTime() >= startDate!.getTime())
+        : messagesResult.data || [];
+      const filteredWatchlists = startDate
+        ? (watchlistsResult.data || []).filter((w) => new Date(w.created_at).getTime() >= startDate!.getTime())
+        : watchlistsResult.data || [];
+
+      // Calculate status breakdown
+      const listingsByStatus: Record<string, number> = {};
+      (listingsResult.data || []).forEach((l) => {
+        const status = l.status || 'active';
+        listingsByStatus[status] = (listingsByStatus[status] || 0) + 1;
+      });
+
+      // Calculate users by role
+      const usersByRole = { investor: 0, wholesaler: 0, admin: 0 };
+      (profilesResult.data || []).forEach((p) => {
+        const role = (p.role || p.segment || '').toLowerCase();
+        if (role === 'admin') usersByRole.admin++;
+        else if (role === 'investor') usersByRole.investor++;
+        else if (role === 'wholesaler') usersByRole.wholesaler++;
+      });
+
+      // Calculate users by tier
+      const usersByTier = { free: 0, basic: 0, pro: 0, enterprise: 0 };
+      (profilesResult.data || []).forEach((p) => {
+        const tier = (p.tier || 'free').toLowerCase();
+        if (tier in usersByTier) {
+          usersByTier[tier as keyof typeof usersByTier]++;
+        }
+      });
+
+      // Calculate recent activity (last 7 days by day)
+      const recentActivity: Array<{ type: string; count: number; date: string }> = [];
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        return date.toISOString().split('T')[0];
+      });
+
+      last7Days.forEach((date) => {
+        const dayStart = new Date(date);
+        const dayEnd = new Date(date);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+
+        const dayListings = (listingsResult.data || []).filter((l) => {
+          const created = new Date(l.created_at || '');
+          return created >= dayStart && created < dayEnd;
+        }).length;
+
+        const dayUsers = (usersResult.data || []).filter((u) => {
+          const created = new Date(u.created_at || '');
+          return created >= dayStart && created < dayEnd;
+        }).length;
+
+        const dayMessages = (messagesResult.data || []).filter((m) => {
+          const created = new Date(m.created_at);
+          return created >= dayStart && created < dayEnd;
+        }).length;
+
+        recentActivity.push({
+          type: 'listings',
+          count: dayListings,
+          date,
+        });
+        recentActivity.push({
+          type: 'users',
+          count: dayUsers,
+          date,
+        });
+        recentActivity.push({
+          type: 'messages',
+          count: dayMessages,
+          date,
+        });
+      });
+
+      setAnalytics({
+        totalListings: listingsResult.count || 0,
+        activeListings: filteredListings.filter((l) => (l.status || 'active') !== 'archived' && (l.status || 'active') !== 'draft').length,
+        totalUsers: usersResult.count || 0,
+        totalMessages: messagesResult.count || 0,
+        totalWatchlists: watchlistsResult.count || 0,
+        usersByRole,
+        usersByTier,
+        listingsByStatus,
+        recentActivity,
+      });
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadAnalytics = async () => {
-      try {
-        // Load basic analytics data
-        const [listingsResult, usersResult] = await Promise.all([
-          supabase.from('listings').select('id', { count: 'exact' }),
-          supabase.from('profiles').select('id', { count: 'exact' })
-        ]);
-
-        setAnalytics({
-          totalListings: listingsResult.count || 0,
-          totalUsers: usersResult.count || 0,
-          totalViews: 0, // Would be calculated from view logs
-          totalContacts: 0 // Would be calculated from contact logs
-        });
-      } catch (error) {
-        console.error('Error loading analytics:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadAnalytics();
-  }, []);
+  }, [dateRange]);
 
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -46,26 +172,24 @@ export default function AdminAnalytics() {
         </Link>
       </div>
 
-      <h1 style={{ marginBottom: '30px' }}>Analytics Dashboard (Admin)</h1>
-
-      <div style={{
-        background: '#fff3cd',
-        border: '1px solid #ffeaa7',
-        borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '30px'
-      }}>
-        <h3 style={{ margin: '0 0 10px 0', color: '#856404' }}>⚠ Feature Status: Stub Implementation</h3>
-        <p style={{ margin: '0', color: '#856404' }}>
-          This is a placeholder implementation for testing. In production, this would include:
-        </p>
-        <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px', color: '#856404' }}>
-          <li>Real-time analytics dashboard</li>
-          <li>Market trend analysis</li>
-          <li>User behavior tracking</li>
-          <li>Revenue and conversion metrics</li>
-          <li>Property performance analytics</li>
-        </ul>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '16px' }}>
+        <h1 style={{ margin: 0 }}>Analytics Dashboard (Admin)</h1>
+        <select
+          value={dateRange}
+          onChange={(e) => setDateRange(e.target.value as '7' | '30' | '90' | 'all')}
+          style={{
+            padding: '8px 12px',
+            minHeight: '44px',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            fontSize: '14px'
+          }}
+        >
+          <option value="7">Last 7 Days</option>
+          <option value="30">Last 30 Days</option>
+          <option value="90">Last 90 Days</option>
+          <option value="all">All Time</option>
+        </select>
       </div>
 
       {loading ? (
@@ -82,8 +206,9 @@ export default function AdminAnalytics() {
               textAlign: 'center',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ margin: '0 0 10px 0', color: '#007bff' }}>{analytics.totalListings}</h3>
+              <h3 style={{ margin: '0 0 10px 0', color: '#007bff', fontSize: '32px' }}>{analytics.totalListings}</h3>
               <p style={{ margin: '0', color: '#6c757d' }}>Total Listings</p>
+              <p style={{ margin: '4px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>{analytics.activeListings} active</p>
             </div>
             <div style={{
               background: 'white',
@@ -93,8 +218,11 @@ export default function AdminAnalytics() {
               textAlign: 'center',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ margin: '0 0 10px 0', color: '#28a745' }}>{analytics.totalUsers}</h3>
+              <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '32px' }}>{analytics.totalUsers}</h3>
               <p style={{ margin: '0', color: '#6c757d' }}>Total Users</p>
+              <p style={{ margin: '4px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>
+                {analytics.usersByRole.investor} investors, {analytics.usersByRole.wholesaler} wholesalers
+              </p>
             </div>
             <div style={{
               background: 'white',
@@ -104,8 +232,9 @@ export default function AdminAnalytics() {
               textAlign: 'center',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ margin: '0 0 10px 0', color: '#ffc107' }}>{analytics.totalViews}</h3>
-              <p style={{ margin: '0', color: '#6c757d' }}>Total Views</p>
+              <h3 style={{ margin: '0 0 10px 0', color: '#ffc107', fontSize: '32px' }}>{analytics.totalMessages}</h3>
+              <p style={{ margin: '0', color: '#6c757d' }}>Total Messages</p>
+              <p style={{ margin: '4px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>User inquiries</p>
             </div>
             <div style={{
               background: 'white',
@@ -115,13 +244,14 @@ export default function AdminAnalytics() {
               textAlign: 'center',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ margin: '0 0 10px 0', color: '#dc3545' }}>{analytics.totalContacts}</h3>
-              <p style={{ margin: '0', color: '#6c757d' }}>Total Contacts</p>
+              <h3 style={{ margin: '0 0 10px 0', color: '#dc3545', fontSize: '32px' }}>{analytics.totalWatchlists}</h3>
+              <p style={{ margin: '0', color: '#6c757d' }}>Saved Properties</p>
+              <p style={{ margin: '4px 0 0 0', color: '#9ca3af', fontSize: '12px' }}>Watchlist items</p>
             </div>
           </div>
 
-          {/* Feature Sections */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+          {/* Breakdowns */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             <div style={{
               background: 'white',
               border: '1px solid #e9ecef',
@@ -129,38 +259,24 @@ export default function AdminAnalytics() {
               padding: '20px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ margin: '0 0 15px 0' }}>Market Analytics</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  📊 Price Trends Analysis
-                </button>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  🏘️ Neighborhood Heatmaps
-                </button>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  📈 Market Performance
-                </button>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '18px' }}>Users by Tier</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Free</span>
+                  <span style={{ fontWeight: 600 }}>{analytics.usersByTier.free}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Basic</span>
+                  <span style={{ fontWeight: 600, color: '#059669' }}>{analytics.usersByTier.basic}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Pro</span>
+                  <span style={{ fontWeight: 600, color: '#2563eb' }}>{analytics.usersByTier.pro}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Enterprise</span>
+                  <span style={{ fontWeight: 600, color: '#7c3aed' }}>{analytics.usersByTier.enterprise}</span>
+                </div>
               </div>
             </div>
 
@@ -171,38 +287,17 @@ export default function AdminAnalytics() {
               padding: '20px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ margin: '0 0 15px 0' }}>User Analytics</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  👥 User Engagement
-                </button>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  🔄 Conversion Funnels
-                </button>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  💰 Revenue Analytics
-                </button>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '18px' }}>Listings by Status</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {Object.entries(analytics.listingsByStatus).map(([status, count]) => (
+                  <div key={status} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#6b7280', textTransform: 'capitalize' }}>{status || 'active'}</span>
+                    <span style={{ fontWeight: 600 }}>{count}</span>
+                  </div>
+                ))}
+                {Object.keys(analytics.listingsByStatus).length === 0 && (
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>No status data available</span>
+                )}
               </div>
             </div>
 
@@ -213,40 +308,134 @@ export default function AdminAnalytics() {
               padding: '20px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ margin: '0 0 15px 0' }}>Property Analytics</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  🏠 Property Performance
-                </button>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  📍 Geographic Analysis
-                </button>
-                <button style={{
-                  padding: '10px 15px',
-                  background: '#f8f9fa',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}>
-                  ⭐ Featured Listings Impact
-                </button>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '18px' }}>Users by Role</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Investors</span>
+                  <span style={{ fontWeight: 600, color: '#2563eb' }}>{analytics.usersByRole.investor}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Wholesalers</span>
+                  <span style={{ fontWeight: 600, color: '#059669' }}>{analytics.usersByRole.wholesaler}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Admins</span>
+                  <span style={{ fontWeight: 600, color: '#7c3aed' }}>{analytics.usersByRole.admin}</span>
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* Recent Activity Chart */}
+          <div style={{
+            background: 'white',
+            border: '1px solid #e9ecef',
+            borderRadius: '8px',
+            padding: '20px',
+            marginBottom: '30px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>Recent Activity (Last 7 Days)</h3>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '200px', borderBottom: '2px solid #e5e7eb', paddingBottom: '10px' }}>
+              {Array.from({ length: 7 }, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - (6 - i));
+                const dateStr = date.toISOString().split('T')[0];
+                const dayData = analytics.recentActivity.filter(a => a.date === dateStr);
+                const listings = dayData.find(a => a.type === 'listings')?.count || 0;
+                const users = dayData.find(a => a.type === 'users')?.count || 0;
+                const messages = dayData.find(a => a.type === 'messages')?.count || 0;
+                const maxValue = Math.max(listings, users, messages, 1);
+                
+                return (
+                  <div key={dateStr} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', width: '100%', height: '100%' }}>
+                      <div style={{
+                        flex: 1,
+                        background: '#2563eb',
+                        height: `${(listings / maxValue) * 100}%`,
+                        minHeight: listings > 0 ? '4px' : '0',
+                        borderRadius: '4px 4px 0 0'
+                      }} title={`Listings: ${listings}`} />
+                      <div style={{
+                        flex: 1,
+                        background: '#059669',
+                        height: `${(users / maxValue) * 100}%`,
+                        minHeight: users > 0 ? '4px' : '0',
+                        borderRadius: '4px 4px 0 0'
+                      }} title={`Users: ${users}`} />
+                      <div style={{
+                        flex: 1,
+                        background: '#d97706',
+                        height: `${(messages / maxValue) * 100}%`,
+                        minHeight: messages > 0 ? '4px' : '0',
+                        borderRadius: '4px 4px 0 0'
+                      }} title={`Messages: ${messages}`} />
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#9ca3af', marginTop: '4px' }}>
+                      {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: '16px', marginTop: '12px', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', background: '#2563eb', borderRadius: '2px' }} />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>Listings</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', background: '#059669', borderRadius: '2px' }} />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>Users</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', background: '#d97706', borderRadius: '2px' }} />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>Messages</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+            <Link href="/admin/reports" style={{
+              background: 'white',
+              border: '1px solid #e9ecef',
+              borderRadius: '8px',
+              padding: '20px',
+              textDecoration: 'none',
+              color: 'inherit',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              display: 'block'
+            }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>📊 Generate Reports</h3>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Export data to CSV for analysis</p>
+            </Link>
+            <Link href="/admin/users" style={{
+              background: 'white',
+              border: '1px solid #e9ecef',
+              borderRadius: '8px',
+              padding: '20px',
+              textDecoration: 'none',
+              color: 'inherit',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              display: 'block'
+            }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>👥 User Management</h3>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>View and manage user accounts</p>
+            </Link>
+            <Link href="/admin/ai-usage" style={{
+              background: 'white',
+              border: '1px solid #e9ecef',
+              borderRadius: '8px',
+              padding: '20px',
+              textDecoration: 'none',
+              color: 'inherit',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              display: 'block'
+            }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>🤖 AI Usage</h3>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Monitor AI tool usage and costs</p>
+            </Link>
           </div>
         </div>
       )}

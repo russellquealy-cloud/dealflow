@@ -52,6 +52,11 @@ export async function GET(request: NextRequest) {
     const isAdminAccountAdmin = adminProfile?.role === 'admin' || adminProfile?.segment === 'admin';
 
     return NextResponse.json({
+      ok: true,
+      userId: user.id,
+      email: user.email,
+      profileRole: profile?.role || null,
+      profileSegment: profile?.segment || null,
       currentUser: {
         email: user.email,
         id: user.id,

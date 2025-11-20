@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/server';
+import { isAdmin } from '@/lib/admin';
 import { isPro } from '@/lib/analytics/proGate';
 
 export async function GET(request: NextRequest) {
@@ -10,14 +11,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is Pro (Investor or Wholesaler)
+    // Check if user is admin (admins bypass Pro requirement)
+    const userIsAdmin = await isAdmin(user.id, supabase);
+
+    // Check if user is Pro (Investor or Wholesaler) - admins bypass this check
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, segment, tier, membership_tier')
       .eq('id', user.id)
       .single();
 
-    if (!isPro(profile)) {
+    if (!userIsAdmin && !isPro(profile)) {
       return NextResponse.json({ error: 'Pro subscription required' }, { status: 403 });
     }
 

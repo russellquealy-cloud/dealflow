@@ -1,6 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { isAdmin } from '@/lib/admin';
 import { sendViaSMTP } from '@/lib/email';
+
+/**
+ * GET /api/email/test
+ * Returns status information about the test email endpoint
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createSupabaseServer();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userIsAdmin = await isAdmin(user.id, supabase);
+
+    if (!userIsAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: 'Test email endpoint is available',
+      method: 'POST',
+      requiresAdmin: true,
+      smtpConfigured: !!(process.env.EMAIL_SMTP_HOST && process.env.EMAIL_SMTP_USER),
+      instructions: 'Use POST method with body: { to?: string, subject?: string }',
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * Admin-gated test email endpoint
@@ -21,13 +57,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const userIsAdmin = await isAdmin(user.id, supabase);
 
-    if (profile?.role !== 'admin') {
+    if (!userIsAdmin) {
       return NextResponse.json(
         { error: 'Forbidden - Admin only' },
         { status: 403 }

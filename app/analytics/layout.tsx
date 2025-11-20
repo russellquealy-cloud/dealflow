@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { isAdmin } from '@/lib/admin';
 import { isPro } from '@/lib/analytics/proGate';
 
 export default async function AnalyticsLayout({
@@ -25,8 +26,11 @@ export default async function AnalyticsLayout({
     .eq('id', user.id)
     .single();
 
-  // Check if user is Pro (Investor or Wholesaler)
-  if (!isPro(profile)) {
+  // Check if user is admin (admins bypass Pro requirement)
+  const userIsAdmin = await isAdmin(user.id, supabase);
+
+  // Check if user is Pro (Investor or Wholesaler) - admins bypass this check
+  if (!userIsAdmin && !isPro(profile)) {
     redirect('/pricing?highlight=pro');
   }
 

@@ -44,8 +44,18 @@ export function isWholesalerPro(profile: UserProfile | null | undefined): boolea
 
 /**
  * Check if user is Pro (either Investor or Wholesaler)
+ * Note: Admins are considered to have Pro access but this function doesn't check for admin
+ * (admin check should be done separately using isAdmin helper)
  */
 export function isPro(profile: UserProfile | null | undefined): boolean {
+  if (!profile) return false;
+  
+  // Check if user is admin (admins have Pro access)
+  const role = (profile.role || profile.segment || '').toLowerCase();
+  if (role === 'admin') {
+    return true;
+  }
+  
   return isInvestorPro(profile) || isWholesalerPro(profile);
 }
 

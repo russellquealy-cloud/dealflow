@@ -26,6 +26,37 @@ export default function AdminAlerts() {
       }
     };
     loadAlerts();
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('admin-alerts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_alerts',
+        },
+        (payload) => {
+          console.log('Alert change detected:', payload);
+          if (payload.eventType === 'INSERT') {
+            setAlerts((prev) => [payload.new as Record<string, unknown>, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setAlerts((prev) =>
+              prev.map((alert) =>
+                alert.id === payload.new.id ? (payload.new as Record<string, unknown>) : alert
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setAlerts((prev) => prev.filter((alert) => alert.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (

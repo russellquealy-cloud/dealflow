@@ -3,6 +3,37 @@ import { getAuthUser } from '@/lib/auth/server';
 import { isAdmin } from '@/lib/admin';
 
 /**
+ * GET /api/admin/fix-account
+ * Returns status information about the fix-account endpoint
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { user, supabase } = await getAuthUser(request);
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUserIsAdmin = await isAdmin(user.id, supabase);
+
+    return NextResponse.json({
+      ok: true,
+      message: 'Fix account endpoint is available',
+      method: 'POST',
+      requiresAdmin: false,
+      canFixSelf: true,
+      currentUserIsAdmin,
+      instructions: 'Use POST method with body: { email?: string }',
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST /api/admin/fix-account
  * Fix admin account - requires admin access or can be run by the admin account itself
  * Body: { email?: string } - defaults to admin@offaxisdeals.com

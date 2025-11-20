@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { isAdmin } from '@/lib/admin';
 
@@ -14,39 +15,48 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // ABSOLUTELY NO REDIRECTS - Page will always load
-  console.log('🔒 Admin layout: RENDERING - NO REDIRECTS');
-  
   try {
     const supabase = await createSupabaseServer();
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
+    // If no session, redirect to login (once, not a loop)
     if (sessionError || !session) {
-      console.log('🔒 Admin layout: No session, but ALLOWING PAGE TO LOAD');
-      return <>{children}</>;
+      redirect('/login?next=' + encodeURIComponent('/admin'));
     }
 
-    console.log(`🔒 Admin layout: User ${session.user.email} has session, ALLOWING PAGE TO LOAD`);
-
-    // Check if user is admin (but don't redirect based on result)
+    // Check if user is admin
     const userIsAdmin = await isAdmin(session.user.id, supabase);
 
-    // Get profile for detailed logging
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, segment')
-      .eq('id', session.user.id)
-      .maybeSingle();
+    // If not admin, show forbidden (don't redirect to login - that causes loops)
+    if (!userIsAdmin) {
+      return (
+        <div style={{ 
+          minHeight: '100vh', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ maxWidth: '600px' }}>
+            <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
+            <p style={{ marginBottom: '24px', fontSize: '18px' }}>
+              Admin access required. You are logged in as {session.user.email}, but your account does not have admin privileges.
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '14px' }}>
+              If you believe you should have admin access, please contact support.
+            </p>
+          </div>
+        </div>
+      );
+    }
 
-    console.log(`🔒 Admin layout: Profile check - role: ${profile?.role}, segment: ${profile?.segment}, isAdmin: ${userIsAdmin}`);
-    console.log('🔒 Admin layout: ALLOWING PAGE TO LOAD - NO REDIRECT');
-
-    // ALWAYS return children - NEVER redirect
+    // User is admin - allow access
     return <>{children}</>;
   } catch (error) {
-    // On any error, STILL allow page to load
-    console.error('🔒 Admin layout error (but still allowing page load):', error);
-    return <>{children}</>;
+    // On error, redirect to login (safer than showing admin content)
+    console.error('Admin layout error:', error);
+    redirect('/login?next=' + encodeURIComponent('/admin'));
   }
 }
 

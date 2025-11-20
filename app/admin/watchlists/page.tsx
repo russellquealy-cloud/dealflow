@@ -10,29 +10,81 @@ export default function AdminWatchlists() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const loadWatchlists = async () => {
       try {
+        // Load watchlist entries from the watchlists table
         const { data, error } = await supabase
-          .from('user_watchlists')
+          .from('watchlists')
           .select(`
             *,
-            watchlist_items (
+            listing:listings!watchlists_property_id_fkey (
               id,
-              listing_id,
-              created_at
+              address,
+              city,
+              state,
+              price,
+              status
             )
           `)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(100);
         
-        if (error) throw error;
-        setWatchlists(data || []);
+        if (!mounted) return;
+
+        if (error) {
+          console.error('Error loading watchlists:', error);
+          // If table doesn't exist or has different structure, show empty state
+          setWatchlists([]);
+        } else {
+          setWatchlists(data || []);
+        }
       } catch (error) {
+        if (!mounted) return;
         console.error('Error loading watchlists:', error);
+        setWatchlists([]);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
     loadWatchlists();
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('admin-watchlists-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'watchlists',
+        },
+        (payload) => {
+          if (!mounted) return;
+          console.log('Watchlist change detected:', payload);
+          if (payload.eventType === 'INSERT') {
+            // Reload to get full data with joins
+            loadWatchlists();
+          } else if (payload.eventType === 'UPDATE') {
+            setWatchlists((prev) =>
+              prev.map((watchlist) =>
+                watchlist.id === payload.new.id ? (payload.new as Record<string, unknown>) : watchlist
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setWatchlists((prev) => prev.filter((watchlist) => watchlist.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
