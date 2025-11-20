@@ -77,6 +77,17 @@ function LoginInner() {
         });
 
         if (error) {
+          console.error('❌ Login: Password authentication failed', {
+            error: error.message,
+            code: error.status,
+            email,
+          });
+          logger.error('❌ Login: Password authentication failed', {
+            error: error.message,
+            code: error.status,
+            email,
+            fullError: error,
+          });
           setMessage(error.message);
           setLoading(false);
         } else if (data.session) {
@@ -102,7 +113,12 @@ function LoginInner() {
             router.replace(next);
           }, 300);
         } else {
-          setMessage('Login failed - no session created');
+          console.error('❌ Login: No session created after password authentication');
+          logger.error('❌ Login: No session created after password authentication', {
+            email,
+            hasData: !!data,
+          });
+          setMessage('Login failed - no session created. Please try again.');
           setLoading(false);
         }
       } else {
@@ -156,8 +172,19 @@ function LoginInner() {
         }
       }
     } catch (error) {
+      console.error('❌ Login: Unexpected error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        loginMethod,
+        email,
+      });
+      logger.error('❌ Login: Unexpected error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        loginMethod,
+        email,
+        fullError: error,
+      });
       setMessage('An unexpected error occurred. Please try again.');
-      logger.error('Login error:', error);
     } finally {
       setLoading(false);
     }
@@ -173,7 +200,15 @@ function LoginInner() {
       setResetting(true);
       setMessage(null);
 
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      // ROOT CAUSE FIX: Always use NEXT_PUBLIC_SITE_URL (no localhost fallback in production)
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+      if (!siteUrl) {
+        console.error('❌ Password reset: NEXT_PUBLIC_SITE_URL not configured');
+        logger.error('❌ Password reset: NEXT_PUBLIC_SITE_URL not configured');
+        setMessage('⚠️ Configuration error. Please contact support.');
+        setResetting(false);
+        return;
+      }
       const redirectTo = `${siteUrl}/reset-password`;
 
       logger.log('🔑 Requesting password reset:', {

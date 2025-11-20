@@ -11,7 +11,7 @@ interface WatchlistItem {
   id: string;
   property_id: string;
   created_at: string;
-  listing: ListingLike | null;
+  listings: ListingLike | null; // ROOT CAUSE FIX: Use 'listings' (plural) to match API response
 }
 
 export default function WatchlistsPage() {
@@ -66,41 +66,21 @@ export default function WatchlistsPage() {
         watchlists: data.watchlists,
       });
       
-      // Log diagnostic information if available
-      if (data.diagnostics) {
-        console.log('🔍 Watchlist: Diagnostics', {
-          requestedListingIds: data.diagnostics.requestedListingIds,
-          foundListingIds: data.diagnostics.foundListingIds,
-          missingListingIds: data.diagnostics.missingListingIds,
-          errorDetails: data.diagnostics.errorDetails,
-          summary: `${data.diagnostics.foundListingIds.length} found, ${data.diagnostics.missingListingIds.length} missing`,
-        });
-      }
-      
-      // Log detailed info about each watchlist item
-      if (data.watchlists && data.watchlists.length > 0) {
-        console.log('📋 Watchlist: Item details', {
-          totalItems: data.watchlists.length,
-          itemsWithListings: data.watchlists.filter((item: WatchlistItem) => item.listing).length,
-          itemsWithoutListings: data.watchlists.filter((item: WatchlistItem) => !item.listing).length,
-        });
-
-        data.watchlists.forEach((item: WatchlistItem, index: number) => {
-          console.log(`📋 Watchlist item ${index}:`, {
-            id: item.id,
-            property_id: item.property_id,
-            hasListing: !!item.listing,
-            listingId: item.listing?.id,
-            listingTitle: item.listing?.title,
-            listingFields: item.listing ? Object.keys(item.listing) : [],
-          });
-        });
-      } else {
-        console.log('📋 Watchlist: No watchlist items returned');
-      }
-      
-      // Ensure we're setting an array
+      // ROOT CAUSE FIX: Ensure we're mapping 'listings' (plural) from API response
+      // The API returns { watchlists: [{ id, property_id, listings: {...} }] }
       const watchlistArray = Array.isArray(data.watchlists) ? data.watchlists : [];
+      
+      // Log each item to verify structure
+      watchlistArray.forEach((item: WatchlistItem, index: number) => {
+        console.log(`📋 Watchlist item ${index}:`, {
+          id: item.id,
+          property_id: item.property_id,
+          hasListings: !!item.listings, // Use 'listings' (plural)
+          listingId: item.listings?.id,
+          listingTitle: item.listings?.title,
+        });
+      });
+      
       setWatchlists(watchlistArray);
       setError(null);
     } catch (error) {
@@ -168,6 +148,7 @@ export default function WatchlistsPage() {
           watchlistId,
           listingId,
         });
+        setError('Failed to remove item from watchlist. Please try again.');
       }
     } catch (error) {
       console.error('❌ Watchlist: Error removing item', {
@@ -175,14 +156,14 @@ export default function WatchlistsPage() {
         watchlistId,
         listingId,
       });
+      setError('Error removing item from watchlist. Please try again.');
     }
   };
 
-  // Filter items that have valid listings
-  // ROOT CAUSE FIX: Keep items without listings but mark them for display
+  // ROOT CAUSE FIX: Filter items that have valid listings using 'listings' (plural)
   const itemsWithListings = useMemo(() => {
-    return watchlists.filter((item): item is WatchlistItem & { listing: ListingLike } => {
-      const hasListing = Boolean(item.listing);
+    return watchlists.filter((item): item is WatchlistItem & { listings: ListingLike } => {
+      const hasListing = Boolean(item.listings); // Use 'listings' (plural)
       if (!hasListing) {
         console.warn('⚠️ Watchlist: Item without listing filtered out', {
           id: item.id,
@@ -195,7 +176,7 @@ export default function WatchlistsPage() {
   
   // Items without listings (for showing "unavailable" message)
   const itemsWithoutListings = useMemo(() => {
-    return watchlists.filter(item => !item.listing);
+    return watchlists.filter(item => !item.listings); // Use 'listings' (plural)
   }, [watchlists]);
 
   if (loading || authLoading) {
@@ -338,7 +319,8 @@ export default function WatchlistsPage() {
             }}>
               {itemsWithListings.map((item) => (
                 <div key={item.id} style={{ position: 'relative' }}>
-                  <ListingCard listing={item.listing} />
+                  {/* ROOT CAUSE FIX: Use item.listings (plural) to match API response */}
+                  <ListingCard listing={item.listings} />
                   <button
                     onClick={() => handleRemove(item.id, item.property_id)}
                     style={{

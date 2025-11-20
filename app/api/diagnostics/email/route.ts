@@ -1,169 +1,162 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
-import { logger } from '@/lib/logger';
 import { isAdmin } from '@/lib/admin';
+import { logger } from '@/lib/logger';
 
 /**
- * Email delivery diagnostics endpoint
- * POST /api/diagnostics/email
- * Body: { email?: string }
+ * Email Diagnostics Endpoint
  * 
- * Tests Supabase auth email delivery (magic link and password reset)
+ * Allows admins to send test emails to verify email delivery configuration.
+ * 
+ * POST /api/diagnostics/email
+ * Body: { email?: string } (optional - defaults to admin's email)
+ * 
+ * Returns: { success: boolean, message: string, details?: {...} }
  */
-export async function POST(request: NextRequest) {
+
+export async function POST(req: NextRequest) {
   try {
-    // Verify admin access
     const supabase = await createSupabaseServer();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('❌ Email diagnostics: Unauthorized', {
+        error: userError?.message,
+      });
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Unauthorized' 
+      }, { status: 401 });
     }
-
+    
     // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id, supabase);
-    if (!userIsAdmin) {
-      logger.warn('Email diagnostics: Non-admin user attempted access', {
+    const adminCheck = await isAdmin(user.id);
+    if (!adminCheck) {
+      console.error('❌ Email diagnostics: Forbidden (not admin)', {
         userId: user.id,
         email: user.email,
       });
-      return NextResponse.json(
-        { error: 'Forbidden - Admin only' },
-        { status: 403 }
-      );
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Forbidden: Admin access required' 
+      }, { status: 403 });
     }
-
-    // Get test email from body or use current user's email
-    const body = await request.json().catch(() => ({}));
-    const testEmail = body.email || user.email;
-
-    if (!testEmail || typeof testEmail !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid email address' },
-        { status: 400 }
-      );
+    
+    const body = await req.json().catch(() => ({}));
+    const targetEmail = body.email || user.email;
+    
+    if (!targetEmail) {
+      console.error('❌ Email diagnostics: No email provided');
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Email address required' 
+      }, { status: 400 });
     }
-
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const loginRedirect = `${siteUrl}/login`;
-    const resetRedirect = `${siteUrl}/reset-password`;
-
-    logger.log('📧 Email diagnostics: Testing email delivery', {
-      testEmail,
-      siteUrl,
-      loginRedirect,
-      resetRedirect,
+    
+    logger.log('📧 Email diagnostics: Sending test emails', {
+      adminId: user.id,
+      adminEmail: user.email,
+      targetEmail,
     });
-
-    const results: {
-      magicLink: { success: boolean; error?: string };
-      passwordReset: { success: boolean; error?: string };
-    } = {
-      magicLink: { success: false },
-      passwordReset: { success: false },
-    };
-
-    // Test 1: Magic Link
-    try {
-      logger.log('📧 Testing magic link email delivery...');
-      const { error: magicLinkError } = await supabase.auth.signInWithOtp({
-        email: testEmail,
-        options: {
-          emailRedirectTo: loginRedirect,
-          shouldCreateUser: false, // Don't create user if doesn't exist
-        },
-      });
-
-      if (magicLinkError) {
-        logger.error('❌ Magic link email test failed:', {
-          error: magicLinkError.message,
-          code: magicLinkError.status,
-          testEmail,
-          redirectTo: loginRedirect,
-        });
-        results.magicLink = {
-          success: false,
-          error: magicLinkError.message || 'Unknown error',
-        };
-      } else {
-        logger.log('✅ Magic link email test succeeded');
-        results.magicLink = { success: true };
-      }
-    } catch (error) {
-      logger.error('❌ Magic link email test exception:', error);
-      results.magicLink = {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+    
+    // Get site URL from environment (no localhost fallback in production)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (!siteUrl) {
+      console.error('❌ Email diagnostics: NEXT_PUBLIC_SITE_URL not configured');
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Site URL not configured. Please set NEXT_PUBLIC_SITE_URL environment variable.' 
+      }, { status: 500 });
     }
-
-    // Test 2: Password Reset
-    try {
-      logger.log('📧 Testing password reset email delivery...');
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(testEmail, {
-        redirectTo: resetRedirect,
-      });
-
-      if (resetError) {
-        logger.error('❌ Password reset email test failed:', {
-          error: resetError.message,
-          code: resetError.status,
-          testEmail,
-          redirectTo: resetRedirect,
-        });
-        results.passwordReset = {
-          success: false,
-          error: resetError.message || 'Unknown error',
-        };
-      } else {
-        logger.log('✅ Password reset email test succeeded');
-        results.passwordReset = { success: true };
-      }
-    } catch (error) {
-      logger.error('❌ Password reset email test exception:', error);
-      results.passwordReset = {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-
-    // Return comprehensive results
-    return NextResponse.json({
-      success: results.magicLink.success && results.passwordReset.success,
-      testEmail,
-      siteUrl,
-      redirects: {
-        login: loginRedirect,
-        resetPassword: resetRedirect,
+    
+    // Test 1: Magic link email
+    const magicLinkRedirect = `${siteUrl}/auth/callback`;
+    logger.log('📧 Email diagnostics: Sending test magic link', {
+      email: targetEmail,
+      redirectTo: magicLinkRedirect,
+    });
+    
+    const { error: magicLinkError } = await supabase.auth.signInWithOtp({
+      email: targetEmail,
+      options: {
+        emailRedirectTo: magicLinkRedirect,
+        shouldCreateUser: false, // Don't create user for test emails
       },
-      results,
-      timestamp: new Date().toISOString(),
-      recommendations: [
-        results.magicLink.success && results.passwordReset.success
-          ? '✅ All email tests passed! Check your inbox for test emails.'
-          : '⚠️ Some email tests failed. Check Supabase dashboard SMTP configuration.',
-        `Verify these URLs are whitelisted in Supabase Auth → URL Configuration:`,
-        `  - ${loginRedirect}`,
-        `  - ${resetRedirect}`,
-        `Check Supabase Auth → Email Templates for correct template variables:`,
-        `  - {{ .Email }}`,
-        `  - {{ .TokenHash }}`,
-        `  - {{ .ConfirmationURL }} (for magic link)`,
-        `  - {{ .RedirectTo }} (for password reset)`,
-      ],
+    });
+    
+    if (magicLinkError) {
+      console.error('❌ Email diagnostics: Magic link failed', {
+        error: magicLinkError.message,
+        code: magicLinkError.status,
+        email: targetEmail,
+      });
+    }
+    
+    // Test 2: Password reset email
+    const resetRedirect = `${siteUrl}/reset-password`;
+    logger.log('📧 Email diagnostics: Sending test password reset', {
+      email: targetEmail,
+      redirectTo: resetRedirect,
+    });
+    
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+      redirectTo: resetRedirect,
+    });
+    
+    if (resetError) {
+      console.error('❌ Email diagnostics: Password reset failed', {
+        error: resetError.message,
+        code: resetError.status,
+        email: targetEmail,
+      });
+    }
+    
+    const results = {
+      magicLink: {
+        success: !magicLinkError,
+        error: magicLinkError?.message || null,
+      },
+      passwordReset: {
+        success: !resetError,
+        error: resetError?.message || null,
+      },
+    };
+    
+    const allSuccess = results.magicLink.success && results.passwordReset.success;
+    
+    if (allSuccess) {
+      logger.log('✅ Email diagnostics: All test emails sent successfully', {
+        targetEmail,
+      });
+    } else {
+      logger.error('❌ Email diagnostics: Some test emails failed', {
+        targetEmail,
+        results,
+      });
+    }
+    
+    return NextResponse.json({
+      success: allSuccess,
+      message: allSuccess 
+        ? `Test emails sent successfully to ${targetEmail}. Please check your inbox.`
+        : `Some test emails failed. Check the details below.`,
+      details: {
+        targetEmail,
+        siteUrl,
+        results,
+      },
     });
   } catch (error) {
-    logger.error('❌ Email diagnostics error:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to run email diagnostics',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    console.error('❌ Email diagnostics: Unexpected error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }, { status: 500 });
   }
 }
-

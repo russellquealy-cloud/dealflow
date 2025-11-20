@@ -1,3 +1,28 @@
+/**
+ * Google Maps Geocoding API Route
+ * 
+ * REQUIRED GOOGLE CLOUD APIs:
+ * - Geocoding API (for address → coordinates)
+ * - Places API (for text search and place details)
+ * - Places Details API (for place_id → coordinates)
+ * 
+ * ENVIRONMENT VARIABLES REQUIRED:
+ * - GOOGLE_GEOCODE_API_KEY (server-side key, preferred)
+ * - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (fallback, client-side key)
+ * 
+ * The server-side key (GOOGLE_GEOCODE_API_KEY) should be restricted to:
+ * - API restrictions: Geocoding API, Places API, Places Details API
+ * - HTTP referrer restrictions: Your production domain
+ * 
+ * This route handles:
+ * - Text search queries (e.g., "Miami, FL")
+ * - Place IDs (from Google Places Autocomplete)
+ * - Address geocoding
+ * 
+ * Returns: { ok: true, lat: number, lng: number, viewport?: {...}, formattedAddress?: string }
+ *          or { ok: false, error: string }
+ */
+
 // Node runtime (uses server key)
 export const runtime = "nodejs";
 
@@ -23,14 +48,27 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
     const placeId = body.placeId;
 
     if (!query && !placeId) {
+      console.error("GEOCODE_ERROR: Missing query parameter");
       return NextResponse.json({ ok: false, error: "Geocoding failed: missing query" }, { status: 400 });
     }
 
-    // Use server-side key (prefer dedicated server key, fallback to public key)
-    const key = process.env.GOOGLE_MAPS_SERVER_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    // Use server-side key (GOOGLE_GEOCODE_API_KEY) - this is the preferred key for backend
+    // Fallback to NEXT_PUBLIC_GOOGLE_MAPS_API_KEY if server key not available
+    const key = process.env.GOOGLE_GEOCODE_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    
     if (!key) {
-      console.error("GEOCODE_ERROR: Maps server key is not configured");
-      return NextResponse.json({ ok: false, error: "Maps server key is not configured" }, { status: 500 });
+      console.error("GEOCODE_ERROR: No Google Maps API key configured. Set GOOGLE_GEOCODE_API_KEY or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
+      return NextResponse.json({ 
+        ok: false, 
+        error: "Geocoding service not configured. Please contact support." 
+      }, { status: 500 });
+    }
+    
+    // Log which key type is being used (for debugging, but don't log the actual key)
+    if (process.env.GOOGLE_GEOCODE_API_KEY) {
+      console.log("GEOCODE: Using GOOGLE_GEOCODE_API_KEY (server-side key)");
+    } else {
+      console.log("GEOCODE: Using NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (fallback)");
     }
 
     // If placeId is provided, use Place Details API
@@ -41,6 +79,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
       placeUrl.searchParams.set("fields", "geometry,formatted_address,name");
 
       const placeRes = await fetch(placeUrl, { method: "GET", cache: "no-store" });
+      
+      if (!placeRes.ok) {
+        console.error("GEOCODE_ERROR: Place Details API returned non-OK status", {
+          status: placeRes.status,
+          statusText: placeRes.statusText,
+          placeId,
+        });
+      }
+      
       const placeJson = await placeRes.json();
 
       if (placeJson.status === "OK" && placeJson.result?.geometry?.location) {
@@ -60,6 +107,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
             : undefined,
           formattedAddress: placeJson.result.formatted_address || placeJson.result.name,
         });
+      } else if (placeJson.status) {
+        console.error("GEOCODE_ERROR: Place Details API returned error status", {
+          status: placeJson.status,
+          error_message: placeJson.error_message,
+          placeId,
+        });
+        // Fall through to text search
       }
     }
 
@@ -75,12 +129,17 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
     const textRes = await fetch(textUrl, { method: "GET", cache: "no-store" });
     
     if (!textRes.ok) {
-      console.error("GEOCODE_ERROR: Places Text Search API returned non-OK status", textRes.status);
+      console.error("GEOCODE_ERROR: Places Text Search API returned non-OK status", {
+        status: textRes.status,
+        statusText: textRes.statusText,
+        query,
+      });
       // Fall through to geocoding API
     }
     
     const textJson = (await textRes.json()) as {
       status?: string;
+      error_message?: string;
       results?: Array<{
         geometry?: {
           location?: { lat: number; lng: number };
@@ -95,7 +154,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
     };
     
     // Check if Places API returned an error status
-    // Note: We'll still try to parse results even if status is not "OK" (some APIs return partial results)
     const pick = (
       r: {
         geometry?: {
@@ -127,26 +185,35 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
       };
     };
 
-    // Try to get result from Places Text Search, even if status is not "OK"
+    // Try to get result from Places Text Search
     let hit = null;
     if (textJson?.status === "OK" || textJson?.status === "ZERO_RESULTS") {
       // Only use results if status is explicitly OK or ZERO_RESULTS
       hit = Array.isArray(textJson?.results) && textJson.results.length > 0 ? pick(textJson.results[0]) : null;
     } else if (textJson?.status) {
       // If status is an error (e.g., "REQUEST_DENIED", "INVALID_REQUEST"), log it but continue to fallback
-      console.warn("GEOCODE_WARNING: Places Text Search returned status:", textJson.status, "- falling back to Geocoding API");
+      console.error("GEOCODE_ERROR: Places Text Search returned error status", {
+        status: textJson.status,
+        error_message: textJson.error_message,
+        query,
+      });
     }
 
     if (!hit) {
       const geoRes = await fetch(geoUrl, { method: "GET", cache: "no-store" });
       
       if (!geoRes.ok) {
-        console.error("GEOCODE_ERROR: Geocoding API returned non-OK status", geoRes.status);
-        return NextResponse.json({ ok: false, error: "Geocoding failed" }, { status: 400 });
+        console.error("GEOCODE_ERROR: Geocoding API returned non-OK status", {
+          status: geoRes.status,
+          statusText: geoRes.statusText,
+          query,
+        });
+        return NextResponse.json({ ok: false, error: "Geocoding service temporarily unavailable" }, { status: 400 });
       }
       
       const geoJson = (await geoRes.json()) as {
         status?: string;
+        error_message?: string;
         results?: Array<{
           geometry?: {
             location?: { lat: number; lng: number };
@@ -162,13 +229,20 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
       
       // Check if Geocoding API returned an error status
       if (geoJson.status && geoJson.status !== "OK" && geoJson.status !== "ZERO_RESULTS") {
-        console.error("GEOCODE_ERROR: Geocoding API returned error status", geoJson.status);
+        console.error("GEOCODE_ERROR: Geocoding API returned error status", {
+          status: geoJson.status,
+          error_message: geoJson.error_message,
+          query,
+        });
+        
         // Provide more specific error message
         const errorMsg = geoJson.status === "REQUEST_DENIED" 
-          ? "Geocoding service denied request. Please check API key configuration."
+          ? "Geocoding service denied request. Please check API key configuration and ensure required APIs are enabled."
           : geoJson.status === "INVALID_REQUEST"
           ? "Invalid geocoding request. Please check the query format."
-          : `Geocoding failed: ${geoJson.status}`;
+          : geoJson.status === "OVER_QUERY_LIMIT"
+          ? "Geocoding quota exceeded. Please try again later."
+          : `Geocoding failed: ${geoJson.status}${geoJson.error_message ? ` - ${geoJson.error_message}` : ''}`;
         return NextResponse.json({ ok: false, error: errorMsg }, { status: 400 });
       }
       
@@ -184,8 +258,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeoResp>> {
 
     return NextResponse.json({ ok: true, ...hit });
   } catch (e) {
-    console.error("GEOCODE_ERROR", e);
-    return NextResponse.json({ ok: false, error: "Geocoding failed" }, { status: 500 });
+    console.error("GEOCODE_ERROR: Unexpected error", {
+      error: e instanceof Error ? e.message : 'Unknown error',
+      stack: e instanceof Error ? e.stack : undefined,
+    });
+    return NextResponse.json({ ok: false, error: "Geocoding service error. Please try again later." }, { status: 500 });
   }
 }
 

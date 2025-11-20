@@ -35,6 +35,9 @@ type ListingSummary = {
   status?: string | null;
   owner_id?: string | null;
   owner_profile?: Record<string, unknown> | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at?: string | null;
 };
 
 function sanitizeListing(listing: ListingSummary | null | undefined) {
@@ -46,7 +49,6 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
   })();
 
   // Handle both beds/bedrooms and baths/bathrooms column names for compatibility
-  // ROOT CAUSE FIX: Database may use 'beds'/'baths' while API expects 'bedrooms'/'bathrooms'
   const beds = listing.beds ?? listing.bedrooms ?? null;
   const baths = listing.baths ?? listing.bathrooms ?? null;
   const sqft = listing.sqft ?? listing.home_sqft ?? null;
@@ -73,8 +75,12 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
     cover_image_url: listing.cover_image_url ?? null,
     featured: listing.featured ?? false,
     featured_until: listing.featured_until ?? null,
+    status: listing.status ?? null,
     owner_id: listing.owner_id ?? null,
     owner_profile: listing.owner_profile ?? null,
+    latitude: listing.latitude ?? null,
+    longitude: listing.longitude ?? null,
+    created_at: listing.created_at ?? null,
   };
 }
 
@@ -88,6 +94,7 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       logger.warn('Watchlist GET: Unauthorized request');
+      console.error('❌ Watchlist GET: Unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -113,6 +120,10 @@ export async function GET(request: NextRequest) {
           error_message: error.message,
           user_id: user.id,
           listing_id: listingId,
+        });
+        console.error('❌ Watchlist GET: Error checking watchlist', {
+          error: error.message,
+          code: error.code,
         });
         if (error.code === '42501') {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -142,6 +153,10 @@ export async function GET(request: NextRequest) {
         error_details: watchlistError.details,
         error_hint: watchlistError.hint,
         user_id: user.id,
+      });
+      console.error('❌ Watchlist GET: Error fetching watchlist rows', {
+        error: watchlistError.message,
+        code: watchlistError.code,
       });
       if (watchlistError.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -176,13 +191,12 @@ export async function GET(request: NextRequest) {
           user_id: w.user_id,
           property_id: w.property_id,
           created_at: w.created_at,
-          listing: null,
+          listings: null, // Use 'listings' (plural) to match frontend expectation
         }))
       });
     }
 
     // Fetch listings separately to avoid join issues
-    // Use the authenticated user's Supabase client to ensure RLS policies work correctly
     // NOTE: Watchlist should show ALL saved listings regardless of status (live, draft, archived, etc.)
     logger.log('📋 Watchlist GET: Fetching listings for watchlist', {
       listingIds: listingIds,
@@ -192,55 +206,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Query listings without status filter - users should see listings they saved regardless of status
-    // This is different from the main listings API which only shows 'live' listings
-    // NOTE: Watchlist items link to listings.id via watchlists.property_id
-    // We query by listings.id using the property_id values from watchlist rows
     // ROOT CAUSE FIX: Query all columns including both beds/bedrooms and baths/bathrooms for compatibility
+    // Also include latitude/longitude and created_at for complete listing data
     const { data: listingsData, error: listingsError } = await supabase
       .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status')
+      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status, latitude, longitude, created_at')
       .in('id', listingIds);
     
-    // If query returns empty but we have listingIds, check if RLS is blocking
-    if (!listingsError && (!listingsData || listingsData.length === 0) && listingIds.length > 0) {
-      logger.warn('⚠️ Watchlist GET: No listings returned but listingIds provided', {
-        listingIds,
-        possibleCauses: [
-          'RLS policy blocking access',
-          'Listings do not exist',
-          'ID type mismatch (UUID vs text)',
-        ],
-      });
-      
-      // Try to verify one listing exists (for debugging)
-      const testId = listingIds[0];
-      const { data: testListing, error: testError } = await supabase
-        .from('listings')
-        .select('id, status, owner_id')
-        .eq('id', testId)
-        .maybeSingle();
-      
-      if (testError) {
-        logger.error('❌ Watchlist GET: Cannot access test listing', {
-          listingId: testId,
-          error_code: testError.code,
-          error_message: testError.message,
-          likelyCause: testError.code === '42501' ? 'RLS policy blocking' : 'Other error',
-        });
-      } else if (testListing) {
-        logger.log('✅ Watchlist GET: Test listing exists but not returned in batch query', {
-          listingId: testId,
-          status: testListing.status,
-          owner_id: testListing.owner_id,
-          note: 'This suggests RLS or query filter issue',
-        });
-      } else {
-        logger.log('❌ Watchlist GET: Test listing does not exist', {
-          listingId: testId,
-        });
-      }
-    }
-
     if (listingsError) {
       logger.error('❌ Watchlist GET: Error fetching listings', {
         error_code: listingsError.code,
@@ -251,6 +223,11 @@ export async function GET(request: NextRequest) {
         user_id: user.id,
         user_email: user.email,
       });
+      console.error('❌ Watchlist GET: Error fetching listings', {
+        error: listingsError.message,
+        code: listingsError.code,
+        listingIds,
+      });
       // Continue even if listings fail - return watchlist items with null listings
     } else {
       logger.log('✅ Watchlist GET: Fetched listings for watchlist', {
@@ -258,48 +235,7 @@ export async function GET(request: NextRequest) {
         foundListings: listingsData?.length || 0,
         foundListingIds: listingsData?.map(l => l.id) || [],
         missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
-        listingStatuses: (listingsData as ListingSummary[] | undefined)?.map(l => ({ id: l.id, status: l.status ?? null })) || [],
       });
-      
-      // Log if any listings are missing
-      const missingIds = listingIds.filter(id => !listingsData?.some(l => l.id === id));
-      if (missingIds.length > 0) {
-        logger.warn('⚠️ Watchlist GET: Some listings not found', {
-          missingIds,
-          possibleReasons: [
-            'Listing was deleted',
-            'RLS policy blocking access',
-            'Listing ID mismatch',
-            'Listing status prevents access (check RLS policies)',
-          ],
-        });
-        
-        // Try to verify if listings exist by checking with a direct query (for debugging)
-        logger.log('🔍 Watchlist GET: Attempting to verify listing existence...');
-        for (const missingId of missingIds) {
-          const { data: checkData, error: checkError } = await supabase
-            .from('listings')
-            .select('id, status, owner_id')
-            .eq('id', missingId)
-            .maybeSingle();
-          
-          if (checkError) {
-            logger.error(`❌ Watchlist GET: Cannot access listing ${missingId}`, {
-              error_code: checkError.code,
-              error_message: checkError.message,
-              likelyCause: checkError.code === '42501' ? 'RLS policy blocking access' : 'Other error',
-            });
-          } else if (checkData) {
-            logger.log(`✅ Watchlist GET: Listing ${missingId} exists but wasn't returned in batch query`, {
-              status: checkData.status,
-              owner_id: checkData.owner_id,
-              note: 'This suggests an RLS policy issue or query filter problem',
-            });
-          } else {
-            logger.log(`❌ Watchlist GET: Listing ${missingId} does not exist in database`);
-          }
-        }
-      }
     }
 
     // Create a map of listing ID to listing data
@@ -309,6 +245,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Enrich watchlist items with listing data
+    // ROOT CAUSE FIX: Use 'listings' (plural) as the key to match frontend expectation
     const enriched = watchlistRows.map((item) => {
       const listingData = listingsMap.get(item.property_id);
       const listing = listingData ? sanitizeListing(listingData) : null;
@@ -318,7 +255,6 @@ export async function GET(request: NextRequest) {
           watchlistId: item.id,
           propertyId: item.property_id,
           listingInMap: !!listingData,
-          listingIdsInMap: Array.from(listingsMap.keys()),
         });
       }
       
@@ -327,58 +263,24 @@ export async function GET(request: NextRequest) {
         user_id: item.user_id,
         property_id: item.property_id,
         created_at: item.created_at,
-        listing,
+        listings: listing, // Use 'listings' (plural) to match frontend expectation
       };
     });
 
     logger.log('📋 Watchlist GET: Returning enriched watchlists', {
       totalItems: enriched.length,
-      itemsWithListings: enriched.filter(e => e.listing).length,
-      itemsWithoutListings: enriched.filter(e => !e.listing).length,
-      sampleItem: enriched[0] ? {
-        id: enriched[0].id,
-        property_id: enriched[0].property_id,
-        hasListing: !!enriched[0].listing,
-        listingId: enriched[0].listing?.id,
-        listingTitle: enriched[0].listing?.title,
-      } : null,
+      itemsWithListings: enriched.filter(e => e.listings).length,
+      itemsWithoutListings: enriched.filter(e => !e.listings).length,
     });
 
-    // Include diagnostic info to help debug watchlist issues
-    const includeDiagnostics = true;
-    
-    const response: {
-      watchlists: typeof enriched;
-      diagnostics?: {
-        requestedListingIds: string[];
-        foundListingIds: string[];
-        missingListingIds: string[];
-        errorDetails?: {
-          code?: string;
-          message?: string;
-        };
-      };
-    } = {
-      watchlists: enriched,
-    };
-
-    if (includeDiagnostics) {
-      response.diagnostics = {
-        requestedListingIds: listingIds,
-        foundListingIds: listingsData?.map(l => l.id) || [],
-        missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
-        errorDetails: listingsError ? {
-          code: listingsError.code,
-          message: listingsError.message,
-        } : undefined,
-      };
-    }
-
-    return NextResponse.json(response);
+    return NextResponse.json({ watchlists: enriched });
   } catch (error) {
     logger.error('❌ Watchlist GET: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
+    });
+    console.error('❌ Watchlist GET: Unexpected error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -390,6 +292,7 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthUser(request);
 
     if (!user) {
+      console.error('❌ Watchlist POST: Unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -436,6 +339,10 @@ export async function POST(request: NextRequest) {
         error_details: error.details,
         user_id: user.id,
         listing_id: listingId,
+      });
+      console.error('❌ Watchlist POST: Error inserting watchlist', {
+        error: error.message,
+        code: error.code,
       });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -485,7 +392,7 @@ export async function POST(request: NextRequest) {
     const { data: listingData, error: listingError } = await supabase
       .from('listings')
       .select(
-        'id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until'
+        'id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, latitude, longitude, created_at'
       )
       .eq('id', listingId)
       .maybeSingle();
@@ -495,6 +402,10 @@ export async function POST(request: NextRequest) {
         error_code: listingError.code,
         error_message: listingError.message,
         listing_id: listingId,
+      });
+      console.error('❌ Watchlist POST: Error fetching listing', {
+        error: listingError.message,
+        code: listingError.code,
       });
       if (listingError.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -519,11 +430,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       watchlist: {
         ...(watchlistRow as WatchlistRow),
-        listing,
+        listings: listing, // Use 'listings' (plural) to match frontend expectation
       },
     });
   } catch (error) {
     logger.error('❌ Watchlist POST: Unexpected error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    console.error('❌ Watchlist POST: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -536,6 +450,7 @@ export async function DELETE(request: NextRequest) {
     const { user, supabase } = await getAuthUser(request);
 
     if (!user) {
+      console.error('❌ Watchlist DELETE: Unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -565,6 +480,10 @@ export async function DELETE(request: NextRequest) {
         user_id: user.id,
         listing_id: listingId,
       });
+      console.error('❌ Watchlist DELETE: Error deleting watchlist', {
+        error: error.message,
+        code: error.code,
+      });
       if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -579,6 +498,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ message: 'Removed from watchlist' });
   } catch (error) {
     logger.error('❌ Watchlist DELETE: Unexpected error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    console.error('❌ Watchlist DELETE: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

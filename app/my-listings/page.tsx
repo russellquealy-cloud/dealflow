@@ -136,6 +136,49 @@ export default function MyListingsPage() {
       if (editForm.city !== undefined) updateData.city = editForm.city;
       if (editForm.state !== undefined) updateData.state = editForm.state;
       if (editForm.zip !== undefined) updateData.zip = editForm.zip;
+      
+      // Geocode address if any address fields are being updated
+      const addressFieldsChanged = editForm.address !== undefined || 
+                                   editForm.city !== undefined || 
+                                   editForm.state !== undefined || 
+                                   editForm.zip !== undefined;
+      
+      if (addressFieldsChanged) {
+        const addressString = [
+          editForm.address || '',
+          editForm.city || '',
+          editForm.state || '',
+          editForm.zip || ''
+        ]
+          .filter(Boolean)
+          .join(', ');
+        
+        if (addressString) {
+          try {
+            const geocodeResponse = await fetch('/api/geocode', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: addressString }),
+            });
+            
+            if (geocodeResponse.ok) {
+              const geocodeData = await geocodeResponse.json();
+              if (geocodeData.ok && geocodeData.lat && geocodeData.lng) {
+                updateData.latitude = geocodeData.lat;
+                updateData.longitude = geocodeData.lng;
+                console.log('✅ Geocoded address for update:', { address: addressString, lat: geocodeData.lat, lng: geocodeData.lng });
+              } else {
+                console.warn('⚠️ Geocoding returned no coordinates:', geocodeData);
+              }
+            } else {
+              const errorData = await geocodeResponse.json().catch(() => ({ error: 'Geocoding failed' }));
+              console.warn('⚠️ Geocoding failed:', errorData);
+            }
+          } catch (geocodeError) {
+            console.error('❌ Geocoding error:', geocodeError);
+          }
+        }
+      }
       if (editForm.price !== undefined) updateData.price = editForm.price;
       if (editForm.bedrooms !== undefined) updateData.bedrooms = editForm.bedrooms;
       if (editForm.bathrooms !== undefined) updateData.bathrooms = editForm.bathrooms;

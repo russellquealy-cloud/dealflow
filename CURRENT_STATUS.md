@@ -1,10 +1,19 @@
 # Off Axis Deals - Current Project Status
-**Last Updated:** February 2025  
+**Last Updated:** November 19, 2025  
 **Overall Completion:** ~92% (up from 90%)
 
 ---
 
-## ✅ Recently Completed (This Session)
+## ✅ Recently Completed (November 19, 2025 Session)
+
+### Latest Fixes
+- ✅ Fixed listings tiles not showing on desktop (CSS media query fix)
+- ✅ Improved geocode error handling and fallback logic
+- ✅ Enhanced magic link callback route (handles both PKCE and implicit flows)
+- ✅ Made password reset token validation more forgiving
+- ✅ Added Stripe promo code support (`allow_promotion_codes: true`)
+- ✅ Created documentation for checking Tucson listing in Supabase
+- ✅ Created Stripe promo codes setup guide
 
 ### QA Fixes - Listings, Auth, Billing
 - ✅ Fixed listing visibility issues (Miami seed listings, Tucson test listing)
@@ -67,10 +76,67 @@
 
 ## 🔴 CRITICAL BLOCKERS (Must Fix Before Launch)
 
-### 1. Email Delivery for Authentication ⚠️
+### 1. Magic Link Authentication Not Working 🔴
 **Priority:** 🔴 CRITICAL  
-**Status:** Code complete. Supabase SMTP/domain configuration required  
-**Impact:** Blocks user onboarding, password recovery, admin access
+**Status:** Email delivery working ✅, but authentication flow broken ❌  
+**Impact:** Users cannot log in via magic link
+
+**Current Issue:**
+- ✅ Magic link email is sent correctly and received
+- ❌ Clicking link redirects to login page but doesn't sign user in
+- ❌ No console errors, but session not being established
+- ❌ User has to manually log in after clicking magic link
+
+**What's Done:**
+- ✅ Enhanced `/auth/callback` route to handle both PKCE and implicit flows
+- ✅ Added session check for implicit flow
+- ✅ Improved error handling and logging
+- ✅ Email delivery confirmed working
+
+**What's Needed:**
+- [ ] Debug why session isn't being established after callback
+- [ ] Check if `/auth/callback` route is being hit correctly
+- [ ] Verify Supabase auth configuration (redirect URLs, flow type)
+- [ ] Check if cookies are being set correctly after callback
+- [ ] Verify `detectSessionInUrl` is working in Supabase client
+- [ ] Add more detailed logging to track session creation flow
+- [ ] Test on both desktop and mobile
+- [ ] Check if session is being stored in cookies/localStorage
+
+**Estimated Time:** 1-2 days
+
+---
+
+### 2. Geocode API Key Configuration ⚠️
+**Priority:** 🔴 CRITICAL  
+**Status:** API key issue - "Geocoding service denied request"  
+**Impact:** Search functionality broken - users cannot search for locations
+
+**Current Issue:**
+- Geocode API returning 400: "Geocoding service denied request. Please check API key configuration."
+- Suggests API key is invalid, missing, or not enabled for required APIs
+
+**What's Needed:**
+- [ ] Check Vercel environment variables:
+  - `GOOGLE_MAPS_SERVER_KEY` (preferred)
+  - `GOOGLE_MAPS_API_KEY` (fallback)
+  - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (last resort)
+- [ ] Verify API key is valid in Google Cloud Console
+- [ ] Enable required APIs in Google Cloud Console:
+  - Geocoding API
+  - Places API (Text Search)
+  - Places API (Place Details)
+- [ ] Check API key restrictions (IP, referrer, API restrictions)
+- [ ] Test geocode API directly with API key
+
+**Estimated Time:** 0.5-1 day
+
+---
+
+### 3. Email Delivery for Authentication ✅
+**Priority:** ~~🔴 CRITICAL~~ ✅ **COMPLETE**  
+**Status:** ✅ Email delivery configured and working  
+**Impact:** ~~Blocks user onboarding, password recovery, admin access~~ ✅ **RESOLVED**
 
 **What's Done:**
 - ✅ Error handling improved in code
@@ -80,25 +146,20 @@
 - ✅ Detailed logging for debugging
 - ✅ Email diagnostics endpoint (`/api/diagnostics/email`)
 - ✅ Admin test email button
+- ✅ **Supabase SMTP configured and working**
+- ✅ **Emails are being sent and received successfully**
 
-**What's Needed:**
-- [ ] **Supabase Dashboard Configuration:**
-  - Verify SMTP settings in Supabase Auth → Email Templates
-  - Check SMTP credentials (Namecheap Private Email)
-  - Test email delivery in Supabase dashboard
-  - Configure SPF/DKIM/DMARC records for email domain
-- [ ] Test magic link and password reset emails end-to-end
-- [ ] Ensure Supabase Auth URL allowlist includes:
-  - `http://localhost:3000/login`
-  - `http://localhost:3000/reset-password`
-  - `https://offaxisdeals.com/login`
-  - `https://offaxisdeals.com/reset-password`
+**Remaining Issues (Auth Flows, Not Email):**
+- ⚠️ Magic link emails work, but clicking link doesn't sign user in (see item #1)
+- ⚠️ Password reset emails work, but reset page shows errors (see item #2)
 
-**Estimated Time:** 1-2 days (mostly configuration, not code)
+**Note:** Email delivery itself is complete. The remaining issues are with the authentication callback flows after users click email links.
+
+**Estimated Time:** N/A (email delivery complete)
 
 ---
 
-### 2. Watchlist Display Issue 🔴
+### 4. Watchlist Display Issue 🔴
 **Priority:** 🔴 CRITICAL  
 **Status:** Needs investigation  
 **Impact:** Core feature broken - users cannot see saved properties
@@ -122,7 +183,35 @@
 
 ## 🟠 HIGH PRIORITY (Should Fix Before Launch)
 
-### 3. Mobile UX Final Review 🟠
+### 5. Tucson Listing Not Showing 🟠
+**Priority:** 🟠 HIGH  
+**Status:** Needs investigation  
+**Impact:** Test listing not visible, may indicate broader visibility issues
+
+**Current Issue:**
+- Tucson listing created by wholesaler
+- Shows in "My Listings" but not on public listings page or map
+- May be a status, coordinates, or RLS issue
+
+**Debug Steps:**
+- [ ] Use `/api/debug/listings` endpoint (admin only) to check:
+  - Does listing exist?
+  - Does it have coordinates?
+  - What is its status?
+  - Is it archived?
+- [ ] Check Supabase Dashboard directly (see `docs/CHECK_TUCSON_LISTING.md`)
+- [ ] Verify RLS policies allow public viewing
+- [ ] Check if listing is within current map bounds
+
+**Files:**
+- `app/api/debug/listings/route.ts` - Diagnostic endpoint
+- `docs/CHECK_TUCSON_LISTING.md` - Debug guide
+
+**Estimated Time:** 0.5 day
+
+---
+
+### 6. Mobile UX Final Review 🟠
 **Priority:** 🟠 HIGH  
 **Status:** Most fixes complete, final review needed  
 **Impact:** User experience on mobile devices
@@ -145,7 +234,7 @@
 
 ---
 
-### 4. Notification System Completion 🟠
+### 7. Notification System Completion 🟠
 **Priority:** 🟠 HIGH  
 **Status:** Core system complete, some events wired  
 **Impact:** Users may miss important updates
@@ -230,8 +319,10 @@
 ## 🎯 Recommended Next Steps (Priority Order)
 
 ### Week 1: Critical Blockers
-1. **Fix Watchlist Display** (1 day) - Core feature broken
-2. **Configure Supabase Email** (1-2 days) - Blocks onboarding
+1. **Fix Geocode API Key** (0.5-1 day) - Search functionality broken
+2. **Fix Magic Link Authentication** (1-2 days) - Users cannot log in via magic link
+3. **Fix Watchlist Display** (1 day) - Core feature broken
+4. **Configure Supabase Email** (1-2 days) - Blocks onboarding
 
 ### Week 2: High Priority Polish
 3. **Mobile UX Final Review** (1-2 days) - Test on physical devices
@@ -324,5 +415,5 @@
 
 ---
 
-**Last Updated:** February 2025  
-**Next Review:** After watchlist fix and email configuration
+**Last Updated:** November 19, 2025  
+**Next Review:** After geocode API key fix and magic link authentication fix

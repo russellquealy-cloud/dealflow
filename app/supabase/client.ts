@@ -45,15 +45,18 @@ const getCookieDomain = () => {
 
 export const supabase = (() => {
   if (!supabaseClient) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lwhxmwvvostzlidmnays.supabase.co';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHhtd3Z2b3N0emxpZG1uYXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTg2NDYsImV4cCI6MjA3NDM5NDY0Nn0.YeXIZyYKuxVictEKcWe9GRsgMlVoFQJAPawdsIy8ye8';
+    
     supabaseClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lwhxmwvvostzlidmnays.supabase.co',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHhtd3Z2b3N0emxpZG1uYXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTg2NDYsImV4cCI6MjA3NDM5NDY0Nn0.YeXIZyYKuxVictEKcWe9GRsgMlVoFQJAPawdsIy8ye8',
+      supabaseUrl,
+      supabaseAnonKey,
       {
         auth: {
           autoRefreshToken: true,
-          detectSessionInUrl: true,
+          detectSessionInUrl: true, // CRITICAL: Must be true for magic link to work
           persistSession: true,
-          flowType: 'implicit',
+          flowType: 'implicit', // Use implicit flow for better mobile compatibility
           storageKey: 'dealflow-auth-token', // Prevent conflicts
           storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         },
@@ -73,10 +76,14 @@ export const supabase = (() => {
             
             try {
               const domain = options.domain ?? getCookieDomain();
+              const isProduction = typeof window !== 'undefined' && 
+                !window.location.hostname.includes('localhost') &&
+                !window.location.hostname.includes('127.0.0.1');
+              
               const cookieOptions: Record<string, unknown> = {
                 path: '/',
-                secure: window.location.protocol === 'https:',
-                sameSite: 'lax' as const,
+                secure: isProduction, // Only secure in production
+                sameSite: 'lax' as const, // Required for cross-site redirects
                 maxAge: 60 * 60 * 24 * 7, // 7 days
                 ...(domain ? { domain } : {}),
                 ...options
@@ -95,8 +102,8 @@ export const supabase = (() => {
               if (cookieOptions.domain) cookieString += `; Domain=${cookieOptions.domain}`;
               
               document.cookie = cookieString;
-            } catch {
-              // Silent fail on cookie setting errors
+            } catch (error) {
+              console.error('Error setting cookie:', error);
             }
           },
           remove(name: string) {
@@ -105,11 +112,11 @@ export const supabase = (() => {
               const domain = getCookieDomain();
               let cookieString = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
               if (domain) {
-                cookieString += `; Domain=${domain}`;
+                cookieString += ` Domain=${domain};`;
               }
               document.cookie = cookieString;
-            } catch {
-              // Silent fail on cookie removal errors
+            } catch (error) {
+              console.error('Error removing cookie:', error);
             }
           }
         }

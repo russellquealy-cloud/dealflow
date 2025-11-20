@@ -114,14 +114,27 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
           
           if (geocodeResponse.ok) {
             const geocodeData = await geocodeResponse.json();
-            if (geocodeData.lat && geocodeData.lng) {
+            if (geocodeData.ok && geocodeData.lat && geocodeData.lng) {
               latitude = geocodeData.lat;
               longitude = geocodeData.lng;
+              console.log('✅ Geocoded address:', { address: addressString, lat: latitude, lng: longitude });
+            } else {
+              console.warn('⚠️ Geocoding returned no coordinates:', geocodeData);
+              setMessage('⚠️ Could not find coordinates for this address. The listing will be created without map location.');
             }
+          } else {
+            const errorData = await geocodeResponse.json().catch(() => ({ error: 'Geocoding failed' }));
+            console.warn('⚠️ Geocoding failed:', errorData);
+            setMessage(`⚠️ Could not geocode address: ${errorData.error || 'Unknown error'}. The listing will be created without map location.`);
           }
         } catch (geocodeError) {
-          console.warn('Geocoding failed, listing will be created without coordinates:', geocodeError);
+          console.error('❌ Geocoding error:', geocodeError);
+          setMessage('⚠️ Failed to geocode address. The listing will be created without map location.');
         }
+      } else {
+        setMessage('⚠️ Please enter at least an address or city to create a listing.');
+        setLoading(false);
+        return;
       }
 
       // Create the listing first

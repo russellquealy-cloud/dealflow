@@ -77,6 +77,52 @@ export default function PostDealPage() {
     setError(null);
 
     try {
+      // Geocode the address to get coordinates
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+      
+      const addressString = [
+        form.address.trim(),
+        form.city.trim(),
+        form.state.trim(),
+        form.zip.trim()
+      ]
+        .filter(Boolean)
+        .join(', ');
+      
+      if (addressString) {
+        try {
+          const geocodeResponse = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: addressString }),
+          });
+          
+          if (geocodeResponse.ok) {
+            const geocodeData = await geocodeResponse.json();
+            if (geocodeData.ok && geocodeData.lat && geocodeData.lng) {
+              latitude = geocodeData.lat;
+              longitude = geocodeData.lng;
+              console.log('✅ Geocoded address:', { address: addressString, lat: latitude, lng: longitude });
+            } else {
+              console.warn('⚠️ Geocoding returned no coordinates:', geocodeData);
+              setError('Could not find coordinates for this address. The listing will be created without map location.');
+            }
+          } else {
+            const errorData = await geocodeResponse.json().catch(() => ({ error: 'Geocoding failed' }));
+            console.warn('⚠️ Geocoding failed:', errorData);
+            setError(`Could not geocode address: ${errorData.error || 'Unknown error'}. The listing will be created without map location.`);
+          }
+        } catch (geocodeError) {
+          console.error('❌ Geocoding error:', geocodeError);
+          setError('Failed to geocode address. The listing will be created without map location.');
+        }
+      } else {
+        setError('Please enter at least an address or city to create a listing.');
+        setSubmitting(false);
+        return;
+      }
+
       // Insert listing row first
       const payload = {
         owner_id: userId,
@@ -96,6 +142,8 @@ export default function PostDealPage() {
         description: form.description.trim() || null,
         status: 'live' as const,
         image_url: null as string | null,
+        latitude,
+        longitude,
         // NEW contact fields
         contact_name: form.contact_name.trim() || null,
         contact_phone: form.contact_phone.trim() || null,
