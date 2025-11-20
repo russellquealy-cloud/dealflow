@@ -115,14 +115,47 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
     }
 
     const { lat, lng } = data.results[0].geometry.location;
+    const viewport = data.results[0].geometry.viewport;
+    const formattedAddress = data.results[0].formatted_address;
 
     console.log('Geocode success', {
       query,
       lat,
       lng,
+      hasViewport: !!viewport,
+      formattedAddress,
     });
 
-    return NextResponse.json({ lat, lng });
+    // Return coordinates with viewport if available
+    const response: {
+      lat: number;
+      lng: number;
+      viewport?: {
+        north: number;
+        south: number;
+        east: number;
+        west: number;
+      };
+      formattedAddress?: string;
+    } = {
+      lat,
+      lng,
+    };
+
+    if (viewport) {
+      response.viewport = {
+        north: viewport.northeast.lat,
+        south: viewport.southwest.lat,
+        east: viewport.northeast.lng,
+        west: viewport.southwest.lng,
+      };
+    }
+
+    if (formattedAddress) {
+      response.formattedAddress = formattedAddress;
+    }
+
+    return NextResponse.json(response);
   } catch (e) {
     console.error("Geocode unexpected error", {
       error: e instanceof Error ? e.message : 'Unknown error',

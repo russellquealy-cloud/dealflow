@@ -462,7 +462,6 @@ export default function ListingsPage() {
         }
         
         const data = await response.json() as {
-          ok: boolean;
           lat?: number;
           lng?: number;
           viewport?: {
@@ -475,59 +474,68 @@ export default function ListingsPage() {
           error?: string;
         };
         
-        if (data.ok && typeof data.lat === 'number' && typeof data.lng === 'number') {
+        // Check if we got an error response
+        if (data.error) {
+          logger.warn('Geocoding returned error:', data.error);
+          setError({ message: data.error || `Could not find location: ${query}`, code: 'GEOCODE_ERROR' });
+          return;
+        }
+        
+        // Check if we got valid coordinates
+        if (typeof data.lat === 'number' && typeof data.lng === 'number') {
           logger.log('✅ Geocoding successful', { query, lat: data.lat, lng: data.lng, viewport: data.viewport });
           
-          // Use viewport if available (map will use fitBounds for better UX)
+          // Use viewport from API if available, otherwise calculate one
+          let newBounds: {
+            north: number;
+            south: number;
+            east: number;
+            west: number;
+          };
+          
           if (data.viewport) {
-            logger.log('📍 Setting map viewport and bounds', data.viewport);
-            setMapViewport(data.viewport);
-            // Clear zoom when using viewport (fitBounds will handle it)
-            setMapZoom(undefined);
-            // Also set center for fallback
-            setMapCenter({ lat: data.lat, lng: data.lng });
-            
-            // When using viewport, set map bounds to filter listings by location
-            // This ensures the list matches what's shown on the map
-            const newBounds = {
-              north: data.viewport.north,
-              south: data.viewport.south,
-              east: data.viewport.east,
-              west: data.viewport.west,
-            };
-            setMapBounds(newBounds);
-            setActiveMapBounds(true);
-            
-            // Trigger a refresh of listings with the new bounds
-            // This ensures the list updates to match the map viewport
-            // Use a longer delay to ensure map has time to update
-            setTimeout(() => {
-              logger.log('🔄 Triggering map bounds change after geocode', newBounds);
-              handleMapBoundsChange(newBounds);
-            }, 300);
-            
-            // Keep the formatted address in the search bar for display
-            if (data.formattedAddress) {
-              setSearchQuery(data.formattedAddress);
-            }
+            newBounds = data.viewport;
+            logger.log('📍 Using viewport from geocode API', newBounds);
           } else {
-            // Fallback to center + zoom if no viewport
-            logger.log('📍 Setting map center and zoom (no viewport)', { lat: data.lat, lng: data.lng });
-            setMapViewport(undefined);
-            setMapCenter({ lat: data.lat, lng: data.lng });
-            setMapZoom(14);
-            // Clear bounds filtering when using center/zoom
-            setActiveMapBounds(false);
-            setMapBounds(null);
+            // Calculate a reasonable viewport around the location
+            // Use a default zoom level that shows a city-sized area
+            const latDelta = 0.1; // ~11km
+            const lngDelta = 0.1; // ~11km at mid-latitudes
+            
+            newBounds = {
+              north: data.lat + latDelta,
+              south: data.lat - latDelta,
+              east: data.lng + lngDelta,
+              west: data.lng - lngDelta,
+            };
+            logger.log('📍 Calculated viewport (no viewport from API)', newBounds);
           }
+          
+          // Set viewport for fitBounds
+          setMapViewport(newBounds);
+          // Clear zoom when using viewport (fitBounds will handle it)
+          setMapZoom(undefined);
+          // Also set center for fallback
+          setMapCenter({ lat: data.lat, lng: data.lng });
+          
+          // Set map bounds to filter listings by location
+          setMapBounds(newBounds);
+          setActiveMapBounds(true);
+          
+          // Trigger a refresh of listings with the new bounds
+          // Use a delay to ensure map has time to update
+          setTimeout(() => {
+            logger.log('🔄 Triggering map bounds change after geocode', newBounds);
+            handleMapBoundsChange(newBounds);
+          }, 300);
           
           // Update search query to show the formatted address
           if (data.formattedAddress) {
             setSearchQuery(data.formattedAddress);
           }
-        } else if (!data.ok) {
-          logger.warn('Geocoding returned no results:', data.error);
-          setError({ message: data.error || `Could not find location: ${query}`, code: 'GEOCODE_NO_RESULTS' });
+        } else {
+          logger.warn('Geocoding returned invalid response:', data);
+          setError({ message: `Could not find location: ${query}`, code: 'GEOCODE_INVALID_RESPONSE' });
         }
       } catch (error) {
         logger.error('Error geocoding:', error);
