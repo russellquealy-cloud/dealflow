@@ -64,13 +64,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
       url: url.replace(apiKey, '***'),
     });
 
-    const response = await fetch(url);
+    const fetchResponse = await fetch(url);
 
-    if (!response.ok) {
-      const text = await response.text();
+    if (!fetchResponse.ok) {
+      const text = await fetchResponse.text();
       console.error('Geocode HTTP error', {
-        status: response.status,
-        statusText: response.statusText,
+        status: fetchResponse.status,
+        statusText: fetchResponse.statusText,
         body: text.substring(0, 500), // Limit body length in logs
       });
 
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
       );
     }
 
-    const data = (await response.json()) as GeocodeResult;
+    const data = (await fetchResponse.json()) as GeocodeResult;
 
     console.log('Geocode response status', data.status);
 
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
     });
 
     // Return coordinates with viewport if available
-    const response: {
+    const geocodeResponse: {
       lat: number;
       lng: number;
       viewport?: {
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
     };
 
     if (viewport) {
-      response.viewport = {
+      geocodeResponse.viewport = {
         north: viewport.northeast.lat,
         south: viewport.southwest.lat,
         east: viewport.northeast.lng,
@@ -152,10 +152,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
     }
 
     if (formattedAddress) {
-      response.formattedAddress = formattedAddress;
+      geocodeResponse.formattedAddress = formattedAddress;
     }
 
-    return NextResponse.json(response);
+    return NextResponse.json(geocodeResponse);
   } catch (e) {
     console.error("Geocode unexpected error", {
       error: e instanceof Error ? e.message : 'Unknown error',
