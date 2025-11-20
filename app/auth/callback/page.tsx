@@ -14,6 +14,15 @@ export default function AuthCallbackPage() {
   const [message, setMessage] = useState<string>('Signing you in...');
 
   useEffect(() => {
+    if (!searchParams) {
+      setStatus('error');
+      setMessage('Invalid callback URL. Please request a new magic link.');
+      setTimeout(() => {
+        router.replace('/login?error=Invalid callback URL');
+      }, 3000);
+      return;
+    }
+
     const code = searchParams.get('code');
     const next = searchParams.get('next') ?? '/listings';
     const error = searchParams.get('error');

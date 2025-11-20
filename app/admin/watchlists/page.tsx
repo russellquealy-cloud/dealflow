@@ -62,20 +62,24 @@ export default function AdminWatchlists() {
           schema: 'public',
           table: 'watchlists',
         },
-        (payload) => {
+        (payload: {
+          eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+          new?: Record<string, unknown>;
+          old?: Record<string, unknown>;
+        }) => {
           if (!mounted) return;
           console.log('Watchlist change detected:', payload);
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' && payload.new) {
             // Reload to get full data with joins
             loadWatchlists();
-          } else if (payload.eventType === 'UPDATE') {
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
             setWatchlists((prev) =>
               prev.map((watchlist) =>
-                watchlist.id === payload.new.id ? (payload.new as Record<string, unknown>) : watchlist
+                watchlist.id === payload.new?.id ? (payload.new as Record<string, unknown>) : watchlist
               )
             );
-          } else if (payload.eventType === 'DELETE') {
-            setWatchlists((prev) => prev.filter((watchlist) => watchlist.id !== payload.old.id));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setWatchlists((prev) => prev.filter((watchlist) => watchlist.id !== payload.old?.id));
           }
         }
       )

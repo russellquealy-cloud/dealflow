@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Calculate averages
-      marketData.forEach((data, key) => {
+      marketData.forEach((data) => {
         data.avgPrice = data.count > 0 ? Math.round(data.totalPrice / data.count) : 0;
       });
 
