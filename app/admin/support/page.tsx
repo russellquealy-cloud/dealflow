@@ -254,7 +254,7 @@ export default function AdminSupport() {
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '15px' }}>
-              {tickets.map((ticket: Record<string, unknown>) => (
+              {tickets.map((ticket) => (
                 <div key={String(ticket.id)} style={{
                   background: 'white',
                   border: '1px solid #e9ecef',

@@ -7,7 +7,7 @@ import { sendViaSMTP } from '@/lib/email';
  * GET /api/email/test
  * Returns status information about the test email endpoint
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createSupabaseServer();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

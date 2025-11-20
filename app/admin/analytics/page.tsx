@@ -74,14 +74,14 @@ export default function AdminAnalytics() {
 
       // Calculate status breakdown
       const listingsByStatus: Record<string, number> = {};
-      (listingsResult.data || []).forEach((l) => {
+      (listingsResult.data || []).forEach((l: { status?: string | null }) => {
         const status = l.status || 'active';
         listingsByStatus[status] = (listingsByStatus[status] || 0) + 1;
       });
 
       // Calculate users by role
       const usersByRole = { investor: 0, wholesaler: 0, admin: 0 };
-      (profilesResult.data || []).forEach((p) => {
+      (profilesResult.data || []).forEach((p: { role?: string | null; segment?: string | null }) => {
         const role = (p.role || p.segment || '').toLowerCase();
         if (role === 'admin') usersByRole.admin++;
         else if (role === 'investor') usersByRole.investor++;
@@ -90,7 +90,7 @@ export default function AdminAnalytics() {
 
       // Calculate users by tier
       const usersByTier = { free: 0, basic: 0, pro: 0, enterprise: 0 };
-      (profilesResult.data || []).forEach((p) => {
+      (profilesResult.data || []).forEach((p: { tier?: string | null }) => {
         const tier = (p.tier || 'free').toLowerCase();
         if (tier in usersByTier) {
           usersByTier[tier as keyof typeof usersByTier]++;
@@ -110,17 +110,17 @@ export default function AdminAnalytics() {
         const dayEnd = new Date(date);
         dayEnd.setDate(dayEnd.getDate() + 1);
 
-        const dayListings = (listingsResult.data || []).filter((l) => {
+        const dayListings = (listingsResult.data || []).filter((l: { created_at?: string | null }) => {
           const created = new Date(l.created_at || '');
           return created >= dayStart && created < dayEnd;
         }).length;
 
-        const dayUsers = (usersResult.data || []).filter((u) => {
+        const dayUsers = (usersResult.data || []).filter((u: { created_at?: string | null }) => {
           const created = new Date(u.created_at || '');
           return created >= dayStart && created < dayEnd;
         }).length;
 
-        const dayMessages = (messagesResult.data || []).filter((m) => {
+        const dayMessages = (messagesResult.data || []).filter((m: { created_at: string }) => {
           const created = new Date(m.created_at);
           return created >= dayStart && created < dayEnd;
         }).length;
@@ -144,7 +144,7 @@ export default function AdminAnalytics() {
 
       setAnalytics({
         totalListings: listingsResult.count || 0,
-        activeListings: filteredListings.filter((l) => (l.status || 'active') !== 'archived' && (l.status || 'active') !== 'draft').length,
+        activeListings: filteredListings.filter((l: { status?: string | null }) => (l.status || 'active') !== 'archived' && (l.status || 'active') !== 'draft').length,
         totalUsers: usersResult.count || 0,
         totalMessages: messagesResult.count || 0,
         totalWatchlists: watchlistsResult.count || 0,
