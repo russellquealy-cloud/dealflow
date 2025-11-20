@@ -14,81 +14,71 @@ import { logger } from '@/lib/logger';
  * Returns: { success: boolean, message: string, details?: {...} }
  */
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
     
-    // CRITICAL FIX: Try getSession first (reads from cookies), then getUser as fallback
-    // getSession is more reliable for cookie-based auth
-    let user = null;
-    let userError = null;
-    
-    // First try getSession (reads from cookies)
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionData?.session?.user) {
-      user = sessionData.session.user;
-      console.log('Email diagnostics: Got user from session', {
-        userId: user.id,
-        email: user.email,
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    console.log('Email diagnostics auth.getUser result', {
+      hasUser: !!user,
+      error: error?.message,
+      userId: user?.id,
+      email: user?.email,
+    });
+
+    if (error) {
+      console.error('getUser error in diagnostics', {
+        error: error.message,
+        code: error.status,
+        errorCode: error.code,
       });
-    } else if (sessionError) {
-      console.warn('Email diagnostics: Session error, trying getUser', {
-        error: sessionError.message,
-      });
-      // Fallback to getUser
-      const { data: userData, error: getUserError } = await supabase.auth.getUser();
-      if (userData?.user) {
-        user = userData.user;
-      } else {
-        userError = getUserError;
-      }
-    } else {
-      // No session, try getUser
-      const { data: userData, error: getUserError } = await supabase.auth.getUser();
-      if (userData?.user) {
-        user = userData.user;
-      } else {
-        userError = getUserError;
-      }
     }
-    
-    if (userError || !user) {
-      console.error('Email diagnostics: Unauthorized', {
-        sessionError: sessionError?.message,
-        getUserError: userError?.message,
-        hasSession: !!sessionData?.session,
-      });
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Unauthorized - Please ensure you are logged in' 
-      }, { status: 401 });
+
+    if (!user) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Unauthorized: No user in session' 
+        },
+        { status: 401 }
+      );
     }
-    
-    // Check if user is admin
-    const adminCheck = await isAdmin(user.id, supabase);
-    if (!adminCheck) {
-      console.error('Email diagnostics: Forbidden (not admin)', {
-        userId: user.id,
-        email: user.email,
-      });
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Forbidden: Admin access required' 
-      }, { status: 403 });
+
+    const isAdminUser = await isAdmin(user.id, supabase);
+    console.log('Email diagnostics isAdmin check', { 
+      userId: user.id, 
+      email: user.email,
+      isAdminUser 
+    });
+
+    if (!isAdminUser) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Unauthorized: Not an admin user' 
+        },
+        { status: 401 }
+      );
     }
     
     const body = await req.json().catch(() => ({}));
     const targetEmail = body.email || user.email;
     
     if (!targetEmail) {
-      console.error('❌ Email diagnostics: No email provided');
+      console.error('Email diagnostics: No email provided');
       return NextResponse.json({ 
         success: false, 
         message: 'Email address required' 
       }, { status: 400 });
     }
     
-    logger.log('📧 Email diagnostics: Sending test emails', {
+    logger.log('Email diagnostics: Sending test emails', {
       adminId: user.id,
       adminEmail: user.email,
       targetEmail,
@@ -97,7 +87,7 @@ export async function POST(req: NextRequest) {
     // Get site URL from environment (no localhost fallback in production)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!siteUrl) {
-      console.error('❌ Email diagnostics: NEXT_PUBLIC_SITE_URL not configured');
+      console.error('Email diagnostics: NEXT_PUBLIC_SITE_URL not configured');
       return NextResponse.json({ 
         success: false, 
         message: 'Site URL not configured. Please set NEXT_PUBLIC_SITE_URL environment variable.' 
@@ -106,7 +96,7 @@ export async function POST(req: NextRequest) {
     
     // Test 1: Magic link email
     const magicLinkRedirect = `${siteUrl}/auth/callback`;
-    logger.log('📧 Email diagnostics: Sending test magic link', {
+    logger.log('Email diagnostics: Sending test magic link', {
       email: targetEmail,
       redirectTo: magicLinkRedirect,
     });
@@ -120,7 +110,7 @@ export async function POST(req: NextRequest) {
     });
     
     if (magicLinkError) {
-      console.error('❌ Email diagnostics: Magic link failed', {
+      console.error('Email diagnostics: Magic link failed', {
         error: magicLinkError.message,
         code: magicLinkError.status,
         email: targetEmail,
@@ -129,7 +119,7 @@ export async function POST(req: NextRequest) {
     
     // Test 2: Password reset email
     const resetRedirect = `${siteUrl}/reset-password`;
-    logger.log('📧 Email diagnostics: Sending test password reset', {
+    logger.log('Email diagnostics: Sending test password reset', {
       email: targetEmail,
       redirectTo: resetRedirect,
     });
@@ -139,7 +129,7 @@ export async function POST(req: NextRequest) {
     });
     
     if (resetError) {
-      console.error('❌ Email diagnostics: Password reset failed', {
+      console.error('Email diagnostics: Password reset failed', {
         error: resetError.message,
         code: resetError.status,
         email: targetEmail,
@@ -160,11 +150,11 @@ export async function POST(req: NextRequest) {
     const allSuccess = results.magicLink.success && results.passwordReset.success;
     
     if (allSuccess) {
-      logger.log('✅ Email diagnostics: All test emails sent successfully', {
+      logger.log('Email diagnostics: All test emails sent successfully', {
         targetEmail,
       });
     } else {
-      logger.error('❌ Email diagnostics: Some test emails failed', {
+      logger.error('Email diagnostics: Some test emails failed', {
         targetEmail,
         results,
       });
@@ -182,7 +172,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('❌ Email diagnostics: Unexpected error', {
+    console.error('Email diagnostics: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     });

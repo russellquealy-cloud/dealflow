@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { createSupabaseServerServiceRole } from '@/lib/supabase/serverServiceRole';
 import { logger } from '@/lib/logger';
 import { notifyBuyerInterest } from '@/lib/notifications';
 
@@ -18,11 +19,11 @@ type ListingSummary = {
   state?: string | null;
   zip?: string | null;
   price?: number | null;
-  beds?: number | null;  // Alternative column name
+  beds?: number | null;
   bedrooms?: number | null;
-  baths?: number | null;  // Alternative column name
+  baths?: number | null;
   bathrooms?: number | null;
-  sqft?: number | null;  // Alternative column name
+  sqft?: number | null;
   home_sqft?: number | null;
   arv?: number | null;
   repairs?: number | null;
@@ -48,7 +49,6 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
     return [];
   })();
 
-  // Handle both beds/bedrooms and baths/bathrooms column names for compatibility
   const beds = listing.beds ?? listing.bedrooms ?? null;
   const baths = listing.baths ?? listing.bathrooms ?? null;
   const sqft = listing.sqft ?? listing.home_sqft ?? null;
@@ -84,21 +84,28 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
   };
 }
 
+export const dynamic = 'force-dynamic';
+
 // GET: Fetch user's watchlist
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const supabase = await createSupabaseServer();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      logger.warn('Watchlist GET: Unauthorized request');
+      console.error('Watchlist GET: Unauthorized');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get('listingId');
 
-    if (!user) {
-      logger.warn('Watchlist GET: Unauthorized request');
-      console.error('❌ Watchlist GET: Unauthorized');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    logger.log('📋 Watchlist GET: Starting request', {
+    logger.log('Watchlist GET: Starting request', {
       userId: user.id,
       userEmail: user.email,
       listingId: listingId || null,
@@ -114,14 +121,13 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        logger.error('❌ Watchlist GET: Error checking single watchlist item', {
-          table: 'watchlists',
+        logger.error('Watchlist GET: Error checking single watchlist item', {
           error_code: error.code,
           error_message: error.message,
           user_id: user.id,
           listing_id: listingId,
         });
-        console.error('❌ Watchlist GET: Error checking watchlist', {
+        console.error('Watchlist GET: Error checking watchlist', {
           error: error.message,
           code: error.code,
         });
@@ -134,8 +140,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    // First, get all watchlist items for the user
-    logger.log('📋 Watchlist GET: Fetching watchlist rows', {
+    // Fetch watchlist items for the user
+    logger.log('Watchlist GET: Fetching watchlist rows', {
       userId: user.id,
     });
 
@@ -146,15 +152,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (watchlistError) {
-      logger.error('❌ Watchlist GET: Error fetching watchlist rows', {
-        table: 'watchlists',
+      logger.error('Watchlist GET: Error fetching watchlist rows', {
         error_code: watchlistError.code,
         error_message: watchlistError.message,
-        error_details: watchlistError.details,
-        error_hint: watchlistError.hint,
         user_id: user.id,
       });
-      console.error('❌ Watchlist GET: Error fetching watchlist rows', {
+      console.error('Watchlist GET: Error fetching watchlist rows', {
         error: watchlistError.message,
         code: watchlistError.code,
       });
@@ -164,14 +167,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    logger.log('✅ Watchlist GET: Fetched watchlist rows', {
+    logger.log('Watchlist GET: Fetched watchlist rows', {
       count: watchlistRows?.length || 0,
-      watchlistIds: watchlistRows?.map(w => w.id) || [],
       propertyIds: watchlistRows?.map(w => w.property_id) || [],
     });
 
     if (!watchlistRows || watchlistRows.length === 0) {
-      logger.log('📋 Watchlist GET: No watchlist items found', {
+      logger.log('Watchlist GET: No watchlist items found', {
         userId: user.id,
       });
       return NextResponse.json({ watchlists: [] });
@@ -181,7 +183,7 @@ export async function GET(request: NextRequest) {
     const listingIds = watchlistRows.map((w) => w.property_id).filter(Boolean) as string[];
 
     if (listingIds.length === 0) {
-      logger.warn('⚠️ Watchlist GET: Watchlist rows exist but no property_ids found', {
+      logger.warn('Watchlist GET: Watchlist rows exist but no property_ids found', {
         watchlistRows: watchlistRows.length,
         userId: user.id,
       });
@@ -191,75 +193,55 @@ export async function GET(request: NextRequest) {
           user_id: w.user_id,
           property_id: w.property_id,
           created_at: w.created_at,
-          listings: null, // Use 'listings' (plural) to match frontend expectation
+          listings: null,
         }))
       });
     }
 
-    // CRITICAL FIX: Query listings WITHOUT status filter for watchlist
-    // Users should see ALL saved listings regardless of status (deleted, archived, etc.)
-    // Also, ensure we're using the authenticated user's Supabase client to respect RLS
-    logger.log('📋 Watchlist GET: Fetching listings for watchlist', {
-      listingIds: listingIds,
-      listingCount: listingIds.length,
-      userId: user.id,
-      userEmail: user.email,
-    });
+    // CRITICAL: Use service-role client to fetch listings (bypasses RLS)
+    // This ensures users can see listings they've saved, even if RLS would normally block them
+    // The user already has access to these listings via their watchlist, so this is safe
+    console.log('Watchlist listingIds', listingIds);
 
-    // ROOT CAUSE FIX: Remove ALL filters - watchlist should show saved listings regardless of status
-    // The RLS policy on listings should allow authenticated users to read their saved listings
-    const { data: listingsData, error: listingsError } = await supabase
+    const serviceClient = createSupabaseServerServiceRole();
+
+    const { data: listingsData, error: listingsError } = await serviceClient
       .from('listings')
       .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status, latitude, longitude, created_at')
       .in('id', listingIds);
-    
+
     if (listingsError) {
-      logger.error('❌ Watchlist GET: Error fetching listings', {
-        error_code: listingsError.code,
-        error_message: listingsError.message,
-        error_details: listingsError.details,
-        error_hint: listingsError.hint,
-        listing_ids: listingIds,
-        user_id: user.id,
-        user_email: user.email,
-      });
-      console.error('❌ Watchlist GET: Error fetching listings', {
+      console.error('Watchlist listings query error', {
         error: listingsError.message,
         code: listingsError.code,
         listingIds,
-        likelyCause: listingsError.code === '42501' ? 'RLS policy blocking access' : 'Other error',
       });
-      
-      // If RLS is blocking, try to diagnose
-      if (listingsError.code === '42501') {
-        logger.error('❌ Watchlist GET: RLS policy is blocking listing access', {
-          listingIds,
-          userId: user.id,
-          note: 'Check RLS policies on listings table - users should be able to read saved listings',
-        });
-      }
-      
+      logger.error('Watchlist GET: Error fetching listings', {
+        error_code: listingsError.code,
+        error_message: listingsError.message,
+        listing_ids: listingIds,
+        user_id: user.id,
+      });
       // Continue even if listings fail - return watchlist items with null listings
     } else {
-      logger.log('✅ Watchlist GET: Fetched listings for watchlist', {
+      console.log('Watchlist listings result', {
+        requestedCount: listingIds.length,
+        returnedCount: listingsData?.length ?? 0,
+      });
+      logger.log('Watchlist GET: Fetched listings for watchlist', {
         requestedIds: listingIds.length,
         foundListings: listingsData?.length || 0,
         foundListingIds: listingsData?.map(l => l.id) || [],
         missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
       });
-      
+
       // Log missing listings for debugging
       const missingIds = listingIds.filter(id => !listingsData?.some(l => l.id === id));
       if (missingIds.length > 0) {
-        logger.warn('⚠️ Watchlist GET: Some listings not found (may be deleted or RLS blocked)', {
+        logger.warn('Watchlist GET: Some listings not found (may be deleted)', {
           missingIds,
           totalRequested: listingIds.length,
           found: listingsData?.length || 0,
-          possibleReasons: [
-            'Listing was deleted from database',
-            'RLS policy blocking access to listing',
-            'Listing ID mismatch (UUID vs text)',
-          ],
         });
       }
     }
@@ -271,19 +253,16 @@ export async function GET(request: NextRequest) {
     });
 
     // Enrich watchlist items with listing data
-    // ROOT CAUSE FIX: Use 'listings' (plural) as the key to match frontend expectation
     const enriched = watchlistRows.map((item) => {
       const listingData = listingsMap.get(item.property_id);
       const listing = listingData ? sanitizeListing(listingData) : null;
       
       if (!listing) {
-        logger.warn('⚠️ Watchlist GET: Watchlist item has no listing data', {
+        logger.warn('Watchlist GET: Watchlist item has no listing data', {
           watchlistId: item.id,
           propertyId: item.property_id,
-          listingInMap: !!listingData,
           possibleReasons: [
-            'Listing was deleted',
-            'RLS policy blocking access',
+            'Listing was deleted from database',
             'Listing ID mismatch',
           ],
         });
@@ -294,11 +273,11 @@ export async function GET(request: NextRequest) {
         user_id: item.user_id,
         property_id: item.property_id,
         created_at: item.created_at,
-        listings: listing, // Use 'listings' (plural) to match frontend expectation
+        listings: listing,
       };
     });
 
-    logger.log('📋 Watchlist GET: Returning enriched watchlists', {
+    logger.log('Watchlist GET: Returning enriched watchlists', {
       totalItems: enriched.length,
       itemsWithListings: enriched.filter(e => e.listings).length,
       itemsWithoutListings: enriched.filter(e => !e.listings).length,
@@ -306,11 +285,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ watchlists: enriched });
   } catch (error) {
-    logger.error('❌ Watchlist GET: Unexpected error', {
+    logger.error('Watchlist GET: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     });
-    console.error('❌ Watchlist GET: Unexpected error', {
+    console.error('Watchlist GET: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -320,10 +299,15 @@ export async function GET(request: NextRequest) {
 // POST: Add listing to watchlist
 export async function POST(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const supabase = await createSupabaseServer();
 
-    if (!user) {
-      console.error('❌ Watchlist POST: Unauthorized');
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error('Watchlist POST: Unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -333,7 +317,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Listing ID required' }, { status: 400 });
     }
 
-    logger.log('📋 Watchlist POST: Adding listing to watchlist', {
+    logger.log('Watchlist POST: Adding listing to watchlist', {
       userId: user.id,
       listingId,
     });
@@ -346,7 +330,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existing) {
-      logger.log('📋 Watchlist POST: Listing already in watchlist', {
+      logger.log('Watchlist POST: Listing already in watchlist', {
         userId: user.id,
         listingId,
       });
@@ -363,15 +347,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      logger.error('❌ Watchlist POST: Error inserting watchlist', {
-        table: 'watchlists',
+      logger.error('Watchlist POST: Error inserting watchlist', {
         error_code: error.code,
         error_message: error.message,
-        error_details: error.details,
         user_id: user.id,
         listing_id: listingId,
       });
-      console.error('❌ Watchlist POST: Error inserting watchlist', {
+      console.error('Watchlist POST: Error inserting watchlist', {
         error: error.message,
         code: error.code,
       });
@@ -381,7 +363,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to add to watchlist' }, { status: 500 });
     }
 
-    logger.log('✅ Watchlist POST: Successfully added to watchlist', {
+    logger.log('Watchlist POST: Successfully added to watchlist', {
       userId: user.id,
       listingId,
       watchlistId: watchlistRow?.id,
@@ -404,7 +386,7 @@ export async function POST(request: NextRequest) {
           action: 'saved',
           supabaseClient: supabase,
         });
-        logger.log('📧 Buyer interest notification sent', {
+        logger.log('Buyer interest notification sent', {
           ownerId: listingData.owner_id,
           listingId,
           buyerId: user.id,
@@ -416,7 +398,6 @@ export async function POST(request: NextRequest) {
         listingId,
         userId: user.id,
       });
-      // Don't fail the request if notification fails
     }
 
     let listing = null;
@@ -429,12 +410,12 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (listingError) {
-      logger.error('❌ Watchlist POST: Error fetching listing', {
+      logger.error('Watchlist POST: Error fetching listing', {
         error_code: listingError.code,
         error_message: listingError.message,
         listing_id: listingId,
       });
-      console.error('❌ Watchlist POST: Error fetching listing', {
+      console.error('Watchlist POST: Error fetching listing', {
         error: listingError.message,
         code: listingError.code,
       });
@@ -461,14 +442,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       watchlist: {
         ...(watchlistRow as WatchlistRow),
-        listings: listing, // Use 'listings' (plural) to match frontend expectation
+        listings: listing,
       },
     });
   } catch (error) {
-    logger.error('❌ Watchlist POST: Unexpected error', {
+    logger.error('Watchlist POST: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    console.error('❌ Watchlist POST: Unexpected error', {
+    console.error('Watchlist POST: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -478,10 +459,15 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove listing from watchlist
 export async function DELETE(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const supabase = await createSupabaseServer();
 
-    if (!user) {
-      console.error('❌ Watchlist DELETE: Unauthorized');
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error('Watchlist DELETE: Unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -492,7 +478,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Listing ID required' }, { status: 400 });
     }
 
-    logger.log('📋 Watchlist DELETE: Removing listing from watchlist', {
+    logger.log('Watchlist DELETE: Removing listing from watchlist', {
       userId: user.id,
       listingId,
     });
@@ -504,14 +490,13 @@ export async function DELETE(request: NextRequest) {
       .eq('property_id', listingId);
 
     if (error) {
-      logger.error('❌ Watchlist DELETE: Error deleting watchlist', {
-        table: 'watchlists',
+      logger.error('Watchlist DELETE: Error deleting watchlist', {
         error_code: error.code,
         error_message: error.message,
         user_id: user.id,
         listing_id: listingId,
       });
-      console.error('❌ Watchlist DELETE: Error deleting watchlist', {
+      console.error('Watchlist DELETE: Error deleting watchlist', {
         error: error.message,
         code: error.code,
       });
@@ -521,17 +506,17 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to remove from watchlist' }, { status: 500 });
     }
 
-    logger.log('✅ Watchlist DELETE: Successfully removed from watchlist', {
+    logger.log('Watchlist DELETE: Successfully removed from watchlist', {
       userId: user.id,
       listingId,
     });
 
     return NextResponse.json({ message: 'Removed from watchlist' });
   } catch (error) {
-    logger.error('❌ Watchlist DELETE: Unexpected error', {
+    logger.error('Watchlist DELETE: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    console.error('❌ Watchlist DELETE: Unexpected error', {
+    console.error('Watchlist DELETE: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -16,14 +16,36 @@ export async function isAdmin(
       .eq('id', userId)
       .maybeSingle();
 
-    if (error || !profile) {
+    if (error) {
+      console.error('isAdmin check error', {
+        error: error.message,
+        code: error.code,
+        userId,
+      });
       return false;
     }
 
+    if (!profile) {
+      console.warn('isAdmin check: No profile found', { userId });
+      return false;
+    }
+
+    const isAdminUser = profile.role === 'admin' || profile.segment === 'admin';
+    
+    console.log('isAdmin check result', {
+      userId,
+      role: profile.role,
+      segment: profile.segment,
+      isAdmin: isAdminUser,
+    });
+
     // Check both role and segment fields
-    return profile.role === 'admin' || profile.segment === 'admin';
+    return isAdminUser;
   } catch (error) {
-    console.error('Error checking admin status:', error);
+    console.error('Error checking admin status:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId,
+    });
     return false;
   }
 }
@@ -36,4 +58,3 @@ export function checkIsAdminClient(profile: { role?: string | null; segment?: st
   if (!profile) return false;
   return profile.role === 'admin' || profile.segment === 'admin';
 }
-
