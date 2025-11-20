@@ -213,7 +213,7 @@ export const STRIPE_PLANS: Record<SubscriptionTier, Plan> = {
   },
   INVESTOR_BASIC: {
     name: 'Investor Basic',
-    price: 29,
+    price: 35, // Unified pricing: $35/month
     limits: {
       contacts: 50,
       ai_analyses: 20,
@@ -230,7 +230,7 @@ export const STRIPE_PLANS: Record<SubscriptionTier, Plan> = {
   },
   INVESTOR_PRO: {
     name: 'Investor Pro',
-    price: 59,
+    price: 60, // Unified pricing: $60/month
     limits: {
       contacts: 200,
       ai_analyses: 100,
@@ -247,7 +247,7 @@ export const STRIPE_PLANS: Record<SubscriptionTier, Plan> = {
   },
   WHOLESALER_BASIC: {
     name: 'Wholesaler Basic',
-    price: 49,
+    price: 35, // Unified pricing: $35/month (same as Investor Basic)
     limits: {
       contacts: 100,
       ai_analyses: 50,
@@ -264,7 +264,7 @@ export const STRIPE_PLANS: Record<SubscriptionTier, Plan> = {
   },
   WHOLESALER_PRO: {
     name: 'Wholesaler Pro',
-    price: 99,
+    price: 60, // Unified pricing: $60/month (same as Investor Pro)
     limits: {
       contacts: 500,
       ai_analyses: 200,

@@ -80,12 +80,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get profile for metadata
+    // Get profile for metadata and role validation
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, tier")
+      .select("role, segment, tier")
       .eq("id", user.id)
       .single();
+
+    // CRITICAL: Validate that user's role matches the requested segment
+    // Prevent mismatches (e.g., investor trying to buy wholesaler plan)
+    const userRole = profile?.segment || profile?.role;
+    const isAdmin = userRole === 'admin';
+    
+    if (!isAdmin && userRole !== segment) {
+      return NextResponse.json(
+        { 
+          error: `Role mismatch: You are registered as ${userRole}, but trying to purchase ${segment} plan. Please contact support if you need to change your account type.` 
+        },
+        { status: 403 }
+      );
+    }
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -128,7 +142,12 @@ export async function POST(req: NextRequest) {
         requested_segment: segment,
         requested_tier: tier,
         profile_role: profile?.role ?? "",
+        profile_segment: profile?.segment ?? "",
         profile_tier: profile?.tier ?? "",
+        // Ensure role and tier are consistently linked
+        user_role: userRole ?? "",
+        subscription_role: segment,
+        subscription_tier: tier,
       },
       success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,

@@ -109,8 +109,8 @@ function PricingPageInner() {
     },
     {
       name: 'Investor Basic',
-      price: billingPeriod === 'yearly' ? '$290' : '$29',
-      period: billingPeriod === 'yearly' ? '/year' : '/month',
+      price: billingPeriod === 'yearly' ? '$385' : '$35',
+      period: billingPeriod === 'yearly' ? '/year (11 months, save $35)' : '/month',
       description: 'Unlock contact info and AI tools',
       color: '#059669',
       features: [
@@ -130,8 +130,8 @@ function PricingPageInner() {
     },
     {
       name: 'Investor Pro',
-      price: billingPeriod === 'yearly' ? '$590' : '$59',
-      period: billingPeriod === 'yearly' ? '/year' : '/month',
+      price: billingPeriod === 'yearly' ? '$660' : '$60',
+      period: billingPeriod === 'yearly' ? '/year (11 months, save $60)' : '/month',
       description: 'Advanced tools for serious investors',
       color: '#3b82f6',
       features: [
@@ -175,8 +175,8 @@ function PricingPageInner() {
     },
     {
       name: 'Wholesaler Basic',
-      price: billingPeriod === 'yearly' ? '$250' : '$25',
-      period: billingPeriod === 'yearly' ? '/year' : '/month',
+      price: billingPeriod === 'yearly' ? '$385' : '$35',
+      period: billingPeriod === 'yearly' ? '/year (11 months, save $35)' : '/month',
       description: 'Grow your wholesale business',
       color: '#059669',
       features: [
@@ -196,8 +196,8 @@ function PricingPageInner() {
     },
     {
       name: 'Wholesaler Pro',
-      price: billingPeriod === 'yearly' ? '$590' : '$59',
-      period: billingPeriod === 'yearly' ? '/year' : '/month',
+      price: billingPeriod === 'yearly' ? '$660' : '$60',
+      period: billingPeriod === 'yearly' ? '/year (11 months, save $60)' : '/month',
       description: 'Professional wholesale tools',
       color: '#3b82f6',
       features: [

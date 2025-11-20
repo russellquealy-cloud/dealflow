@@ -103,7 +103,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'investor_basic',
     name: 'Investor Basic',
     role: 'investor',
-    price: { monthly: 29, yearly: 313 },
+    price: { monthly: 35, yearly: 385 }, // Unified pricing: $35/month, $385/year (11 months)
     description: 'Core conversion tier for casual investors',
     features: [
       '30 listings/month',
@@ -134,7 +134,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'investor_pro',
     name: 'Investor Pro',
     role: 'investor',
-    price: { monthly: 59, yearly: 637 },
+    price: { monthly: 60, yearly: 660 }, // Unified pricing: $60/month, $660/year (11 months)
     description: 'Full analytics suite for active investors',
     features: [
       'Unlimited viewing and contact',
@@ -193,7 +193,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'wholesaler_basic',
     name: 'Wholesaler Basic',
     role: 'wholesaler',
-    price: { monthly: 25, yearly: 270 },
+    price: { monthly: 35, yearly: 385 }, // Unified pricing: $35/month, $385/year (11 months)
     description: 'Entry tier to establish legitimacy and pipeline',
     features: [
       'Up to 10 listings/month',
@@ -221,7 +221,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'wholesaler_pro',
     name: 'Wholesaler Pro',
     role: 'wholesaler',
-    price: { monthly: 59, yearly: 637 },
+    price: { monthly: 60, yearly: 660 }, // Unified pricing: $60/month, $660/year (11 months)
     description: 'Maximum exposure and tools to close deals',
     features: [
       'Up to 30 listings/month',
