@@ -369,7 +369,7 @@ export default function AdminSupport() {
           textAlign: 'center',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#dc3545' }}>{tickets.filter((t: Record<string, unknown>) => t.status === 'open').length}</h3>
+          <h3 style={{ margin: '0 0 10px 0', color: '#dc3545' }}>{tickets.filter((t) => t.status === 'open').length}</h3>
           <p style={{ margin: '0', color: '#6c757d' }}>Open Tickets</p>
         </div>
         <div style={{
@@ -380,7 +380,7 @@ export default function AdminSupport() {
           textAlign: 'center',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#ffc107' }}>{tickets.filter((t: Record<string, unknown>) => t.status === 'in_progress').length}</h3>
+          <h3 style={{ margin: '0 0 10px 0', color: '#ffc107' }}>{tickets.filter((t) => t.status === 'in_progress').length}</h3>
           <p style={{ margin: '0', color: '#6c757d' }}>In Progress</p>
         </div>
         <div style={{
@@ -391,7 +391,7 @@ export default function AdminSupport() {
           textAlign: 'center',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#28a745' }}>{tickets.filter((t: Record<string, unknown>) => t.status === 'resolved').length}</h3>
+          <h3 style={{ margin: '0 0 10px 0', color: '#28a745' }}>{tickets.filter((t) => t.status === 'resolved').length}</h3>
           <p style={{ margin: '0', color: '#6c757d' }}>Resolved</p>
         </div>
         <div style={{
