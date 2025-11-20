@@ -449,6 +449,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Already in watchlist', watchlist: existing });
     }
 
+    // Verify user ID matches auth.uid() for RLS
+    console.log('Watchlist POST: Attempting insert', {
+      userId: user.id,
+      listingId,
+      userEmail: user.email,
+    });
+
+    // Test RLS by checking if we can read our own watchlists first
+    const { data: testRead, error: testError } = await supabase
+      .from('watchlists')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1);
+
+    if (testError) {
+      console.error('Watchlist POST: RLS test read failed', {
+        error: testError.message,
+        code: testError.code,
+        userId: user.id,
+      });
+    } else {
+      console.log('Watchlist POST: RLS test read succeeded', {
+        canRead: true,
+        userId: user.id,
+      });
+    }
+
     const { data: watchlistRow, error } = await supabase
       .from('watchlists')
       .insert({
@@ -462,17 +489,28 @@ export async function POST(request: NextRequest) {
       logger.error('Watchlist POST: Error inserting watchlist', {
         error_code: error.code,
         error_message: error.message,
+        error_details: error.details,
+        error_hint: error.hint,
         user_id: user.id,
         listing_id: listingId,
       });
       console.error('Watchlist POST: Error inserting watchlist', {
         error: error.message,
         code: error.code,
+        details: error.details,
+        hint: error.hint,
+        userId: user.id,
+        listingId,
       });
       if (error.code === '42501') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        // RLS policy violation - provide more helpful error
+        return NextResponse.json({ 
+          error: 'Forbidden',
+          details: 'Row Level Security policy prevented this operation. Please ensure you are authenticated and the watchlist policy allows inserts.',
+          hint: error.hint || 'Check RLS policies on watchlists table'
+        }, { status: 403 });
       }
-      return NextResponse.json({ error: 'Failed to add to watchlist' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to add to watchlist', details: error.message }, { status: 500 });
     }
 
     logger.log('Watchlist POST: Successfully added to watchlist', {
