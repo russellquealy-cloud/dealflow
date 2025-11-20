@@ -28,7 +28,7 @@ function getNextMonthStart(date: Date = new Date()): string {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServer();
+    const supabase = await createSupabaseServer();
     
     // Try to get user from session (cookies)
     const {
