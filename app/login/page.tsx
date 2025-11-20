@@ -58,9 +58,31 @@ function LoginInner() {
       return;
     }
 
+    // Prevent redirect loops - if we're already on the target page or any admin page, don't redirect
+    const currentPath = window.location.pathname;
+    if (currentPath === next || 
+        currentPath.startsWith(next + '/') || 
+        currentPath.startsWith('/admin')) {
+      console.log('🔐 Already on target page or admin page, skipping redirect', { currentPath, next });
+      return;
+    }
+
+    // Prevent infinite redirects - only redirect once
     setAutoRedirected(true);
     console.log('🔐 Already signed in, redirecting to:', next);
-    router.replace(next);
+    
+    // Use a small delay to prevent rapid redirects and allow page to stabilize
+    const timeoutId = setTimeout(() => {
+      // Double-check we're not already on the target before redirecting
+      const checkPath = window.location.pathname;
+      if (checkPath !== next && !checkPath.startsWith(next + '/') && !checkPath.startsWith('/admin')) {
+        router.replace(next);
+      } else {
+        console.log('🔐 Skipping redirect - already on target path', { checkPath, next });
+      }
+    }, 200);
+    
+    return () => clearTimeout(timeoutId);
   }, [authLoading, session, next, router, autoRedirected]);
 
   const onSubmit = async (e: React.FormEvent) => {
