@@ -16,10 +16,10 @@ if (!supabaseUrl || !serviceRoleKey) {
  * DO NOT use this for user-facing queries that should respect RLS.
  */
 export function createSupabaseServerServiceRole() {
-  return createClient(supabaseUrl, serviceRoleKey, {
+  // TypeScript now knows these are strings after the check above
+  return createClient(supabaseUrl as string, serviceRoleKey as string, {
     auth: {
       persistSession: false,
     },
   });
 }
-
