@@ -91,14 +91,70 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    // CRITICAL FIX: Try getSession first (reads from cookies), then getUser as fallback
+    // Also check Authorization header if provided
+    let user = null;
+    let userError = null;
+
+    // Check for Authorization header from client
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      console.log('Watchlist GET: Using Authorization header token', {
+        tokenLength: token.length,
+      });
+      const { data: userData, error: getUserError } = await supabase.auth.getUser(token);
+      if (userData?.user) {
+        user = userData.user;
+        console.log('Watchlist GET: Got user from Authorization header', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else {
+        userError = getUserError;
+      }
+    }
+
+    // If no user from header, try getSession (reads from cookies)
+    if (!user) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        user = sessionData.session.user;
+        console.log('Watchlist GET: Got user from session', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else if (sessionError) {
+        console.warn('Watchlist GET: Session error, trying getUser', {
+          error: sessionError.message,
+        });
+        // Fallback to getUser (reads from cookies)
+        const { data: userData, error: getUserError } = await supabase.auth.getUser();
+        if (userData?.user) {
+          user = userData.user;
+        } else {
+          userError = getUserError;
+        }
+      } else {
+        // No session, try getUser
+        const { data: userData, error: getUserError } = await supabase.auth.getUser();
+        if (userData?.user) {
+          user = userData.user;
+        } else {
+          userError = getUserError;
+        }
+      }
+    }
 
     if (userError || !user) {
-      logger.warn('Watchlist GET: Unauthorized request');
-      console.error('Watchlist GET: Unauthorized');
+      console.error('Watchlist GET: Unauthorized', {
+        getUserError: userError?.message,
+        hasAuthHeader: !!authHeader,
+      });
+      logger.warn('Watchlist GET: Unauthorized request', {
+        hasAuthHeader: !!authHeader,
+        error: userError?.message,
+      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
