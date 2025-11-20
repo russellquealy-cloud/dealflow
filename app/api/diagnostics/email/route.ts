@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Check if user is admin
-    const adminCheck = await isAdmin(user.id);
+    const adminCheck = await isAdmin(user.id, supabase);
     if (!adminCheck) {
       console.error('❌ Email diagnostics: Forbidden (not admin)', {
         userId: user.id,
