@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { isAdmin } from '@/lib/admin';
 import { getUserSubscriptionTier } from '@/lib/subscription';
 import { getPlanLimits } from '@/lib/subscription';
 import type { SubscriptionTier } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function getMonthStart(date: Date = new Date()): string {
   const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -27,7 +28,18 @@ function getNextMonthStart(date: Date = new Date()): string {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const supabase = createSupabaseServer();
+    
+    // Try to get user from session (cookies)
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+      console.error('AI usage API: getUser error', userError);
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

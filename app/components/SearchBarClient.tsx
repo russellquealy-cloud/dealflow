@@ -10,13 +10,47 @@ interface SearchBarClientProps {
 
 const AUTOCOMPLETE_DEBOUNCE = 200;
 
-// Browser compatibility check
+// Type definitions for autocomplete suggestions
+interface AutocompleteSuggestion {
+  placePrediction?: {
+    placeId: string;
+    text: {
+      text: string;
+      matches: Array<{ startOffset: number; endOffset: number }>;
+    };
+    structuredFormat?: {
+      mainText: { text: string };
+      secondaryText: { text: string };
+    };
+  };
+}
+
+interface AutocompleteSuggestionResponse {
+  suggestions: AutocompleteSuggestion[];
+}
+
+// Browser compatibility check - support both old and new APIs
 function isBrowserCompatible(): boolean {
   if (typeof window === 'undefined') return false;
-  return typeof window.google !== 'undefined' && 
-         typeof window.google.maps !== 'undefined' &&
-         typeof window.google.maps.places !== 'undefined' &&
-         typeof window.google.maps.places.AutocompleteService !== 'undefined';
+  if (!window.google?.maps?.places) return false;
+  
+  // Check for new API first (AutocompleteSuggestion)
+  if (typeof window.google.maps.places.AutocompleteSuggestion !== 'undefined') {
+    return true;
+  }
+  
+  // Fallback to old API (AutocompleteService) - still works but deprecated
+  if (typeof window.google.maps.places.AutocompleteService !== 'undefined') {
+    return true;
+  }
+  
+  return false;
+}
+
+// Check if new API is available
+function hasNewAutocompleteAPI(): boolean {
+  if (typeof window === 'undefined') return false;
+  return typeof window.google?.maps?.places?.AutocompleteSuggestion !== 'undefined';
 }
 
 export default function SearchBarClient({
@@ -25,18 +59,23 @@ export default function SearchBarClient({
   placeholder = 'Search city or address',
 }: SearchBarClientProps) {
   const [q, setQ] = useState(value);
-  const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [suggestions, setSuggestions] = useState<Array<{
+    place_id: string;
+    description: string;
+  }>>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [browserCompatible, setBrowserCompatible] = useState(false);
+  const [usingNewAPI, setUsingNewAPI] = useState(false);
   const containerRef = useRef<HTMLFormElement | null>(null);
   const debounceRef = useRef<number | null>(null);
   const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
 
   useEffect(() => {
     setQ(value);
   }, [value]);
 
-  // Check browser compatibility
+  // Check browser compatibility and initialize appropriate API
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -44,13 +83,21 @@ export default function SearchBarClient({
       const compatible = isBrowserCompatible();
       setBrowserCompatible(compatible);
       
-      if (compatible && !serviceRef.current) {
-        try {
-          serviceRef.current = new window.google.maps.places.AutocompleteService();
-        } catch (error) {
-          console.warn('Failed to initialize AutocompleteService:', error);
-          setBrowserCompatible(false);
+      if (compatible) {
+        const hasNewAPI = hasNewAutocompleteAPI();
+        setUsingNewAPI(hasNewAPI);
+        
+        // Initialize old API as fallback (still works, just deprecated)
+        if (!hasNewAPI && !serviceRef.current) {
+          try {
+            serviceRef.current = new window.google.maps.places.AutocompleteService();
+          } catch (error) {
+            console.warn('Failed to initialize AutocompleteService:', error);
+            setBrowserCompatible(false);
+          }
         }
+        
+        // For new API, we'll use fetch requests (no initialization needed)
       }
     };
 
@@ -89,7 +136,73 @@ export default function SearchBarClient({
     setActiveIndex(-1);
   }, []);
 
-  const fetchSuggestions = useCallback(
+  // Fetch suggestions using new API (AutocompleteSuggestion)
+  const fetchSuggestionsNewAPI = useCallback(
+    async (input: string) => {
+      if (!browserCompatible || !usingNewAPI) {
+        return;
+      }
+
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+        if (!apiKey) {
+          console.warn('Google Maps API key not configured');
+          return;
+        }
+
+        // Use Places API (New) AutocompleteSuggestion endpoint
+        const response = await fetch(
+          `https://places.googleapis.com/v1/places:autocomplete`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat',
+            },
+            body: JSON.stringify({
+              input: input,
+              locationBias: {
+                regionCode: 'US', // Focus on US locations
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          console.warn('AutocompleteSuggestion API error:', response.status);
+          clearSuggestions();
+          return;
+        }
+
+        const data = (await response.json()) as AutocompleteSuggestionResponse;
+        
+        if (data.suggestions && data.suggestions.length > 0) {
+          const formattedSuggestions = data.suggestions
+            .filter(s => s.placePrediction)
+            .map(s => ({
+              place_id: s.placePrediction!.placeId,
+              description: s.placePrediction!.structuredFormat
+                ? `${s.placePrediction!.structuredFormat.mainText.text}, ${s.placePrediction!.structuredFormat.secondaryText.text}`
+                : s.placePrediction!.text.text,
+            }))
+            .slice(0, 5);
+          
+          setSuggestions(formattedSuggestions);
+          setActiveIndex(-1);
+        } else {
+          clearSuggestions();
+        }
+      } catch (error) {
+        console.warn('AutocompleteSuggestion error:', error);
+        clearSuggestions();
+      }
+    },
+    [clearSuggestions, browserCompatible, usingNewAPI]
+  );
+
+  // Fetch suggestions using old API (AutocompleteService) - fallback
+  const fetchSuggestionsOldAPI = useCallback(
     (input: string) => {
       if (!browserCompatible || !serviceRef.current) {
         clearSuggestions();
@@ -105,7 +218,11 @@ export default function SearchBarClient({
           (predictions, status) => {
             // Handle different status codes for better error handling
             if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-              setSuggestions(predictions.slice(0, 5));
+              const formatted = predictions.slice(0, 5).map(p => ({
+                place_id: p.place_id,
+                description: p.description,
+              }));
+              setSuggestions(formatted);
               setActiveIndex(-1);
             } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
               setSuggestions([]);
@@ -123,6 +240,17 @@ export default function SearchBarClient({
       }
     },
     [clearSuggestions, browserCompatible]
+  );
+
+  const fetchSuggestions = useCallback(
+    (input: string) => {
+      if (usingNewAPI) {
+        fetchSuggestionsNewAPI(input);
+      } else {
+        fetchSuggestionsOldAPI(input);
+      }
+    },
+    [usingNewAPI, fetchSuggestionsNewAPI, fetchSuggestionsOldAPI]
   );
 
   const debouncedFetch = useCallback(
@@ -169,13 +297,13 @@ export default function SearchBarClient({
   }
 
   const handleSuggestionSelect = useCallback(
-    (prediction: google.maps.places.AutocompletePrediction) => {
-      setQ(prediction.description);
+    (suggestion: { place_id: string; description: string }) => {
+      setQ(suggestion.description);
       if (onChange) {
-        onChange(prediction.description);
+        onChange(suggestion.description);
       }
       clearSuggestions();
-      dispatchGeocode(prediction.description, prediction.place_id);
+      dispatchGeocode(suggestion.description, suggestion.place_id);
     },
     [clearSuggestions, onChange]
   );
@@ -267,9 +395,9 @@ export default function SearchBarClient({
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
           }}>
-            {suggestions.map((prediction, index) => (
+            {suggestions.map((suggestion, index) => (
               <li
-                key={prediction.place_id}
+                key={suggestion.place_id}
                 style={{
                   cursor: 'pointer',
                   padding: '12px 16px',
@@ -283,15 +411,15 @@ export default function SearchBarClient({
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  handleSuggestionSelect(prediction);
+                  handleSuggestionSelect(suggestion);
                 }}
                 onTouchStart={(e) => {
                   e.preventDefault();
-                  handleSuggestionSelect(prediction);
+                  handleSuggestionSelect(suggestion);
                 }}
                 onMouseEnter={() => setActiveIndex(index)}
               >
-                {prediction.description}
+                {suggestion.description}
               </li>
             ))}
           </ul>
