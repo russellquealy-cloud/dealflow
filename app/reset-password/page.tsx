@@ -15,10 +15,10 @@ export default function ResetPasswordPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [updated, setUpdated] = React.useState(false);
   const [tokenValid, setTokenValid] = React.useState<boolean | null>(null);
+  const [exchangingCode, setExchangingCode] = React.useState(false);
 
-  // CRITICAL FIX: Don't try to exchange code client-side for password reset
-  // The code verifier isn't available in client localStorage for PKCE flow
-  // Instead, rely on Supabase's automatic hash processing or let updateUser handle it
+  // CRITICAL FIX: For PKCE flow, we MUST exchange the code for a session BEFORE updateUser
+  // updateUser requires an active session, which we get by exchanging the PKCE code
   React.useEffect(() => {
     const checkToken = async () => {
       // Wait for Supabase client to process the URL hash
@@ -27,31 +27,29 @@ export default function ResetPasswordPage() {
       const hash = typeof window !== 'undefined' ? window.location.hash : '';
       const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       
-      logger.log('🔑 Checking for reset token:', {
+      logger.log('Checking for reset token:', {
         hash: hash ? hash.substring(0, 50) + '...' : 'none',
         search: urlParams?.toString() || 'none',
-        fullUrl: typeof window !== 'undefined' ? window.location.href.substring(0, 100) + '...' : 'none'
       });
       
       // First, check if Supabase has already processed the token and created a session
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (session && !sessionError) {
-          logger.log('✅ Valid session found (Supabase processed token), token is valid');
-          console.log('✅ Password reset: Session found, token is valid');
+          logger.log('Valid session found (Supabase processed token), token is valid');
+          console.log('Password reset: Session found, token is valid');
           setTokenValid(true);
           return;
         }
       } catch (err) {
-        logger.error('❌ Error checking session:', err);
-        console.error('❌ Password reset: Error checking session', err);
+        logger.error('Error checking session:', err);
+        console.error('Password reset: Error checking session', err);
       }
       
       // Check hash for access_token (implicit flow - most common for password reset)
-      // Supabase password reset emails include: #access_token=...&type=recovery&...
       if (hash && (hash.includes('access_token') || hash.includes('type=recovery'))) {
-        logger.log('🔑 Password reset token detected in URL hash');
-        console.log('🔑 Password reset: Token detected in URL hash');
+        logger.log('Password reset token detected in URL hash');
+        console.log('Password reset: Token detected in URL hash');
         
         // The Supabase client should automatically process this with detectSessionInUrl: true
         // Give it a moment, then check session again
@@ -60,46 +58,84 @@ export default function ResetPasswordPage() {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            logger.log('✅ Session created after processing hash, token is valid');
-            console.log('✅ Password reset: Session created after processing hash');
+            logger.log('Session created after processing hash, token is valid');
+            console.log('Password reset: Session created after processing hash');
             setTokenValid(true);
             return;
           }
         } catch (err) {
-          logger.error('❌ Error checking session after hash processing:', err);
-          console.error('❌ Password reset: Error checking session after hash', err);
+          logger.error('Error checking session after hash processing:', err);
+          console.error('Password reset: Error checking session after hash', err);
         }
         
         // Even without session yet, if we have the token in hash, it should be valid
-        // The session will be created when we call updateUser
-        logger.log('✅ Token in hash detected, allowing password reset (session will be created on update)');
-        console.log('✅ Password reset: Token in hash detected, allowing form submission');
+        logger.log('Token in hash detected, allowing password reset (session will be created on update)');
+        console.log('Password reset: Token in hash detected, allowing form submission');
         setTokenValid(true);
         return;
       }
       
-      // CRITICAL FIX: For PKCE flow (code in URL), don't try to exchange client-side
-      // The code verifier isn't available, so exchangeCodeForSession will fail
-      // Instead, let updateUser handle the validation - it can work with the code directly
+      // CRITICAL FIX: For PKCE flow (code in URL), exchange code for session FIRST
+      // This is required because updateUser needs an active session
       const code = searchParams?.get('code') || urlParams?.get('code');
       if (code) {
-        logger.log('🔑 Password reset code detected in URL (PKCE flow)');
-        console.log('🔑 Password reset: Code detected in URL (PKCE flow)');
-        console.warn('⚠️ Password reset: PKCE code detected - will rely on updateUser for validation');
+        logger.log('Password reset code detected in URL (PKCE flow)');
+        console.log('Password reset: Code detected in URL (PKCE flow)');
+        console.log('Password reset: Exchanging code for session...');
         
-        // Don't try to exchange code client-side - the verifier isn't available
-        // Instead, set tokenValid to true and let updateUser handle it
-        // updateUser can work with PKCE codes in some cases, or we'll get a clear error
-        setTokenValid(true);
-        return;
+        setExchangingCode(true);
+        try {
+          // CRITICAL: Exchange code for session BEFORE allowing password update
+          // The server-side client has access to the PKCE verifier in cookies
+          // But we need to do this client-side, so we'll use an API route
+          const response = await fetch('/api/auth/exchange-reset-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ code }),
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+            logger.error('Failed to exchange reset code:', errorData);
+            console.error('Password reset: Failed to exchange code', errorData);
+            setTokenValid(false);
+            setError('Invalid or expired reset link. Please request a new password reset.');
+            setExchangingCode(false);
+            return;
+          }
+          
+          // Code exchanged successfully, session should now exist
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            logger.log('Code exchanged for session successfully');
+            console.log('Password reset: Code exchanged for session successfully');
+            setTokenValid(true);
+            setExchangingCode(false);
+            return;
+          } else {
+            logger.warn('Code exchanged but no session found');
+            console.warn('Password reset: Code exchanged but no session found');
+            // Still allow attempt - updateUser might work
+            setTokenValid(true);
+            setExchangingCode(false);
+            return;
+          }
+        } catch (err) {
+          logger.error('Error exchanging reset code:', err);
+          console.error('Password reset: Error exchanging reset code', err);
+          setTokenValid(false);
+          setError('Failed to validate reset link. Please request a new password reset.');
+          setExchangingCode(false);
+          return;
+        }
       }
       
       // If we get here and still no token, but we haven't explicitly failed, 
       // allow the user to try (updateUser will validate)
       if (tokenValid === null) {
-        logger.warn('⚠️ No reset token found in URL, but allowing attempt (updateUser will validate)');
-        console.warn('⚠️ Password reset: No token found, but allowing form submission');
-        // Set to true to allow form submission - updateUser will be the final validator
+        logger.warn('No reset token found in URL, but allowing attempt (updateUser will validate)');
+        console.warn('Password reset: No token found, but allowing form submission');
         setTokenValid(true);
       }
     };
@@ -121,7 +157,12 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // If token validation is still in progress, try anyway (updateUser will fail if invalid)
+    // If token validation is still in progress, wait
+    if (exchangingCode) {
+      setError('Please wait while we validate your reset link...');
+      return;
+    }
+
     // If token is explicitly invalid, show error
     if (tokenValid === false) {
       setError('Invalid or expired reset token. Please request a new password reset link.');
@@ -130,20 +171,29 @@ export default function ResetPasswordPage() {
     
     setLoading(true);
     try {
-      logger.log('🔑 Updating password...');
-      console.log('🔑 Password reset: Attempting to update password');
+      logger.log('Updating password...');
+      console.log('Password reset: Attempting to update password');
       
-      // CRITICAL: updateUser can handle both implicit (hash) and PKCE (code) flows
-      // For PKCE, if the code verifier isn't available, this will fail with a clear error
+      // Check if we have a session first
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (!session || sessionError) {
+        logger.error('No session found for password update');
+        console.error('Password reset: No session found');
+        setError('Session expired. Please request a new password reset link.');
+        setLoading(false);
+        return;
+      }
+      
+      // Now update password (requires active session)
       const { data, error: updateError } = await supabase.auth.updateUser({ password });
       
       if (updateError) {
-        logger.error('❌ Reset password update error:', {
+        logger.error('Reset password update error:', {
           error: updateError.message,
           code: updateError.status,
           fullError: updateError,
         });
-        console.error('❌ Password reset: Update failed', {
+        console.error('Password reset: Update failed', {
           error: updateError.message,
           code: updateError.status,
         });
@@ -153,8 +203,8 @@ export default function ResetPasswordPage() {
           setError('This reset link has expired or is invalid. Please request a new password reset.');
         } else if (updateError.message?.includes('weak') || updateError.message?.includes('password')) {
           setError('Password is too weak. Please choose a stronger password (minimum 8 characters, include numbers and letters).');
-        } else if (updateError.message?.includes('code challenge') || updateError.message?.includes('verifier')) {
-          setError('Authentication session expired. Please request a new password reset link and try again.');
+        } else if (updateError.message?.includes('session')) {
+          setError('Session expired. Please request a new password reset link and try again.');
         } else if (updateError.message?.includes('token')) {
           setError('Invalid or expired reset token. Please request a new password reset link.');
         } else {
@@ -164,14 +214,14 @@ export default function ResetPasswordPage() {
       }
       
       if (!data.user) {
-        logger.error('❌ Password reset: Update succeeded but no user returned');
-        console.error('❌ Password reset: Update succeeded but no user data');
+        logger.error('Password reset: Update succeeded but no user returned');
+        console.error('Password reset: Update succeeded but no user data');
         setError('Password update completed but session error occurred. Please try logging in.');
         return;
       }
       
-      logger.log('✅ Password updated successfully');
-      console.log('✅ Password reset: Password updated successfully', {
+      logger.log('Password updated successfully');
+      console.log('Password reset: Password updated successfully', {
         userId: data.user.id,
         email: data.user.email,
       });
@@ -184,8 +234,8 @@ export default function ResetPasswordPage() {
         router.push('/login?message=Password updated successfully. Please sign in with your new password.');
       }, 2000);
     } catch (err) {
-      logger.error('❌ Reset password exception:', err);
-      console.error('❌ Password reset: Exception', {
+      logger.error('Reset password exception:', err);
+      console.error('Password reset: Exception', {
         error: err instanceof Error ? err.message : 'Unknown error',
         stack: err instanceof Error ? err.stack : undefined,
       });
@@ -221,6 +271,19 @@ export default function ResetPasswordPage() {
         <p style={{ margin: 0, color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
           Password reset links are valid for 1 hour after being sent.
         </p>
+        {exchangingCode && (
+          <div style={{
+            marginTop: 16,
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            color: '#0369a1',
+            fontSize: 14
+          }}>
+            Validating reset link... Please wait.
+          </div>
+        )}
         {tokenValid === false && (
           <div style={{
             marginTop: 16,
@@ -231,23 +294,10 @@ export default function ResetPasswordPage() {
             color: '#991b1b',
             fontSize: 14
           }}>
-            ⚠️ Invalid or expired reset link. Please <a href="/login" style={{ color: '#3b82f6', textDecoration: 'underline' }}>request a new password reset</a>.
+            Invalid or expired reset link. Please <a href="/login" style={{ color: '#3b82f6', textDecoration: 'underline' }}>request a new password reset</a>.
           </div>
         )}
-        {tokenValid === null && (
-          <div style={{
-            marginTop: 16,
-            padding: '12px 16px',
-            borderRadius: 8,
-            background: '#f0f9ff',
-            border: '1px solid #bae6fd',
-            color: '#0369a1',
-            fontSize: 14
-          }}>
-            🔍 Validating reset link... Please wait.
-          </div>
-        )}
-        {tokenValid === true && !error && !updated && (
+        {tokenValid === true && !error && !updated && !exchangingCode && (
           <div style={{
             marginTop: 16,
             padding: '12px 16px',
@@ -257,7 +307,7 @@ export default function ResetPasswordPage() {
             color: '#166534',
             fontSize: 14
           }}>
-            ✅ Reset link validated. Please enter your new password below.
+            Reset link validated. Please enter your new password below.
           </div>
         )}
 
@@ -270,6 +320,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
+              disabled={exchangingCode || loading}
               style={{
                 height: 46,
                 border: '2px solid #e5e7eb',
@@ -287,6 +338,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setConfirm(e.target.value)}
               required
               minLength={8}
+              disabled={exchangingCode || loading}
               style={{
                 height: 46,
                 border: '2px solid #e5e7eb',
@@ -299,20 +351,20 @@ export default function ResetPasswordPage() {
 
           <button
             type="submit"
-            disabled={loading || tokenValid === false}
+            disabled={loading || tokenValid === false || exchangingCode}
             style={{
               marginTop: 4,
               height: 46,
               borderRadius: 12,
               border: 'none',
-              background: (loading || tokenValid === false) ? '#9ca3af' : '#3b82f6',
+              background: (loading || tokenValid === false || exchangingCode) ? '#9ca3af' : '#3b82f6',
               color: '#fff',
               fontSize: 16,
               fontWeight: 700,
-              cursor: (loading || tokenValid === false) ? 'not-allowed' : 'pointer'
+              cursor: (loading || tokenValid === false || exchangingCode) ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Updating…' : 'Update Password'}
+            {loading ? 'Updating…' : exchangingCode ? 'Validating…' : 'Update Password'}
           </button>
         </form>
 

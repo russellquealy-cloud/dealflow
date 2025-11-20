@@ -18,23 +18,56 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
     
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // CRITICAL FIX: Try getSession first (reads from cookies), then getUser as fallback
+    // getSession is more reliable for cookie-based auth
+    let user = null;
+    let userError = null;
+    
+    // First try getSession (reads from cookies)
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionData?.session?.user) {
+      user = sessionData.session.user;
+      console.log('Email diagnostics: Got user from session', {
+        userId: user.id,
+        email: user.email,
+      });
+    } else if (sessionError) {
+      console.warn('Email diagnostics: Session error, trying getUser', {
+        error: sessionError.message,
+      });
+      // Fallback to getUser
+      const { data: userData, error: getUserError } = await supabase.auth.getUser();
+      if (userData?.user) {
+        user = userData.user;
+      } else {
+        userError = getUserError;
+      }
+    } else {
+      // No session, try getUser
+      const { data: userData, error: getUserError } = await supabase.auth.getUser();
+      if (userData?.user) {
+        user = userData.user;
+      } else {
+        userError = getUserError;
+      }
+    }
     
     if (userError || !user) {
-      console.error('❌ Email diagnostics: Unauthorized', {
-        error: userError?.message,
+      console.error('Email diagnostics: Unauthorized', {
+        sessionError: sessionError?.message,
+        getUserError: userError?.message,
+        hasSession: !!sessionData?.session,
       });
       return NextResponse.json({ 
         success: false, 
-        message: 'Unauthorized' 
+        message: 'Unauthorized - Please ensure you are logged in' 
       }, { status: 401 });
     }
     
     // Check if user is admin
     const adminCheck = await isAdmin(user.id, supabase);
     if (!adminCheck) {
-      console.error('❌ Email diagnostics: Forbidden (not admin)', {
+      console.error('Email diagnostics: Forbidden (not admin)', {
         userId: user.id,
         email: user.email,
       });

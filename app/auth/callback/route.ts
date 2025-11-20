@@ -3,9 +3,8 @@
  * 
  * Handles Supabase auth callbacks from magic links and OAuth providers.
  * 
- * CRITICAL FIX: Supabase is using PKCE flow (code in URL), but the code verifier
- * must be handled server-side. The client cannot exchange the code because the
- * verifier isn't stored in the client's localStorage.
+ * CRITICAL ISSUE: PKCE code verifier may not be available in cookies when user
+ * clicks magic link from email (different browser/device). Need to handle this case.
  * 
  * Flow:
  * 1. User clicks magic link in email
@@ -33,7 +32,7 @@ export async function GET(req: Request) {
 
   // Handle OAuth errors
   if (error) {
-    console.error('❌ Auth callback error from Supabase:', {
+    console.error('Auth callback error from Supabase:', {
       error,
       errorDescription,
       url: req.url,
@@ -49,10 +48,21 @@ export async function GET(req: Request) {
     
     if (code) {
       // PKCE flow: Exchange code for session (server-side has access to verifier)
-      console.log('🔐 Auth callback: Exchanging code for session (PKCE flow)...', {
+      console.log('Auth callback: Exchanging code for session (PKCE flow)...', {
         codeLength: code.length,
         next,
         hasCode: !!code,
+        url: req.url.substring(0, 100), // Log partial URL for debugging
+      });
+      
+      // Log cookies for debugging (don't log values, just names)
+      const cookieHeader = req.headers.get('cookie');
+      const hasCookies = !!cookieHeader;
+      const cookieCount = cookieHeader ? cookieHeader.split(';').length : 0;
+      console.log('Auth callback: Cookie check', {
+        hasCookies,
+        cookieCount,
+        cookieNames: cookieHeader ? cookieHeader.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [],
       });
       
       // The server-side client can exchange the code because it has access to the verifier
@@ -60,19 +70,24 @@ export async function GET(req: Request) {
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       
       if (exchangeError) {
-        console.error('❌ Auth callback: Code exchange failed', {
+        console.error('Auth callback: Code exchange failed', {
           error: exchangeError.message,
           code: exchangeError.status,
           errorCode: exchangeError.code,
           fullError: exchangeError,
+          hasCookies,
+          cookieCount,
         });
         
         // If PKCE code challenge mismatch, the verifier might not be in cookies
-        // In this case, redirect to login with helpful error
-        if (exchangeError.message?.includes('code challenge') || exchangeError.message?.includes('verifier')) {
-          console.error('❌ Auth callback: PKCE code verifier mismatch - verifier may not be in cookies');
+        // This happens when user clicks link from different browser/device
+        if (exchangeError.message?.includes('code challenge') || 
+            exchangeError.message?.includes('verifier') ||
+            exchangeError.message?.includes('code_verifier')) {
+          console.error('Auth callback: PKCE code verifier mismatch - verifier may not be in cookies');
+          console.error('Auth callback: This usually means the magic link was clicked from a different browser/device');
           return NextResponse.redirect(
-            `${url.origin}/login?error=${encodeURIComponent('Authentication session expired. Please request a new magic link.')}`
+            `${url.origin}/login?error=${encodeURIComponent('Magic link must be opened in the same browser where you requested it. Please request a new magic link and open it in the same browser.')}`
           );
         }
         
@@ -82,13 +97,13 @@ export async function GET(req: Request) {
       }
       
       if (!data.session) {
-        console.error('❌ Auth callback: Code exchange succeeded but no session returned');
+        console.error('Auth callback: Code exchange succeeded but no session returned');
         return NextResponse.redirect(
           `${url.origin}/login?error=${encodeURIComponent('Session creation failed. Please try again.')}`
         );
       }
       
-      console.log('✅ Auth callback: Code exchange successful', {
+      console.log('Auth callback: Code exchange successful', {
         userId: data.session.user.id,
         email: data.session.user.email,
         expiresAt: new Date(data.session.expires_at! * 1000).toISOString(),
@@ -98,25 +113,25 @@ export async function GET(req: Request) {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error('❌ Auth callback: Error getting session after exchange', {
+        console.error('Auth callback: Error getting session after exchange', {
           error: sessionError.message,
         });
         // Continue anyway - cookies should be set by exchangeCodeForSession
       } else if (sessionData?.session) {
-        console.log('✅ Auth callback: Session confirmed after code exchange', {
+        console.log('Auth callback: Session confirmed after code exchange', {
           userId: sessionData.session.user.id,
         });
       } else {
-        console.warn('⚠️ Auth callback: No session found after code exchange (cookies may not be set)');
+        console.warn('Auth callback: No session found after code exchange (cookies may not be set)');
       }
     } else {
       // Implicit flow: Check if session already exists (Supabase client should have processed hash)
-      console.log('🔐 Auth callback: No code found, checking for existing session (implicit flow)...');
+      console.log('Auth callback: No code found, checking for existing session (implicit flow)...');
       
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error('❌ Auth callback: Session error (implicit flow)', {
+        console.error('Auth callback: Session error (implicit flow)', {
           error: sessionError.message,
         });
         return NextResponse.redirect(
@@ -125,19 +140,19 @@ export async function GET(req: Request) {
       }
       
       if (sessionData?.session) {
-        console.log('✅ Auth callback: Session found (implicit flow)', {
+        console.log('Auth callback: Session found (implicit flow)', {
           userId: sessionData.session.user.id,
           email: sessionData.session.user.email,
         });
       } else {
-        console.warn('⚠️ Auth callback: No session found (implicit flow), redirecting to login');
+        console.warn('Auth callback: No session found (implicit flow), redirecting to login');
         return NextResponse.redirect(
           `${url.origin}/login?error=${encodeURIComponent('No session found. Please try logging in again.')}`
         );
       }
     }
 
-    console.log('🔐 Auth callback: Success, redirecting to:', next);
+    console.log('Auth callback: Success, redirecting to:', next);
     
     // Create redirect response
     const redirectUrl = `${url.origin}${next}`;
@@ -150,7 +165,7 @@ export async function GET(req: Request) {
     
     return response;
   } catch (err) {
-    console.error('❌ Auth callback: Unexpected exception', {
+    console.error('Auth callback: Unexpected exception', {
       error: err instanceof Error ? err.message : 'Unknown error',
       stack: err instanceof Error ? err.stack : undefined,
     });
