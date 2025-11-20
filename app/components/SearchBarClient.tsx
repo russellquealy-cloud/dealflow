@@ -171,6 +171,12 @@ export default function SearchBarClient({
 
         if (!response.ok) {
           console.warn('AutocompleteSuggestion API error:', response.status);
+          // Fall back to old API if new API fails (403, 401, etc.)
+          if (response.status === 403 || response.status === 401) {
+            console.log('Falling back to old AutocompleteService API');
+            fetchSuggestionsOldAPI(input);
+            return;
+          }
           clearSuggestions();
           return;
         }
@@ -195,7 +201,9 @@ export default function SearchBarClient({
         }
       } catch (error) {
         console.warn('AutocompleteSuggestion error:', error);
-        clearSuggestions();
+        // Fall back to old API on any error
+        console.log('Falling back to old AutocompleteService API due to error');
+        fetchSuggestionsOldAPI(input);
       }
     },
     [clearSuggestions, browserCompatible, usingNewAPI]

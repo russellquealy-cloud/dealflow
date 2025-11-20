@@ -30,17 +30,65 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
     
-    // Try to get user from session (cookies)
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    // CRITICAL FIX: Use same auth logic as watchlist - check Authorization header, then getSession, then getUser
+    let user = null;
+    let userError = null;
 
-    if (userError) {
-      console.error('AI usage API: getUser error', userError);
+    // Check for Authorization header from client
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      console.log('AI usage API: Using Authorization header token', {
+        tokenLength: token.length,
+      });
+      const { data: userData, error: getUserError } = await supabase.auth.getUser(token);
+      if (userData?.user) {
+        user = userData.user;
+        console.log('AI usage API: Got user from Authorization header', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else {
+        userError = getUserError;
+      }
     }
 
+    // If no user from header, try getSession (reads from cookies)
     if (!user) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        user = sessionData.session.user;
+        console.log('AI usage API: Got user from session', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else if (sessionError) {
+        console.warn('AI usage API: Session error, trying getUser', {
+          error: sessionError.message,
+        });
+        // Fallback to getUser (reads from cookies)
+        const { data: userData, error: getUserError } = await supabase.auth.getUser();
+        if (userData?.user) {
+          user = userData.user;
+        } else {
+          userError = getUserError;
+        }
+      } else {
+        // No session, try getUser
+        const { data: userData, error: getUserError } = await supabase.auth.getUser();
+        if (userData?.user) {
+          user = userData.user;
+        } else {
+          userError = getUserError;
+        }
+      }
+    }
+
+    if (userError || !user) {
+      console.error('AI usage API: Unauthorized', {
+        getUserError: userError?.message,
+        hasAuthHeader: !!authHeader,
+      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
