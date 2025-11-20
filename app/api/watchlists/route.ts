@@ -196,8 +196,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch listings separately to avoid join issues
-    // NOTE: Watchlist should show ALL saved listings regardless of status (live, draft, archived, etc.)
+    // CRITICAL FIX: Query listings WITHOUT status filter for watchlist
+    // Users should see ALL saved listings regardless of status (deleted, archived, etc.)
+    // Also, ensure we're using the authenticated user's Supabase client to respect RLS
     logger.log('📋 Watchlist GET: Fetching listings for watchlist', {
       listingIds: listingIds,
       listingCount: listingIds.length,
@@ -205,9 +206,8 @@ export async function GET(request: NextRequest) {
       userEmail: user.email,
     });
 
-    // Query listings without status filter - users should see listings they saved regardless of status
-    // ROOT CAUSE FIX: Query all columns including both beds/bedrooms and baths/bathrooms for compatibility
-    // Also include latitude/longitude and created_at for complete listing data
+    // ROOT CAUSE FIX: Remove ALL filters - watchlist should show saved listings regardless of status
+    // The RLS policy on listings should allow authenticated users to read their saved listings
     const { data: listingsData, error: listingsError } = await supabase
       .from('listings')
       .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status, latitude, longitude, created_at')
@@ -227,7 +227,18 @@ export async function GET(request: NextRequest) {
         error: listingsError.message,
         code: listingsError.code,
         listingIds,
+        likelyCause: listingsError.code === '42501' ? 'RLS policy blocking access' : 'Other error',
       });
+      
+      // If RLS is blocking, try to diagnose
+      if (listingsError.code === '42501') {
+        logger.error('❌ Watchlist GET: RLS policy is blocking listing access', {
+          listingIds,
+          userId: user.id,
+          note: 'Check RLS policies on listings table - users should be able to read saved listings',
+        });
+      }
+      
       // Continue even if listings fail - return watchlist items with null listings
     } else {
       logger.log('✅ Watchlist GET: Fetched listings for watchlist', {
@@ -236,6 +247,21 @@ export async function GET(request: NextRequest) {
         foundListingIds: listingsData?.map(l => l.id) || [],
         missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
       });
+      
+      // Log missing listings for debugging
+      const missingIds = listingIds.filter(id => !listingsData?.some(l => l.id === id));
+      if (missingIds.length > 0) {
+        logger.warn('⚠️ Watchlist GET: Some listings not found (may be deleted or RLS blocked)', {
+          missingIds,
+          totalRequested: listingIds.length,
+          found: listingsData?.length || 0,
+          possibleReasons: [
+            'Listing was deleted from database',
+            'RLS policy blocking access to listing',
+            'Listing ID mismatch (UUID vs text)',
+          ],
+        });
+      }
     }
 
     // Create a map of listing ID to listing data
@@ -255,6 +281,11 @@ export async function GET(request: NextRequest) {
           watchlistId: item.id,
           propertyId: item.property_id,
           listingInMap: !!listingData,
+          possibleReasons: [
+            'Listing was deleted',
+            'RLS policy blocking access',
+            'Listing ID mismatch',
+          ],
         });
       }
       

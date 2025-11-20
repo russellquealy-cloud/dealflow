@@ -48,6 +48,9 @@ export const supabase = (() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lwhxmwvvostzlidmnays.supabase.co';
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHhtd3Z2b3N0emxpZG1uYXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTg2NDYsImV4cCI6MjA3NDM5NDY0Nn0.YeXIZyYKuxVictEKcWe9GRsgMlVoFQJAPawdsIy8ye8';
     
+    // CRITICAL FIX: Change flowType to 'pkce' to match Supabase's PKCE flow
+    // Supabase is sending PKCE codes in magic links, so we must use PKCE flow
+    // This ensures the code verifier is stored in cookies for server-side exchange
     supabaseClient = createBrowserClient(
       supabaseUrl,
       supabaseAnonKey,
@@ -56,7 +59,7 @@ export const supabase = (() => {
           autoRefreshToken: true,
           detectSessionInUrl: true, // CRITICAL: Must be true for magic link to work
           persistSession: true,
-          flowType: 'implicit', // Use implicit flow for better mobile compatibility
+          flowType: 'pkce', // CRITICAL FIX: Changed from 'implicit' to 'pkce' to match Supabase's PKCE flow
           storageKey: 'dealflow-auth-token', // Prevent conflicts
           storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         },

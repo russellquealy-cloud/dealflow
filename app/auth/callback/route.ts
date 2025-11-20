@@ -3,10 +3,14 @@
  * 
  * Handles Supabase auth callbacks from magic links and OAuth providers.
  * 
+ * CRITICAL FIX: Supabase is using PKCE flow (code in URL), but the code verifier
+ * must be handled server-side. The client cannot exchange the code because the
+ * verifier isn't stored in the client's localStorage.
+ * 
  * Flow:
  * 1. User clicks magic link in email
  * 2. Supabase redirects to: https://offaxisdeals.com/auth/callback?code=...
- * 3. This route exchanges the code for a session
+ * 3. This route exchanges the code for a session (server-side, has access to verifier)
  * 4. Sets session cookies with proper domain/security settings
  * 5. Redirects user to intended destination (or /listings)
  * 
@@ -40,23 +44,38 @@ export async function GET(req: Request) {
   }
 
   try {
+    // CRITICAL: Use server-side client which has access to PKCE code verifier
     const supabase = await createClient();
     
     if (code) {
-      // PKCE flow: Exchange code for session
-      console.log('🔐 Auth callback: Exchanging code for session...', {
+      // PKCE flow: Exchange code for session (server-side has access to verifier)
+      console.log('🔐 Auth callback: Exchanging code for session (PKCE flow)...', {
         codeLength: code.length,
         next,
+        hasCode: !!code,
       });
       
+      // The server-side client can exchange the code because it has access to the verifier
+      // stored in cookies from the initial magic link request
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       
       if (exchangeError) {
         console.error('❌ Auth callback: Code exchange failed', {
           error: exchangeError.message,
           code: exchangeError.status,
+          errorCode: exchangeError.code,
           fullError: exchangeError,
         });
+        
+        // If PKCE code challenge mismatch, the verifier might not be in cookies
+        // In this case, redirect to login with helpful error
+        if (exchangeError.message?.includes('code challenge') || exchangeError.message?.includes('verifier')) {
+          console.error('❌ Auth callback: PKCE code verifier mismatch - verifier may not be in cookies');
+          return NextResponse.redirect(
+            `${url.origin}/login?error=${encodeURIComponent('Authentication session expired. Please request a new magic link.')}`
+          );
+        }
+        
         return NextResponse.redirect(
           `${url.origin}/login?error=${encodeURIComponent(exchangeError.message || 'Authentication failed')}`
         );
