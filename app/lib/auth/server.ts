@@ -1,87 +1,31 @@
-import { cookies, headers } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
-import type { NextRequest } from "next/server";
+// app/lib/auth/server.ts
+import { cookies } from "next/headers";
+import { createServerComponentClient, createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-type SupabaseAuthToken = {
-  accessToken?: string;
-};
+// Using a generic type since Database type may not exist
+// This can be refined later with proper Database types
+type Database = Record<string, unknown>;
 
-export async function getSupabaseServer(authToken?: SupabaseAuthToken) {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options) {
-          try {
-            cookieStore.set(name, value, options);
-          } catch (error) {
-            console.error("Failed to set cookie", error);
-          }
-        },
-        remove(name: string, options) {
-          try {
-            cookieStore.set(name, "", { ...options, maxAge: 0 });
-          } catch (error) {
-            console.error("Failed to remove cookie", error);
-          }
-        },
-      },
-      ...(authToken?.accessToken
-        ? {
-            global: {
-              headers: {
-                Authorization: `Bearer ${authToken.accessToken}`,
-              },
-            },
-          }
-        : {}),
-    }
-  );
+export function createSupabaseServerComponent() {
+  const cookieStore = cookies();
+  return createServerComponentClient<Database>({ cookies: () => cookieStore });
 }
 
-function extractBearerToken(source?: Headers | null) {
-  const headerValue =
-    source?.get("authorization") ?? source?.get("Authorization");
-  if (!headerValue) return undefined;
-  const match = headerValue.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1] : undefined;
+export function createSupabaseRouteClient() {
+  const cookieStore = cookies();
+  return createRouteHandlerClient<Database>({ cookies: () => cookieStore });
 }
 
-export async function getAuthUser(request?: NextRequest | Request) {
-  let accessToken: string | undefined;
-  if (request) {
-    accessToken = extractBearerToken(request.headers);
-  }
-  if (!accessToken) {
-    try {
-      const headerStore = await headers();
-      accessToken = extractBearerToken(headerStore);
-    } catch {
-      // headers() may throw if not in a request context; ignore
-    }
-  }
-
-  const supabase = await getSupabaseServer(
-    accessToken ? { accessToken } : undefined
-  );
-
+export async function getAuthUserServer() {
+  const supabase = createSupabaseServerComponent();
   const {
     data: { user },
     error,
-  } = accessToken
-    ? await supabase.auth.getUser(accessToken)
-    : await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
-    return { user: null, supabase };
+    return { user: null as const, error };
   }
 
-  return { user, supabase };
+  return { user, error: null };
 }
-

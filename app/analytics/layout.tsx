@@ -1,36 +1,39 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
-import { isAdmin } from '@/lib/admin';
+import { getAuthUserServer, createSupabaseServerComponent } from '@/app/lib/auth/server';
 import { isPro } from '@/lib/analytics/proGate';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createSupabaseServer();
-  
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, error: authError } = await getAuthUserServer();
 
-  if (!user) {
+  if (authError || !user) {
     redirect('/login?next=/analytics/lead-conversion');
   }
 
   // Fetch user profile
+  const supabase = createSupabaseServerComponent();
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, segment, tier, membership_tier')
     .eq('id', user.id)
     .single();
 
-  // Check if user is admin (admins bypass Pro requirement)
-  const userIsAdmin = await isAdmin(user.id, supabase);
+  // Check if user is admin using the same logic as requireAdminServer
+  const isAdminUser =
+    profile?.role === 'admin' ||
+    profile?.segment === 'admin' ||
+    profile?.tier === 'enterprise' ||
+    profile?.membership_tier === 'enterprise' ||
+    user.email === 'admin@offaxisdeals.com';
 
   // Check if user is Pro (Investor or Wholesaler) - admins bypass this check
-  if (!userIsAdmin && !isPro(profile)) {
+  if (!isAdminUser && !isPro(profile)) {
     redirect('/pricing?highlight=pro');
   }
 
@@ -93,4 +96,3 @@ export default async function AnalyticsLayout({
     </div>
   );
 }
-

@@ -344,7 +344,7 @@ export default function AdminDashboard() {
                   return;
                 }
 
-                const response = await fetch('/api/diagnostics/email', {
+                const response = await fetch('/api/email/test', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',

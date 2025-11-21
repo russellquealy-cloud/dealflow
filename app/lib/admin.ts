@@ -1,60 +1,62 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+// app/lib/admin.ts
+import { createSupabaseRouteClient } from "@/app/lib/auth/server";
 
-/**
- * Server-side: Check if a user is an admin by checking both role and segment fields
- * Some accounts may have admin in segment instead of role
- * This function is meant to be used in server components and API routes
- */
-export async function isAdmin(
-  userId: string,
-  supabaseClient: SupabaseClient
-): Promise<boolean> {
-  try {
-    const { data: profile, error } = await supabaseClient
-      .from('profiles')
-      .select('role, segment')
-      .eq('id', userId)
-      .maybeSingle();
+export type AdminProfile = {
+  id: string;
+  email: string | null;
+  role: string | null;
+  segment: string | null;
+  tier: string | null;
+  membership_tier: string | null;
+};
 
-    if (error) {
-      console.error('isAdmin check error', {
-        error: error.message,
-        code: error.code,
-        userId,
-      });
-      return false;
-    }
+export async function requireAdminServer() {
+  const supabase = createSupabaseRouteClient();
 
-    if (!profile) {
-      console.warn('isAdmin check: No profile found', { userId });
-      return false;
-    }
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-    const isAdminUser = profile.role === 'admin' || profile.segment === 'admin';
-    
-    console.log('isAdmin check result', {
-      userId,
-      role: profile.role,
-      segment: profile.segment,
-      isAdmin: isAdminUser,
-    });
-
-    // Check both role and segment fields
-    return isAdminUser;
-  } catch (error) {
-    console.error('Error checking admin status:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      userId,
-    });
-    return false;
+  if (userError || !user) {
+    return { ok: false as const, status: 401 as const, reason: "no-user", user: null, profile: null };
   }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id,email,role,segment,tier,membership_tier")
+    .eq("id", user.id)
+    .single<AdminProfile>();
+
+  if (profileError || !profile) {
+    return { ok: false as const, status: 403 as const, reason: "no-profile", user, profile: null };
+  }
+
+  const isAdmin =
+    profile.role === "admin" ||
+    profile.segment === "admin" ||
+    profile.tier === "enterprise" ||
+    profile.membership_tier === "enterprise" ||
+    profile.email === "admin@offaxisdeals.com";
+
+  if (!isAdmin) {
+    return { ok: false as const, status: 403 as const, reason: "not-admin", user, profile };
+  }
+
+  return { ok: true as const, status: 200 as const, reason: "ok", user, profile };
 }
 
 /**
  * Client-side helper to check if current user is admin
  * This is a pure function that can be used in client components
  */
-export function checkIsAdminClient(profile: { role?: string | null; segment?: string | null } | null | undefined): boolean {
+export function checkIsAdminClient(profile: { role?: string | null; segment?: string | null; tier?: string | null; membership_tier?: string | null; email?: string | null } | null | undefined): boolean {
   if (!profile) return false;
-  return profile.role === 'admin' || profile.segment === 'admin';
+  return (
+    profile.role === "admin" ||
+    profile.segment === "admin" ||
+    profile.tier === "enterprise" ||
+    profile.membership_tier === "enterprise" ||
+    profile.email === "admin@offaxisdeals.com"
+  );
 }

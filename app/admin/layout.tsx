@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { isAdmin } from '@/lib/admin';
 
