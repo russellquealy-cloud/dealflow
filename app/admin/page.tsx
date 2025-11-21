@@ -15,10 +15,28 @@ export default function AdminDashboard() {
     console.log('Admin page: useEffect running - checking admin status');
     const checkAdmin = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Wait a bit for cookies to sync if we just logged in
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        let { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // No session - but DON'T redirect, just show loading state
-          console.log('Admin page: No session, showing access denied');
+          // No session - wait a bit more and try again (cookies might still be syncing)
+          console.log('Admin page: No session on first check, waiting for cookie sync...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (!retrySession) {
+            console.log('Admin page: No session after retry, showing access denied');
+            setIsAdmin(false);
+            setLoading(false);
+            return;
+          }
+          
+          // Use retry session
+          session = retrySession;
+        }
+
+        if (!session) {
           setIsAdmin(false);
           setLoading(false);
           return;

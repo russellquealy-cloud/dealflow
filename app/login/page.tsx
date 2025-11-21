@@ -129,10 +129,18 @@ function LoginInner() {
             // Ignore localStorage errors
           }
           
-          // Small delay to ensure session is fully set, then redirect
+          // Wait for session to be fully set in cookies before redirecting
+          // This ensures server-side can read the session
           setTimeout(async () => {
             await refreshSession();
-            router.replace(next);
+            // Additional delay to ensure cookies are written to browser
+            // Server-side needs time to read cookies after they're set
+            // Use window.location for full page reload to ensure cookies are sent
+            setTimeout(() => {
+              console.log('🔐 Redirecting after session refresh and cookie write delay');
+              // Use window.location for full page reload to ensure cookies are sent with request
+              window.location.href = next;
+            }, 500);
           }, 300);
         } else {
           console.error('❌ Login: No session created after password authentication');

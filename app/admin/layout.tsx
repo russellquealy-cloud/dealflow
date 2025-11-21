@@ -21,19 +21,40 @@ export default async function AdminLayout({
     // Try getUser first (more reliable than getSession in some cases)
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
+    console.log('Admin layout: getUser result', {
+      hasUser: !!user,
+      userId: user?.id,
+      email: user?.email,
+      error: userError?.message,
+      errorCode: userError?.status
+    });
+    
     if (userError || !user) {
       console.log('Admin layout: getUser failed, trying getSession', { 
         error: userError?.message,
+        errorCode: userError?.status,
         hasUser: !!user 
       });
       
       // Fallback to getSession if getUser fails
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Admin layout: getSession result', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        email: session?.user?.email,
+        error: sessionError?.message,
+        errorCode: sessionError?.status
+      });
+      
       if (sessionError || !session) {
         console.log('Admin layout: No session found, redirecting to login', {
           sessionError: sessionError?.message,
-          hasSession: !!session
+          sessionErrorCode: sessionError?.status,
+          hasSession: !!session,
+          getUserError: userError?.message,
+          getUserErrorCode: userError?.status
         });
+        // Only redirect if we're not already on the login page to prevent loops
         redirect('/login?next=' + encodeURIComponent('/admin'));
       }
       
