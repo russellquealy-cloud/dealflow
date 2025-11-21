@@ -26,9 +26,11 @@ export default function AdminDashboard() {
           
           const { data: { session: retrySession } } = await supabase.auth.getSession();
           if (!retrySession) {
-            console.log('Admin page: No session after retry, showing access denied');
+            console.log('Admin page: No session after retry, redirecting to login');
             setIsAdmin(false);
             setLoading(false);
+            // Redirect to login if no session after retry
+            window.location.href = '/login?next=' + encodeURIComponent('/admin');
             return;
           }
           
@@ -37,8 +39,10 @@ export default function AdminDashboard() {
         }
 
         if (!session) {
+          console.log('Admin page: No session found, redirecting to login');
           setIsAdmin(false);
           setLoading(false);
+          window.location.href = '/login?next=' + encodeURIComponent('/admin');
           return;
         }
 

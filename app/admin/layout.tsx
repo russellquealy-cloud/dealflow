@@ -47,15 +47,18 @@ export default async function AdminLayout({
       });
       
       if (sessionError || !session) {
-        console.log('Admin layout: No session found, redirecting to login', {
+        console.log('Admin layout: No session found on server-side', {
           sessionError: sessionError?.message,
           sessionErrorCode: sessionError?.status,
           hasSession: !!session,
           getUserError: userError?.message,
-          getUserErrorCode: userError?.status
+          getUserErrorCode: userError?.status,
+          note: 'Allowing client-side to handle auth check to prevent redirect loops'
         });
-        // Only redirect if we're not already on the login page to prevent loops
-        redirect('/login?next=' + encodeURIComponent('/admin'));
+        // Don't redirect immediately - let client-side handle it
+        // This prevents server-side redirect loops when cookies haven't synced yet
+        // The client-side admin page will check and redirect if needed
+        return <>{children}</>;
       }
       
       // Use session user if getUser failed

@@ -60,10 +60,20 @@ function LoginInner() {
 
     // Prevent redirect loops - if we're already on the target page or any admin page, don't redirect
     const currentPath = window.location.pathname;
-    if (currentPath === next || 
-        currentPath.startsWith(next + '/') || 
-        currentPath.startsWith('/admin')) {
-      console.log('🔐 Already on target page or admin page, skipping redirect', { currentPath, next });
+    
+    // If next is /admin or we're trying to go to admin, and we have a session, 
+    // just let the admin page handle the auth check (don't redirect from login page)
+    if (next === '/admin' || next.startsWith('/admin') || currentPath.startsWith('/admin')) {
+      console.log('🔐 Session exists and target is admin page, letting admin page handle auth check', { 
+        currentPath, 
+        next 
+      });
+      // Don't redirect - let the admin page load and handle auth client-side
+      return;
+    }
+    
+    if (currentPath === next || currentPath.startsWith(next + '/')) {
+      console.log('🔐 Already on target page, skipping redirect', { currentPath, next });
       return;
     }
 
