@@ -114,17 +114,28 @@ export default async function AdminLayout({
     // User is admin - allow access
     return <>{children}</>;
   } catch (error) {
-    // On error, log it but show error page instead of redirecting to prevent loops
-    console.error('Admin layout error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Next.js redirect() throws a special error that we should not catch
+    // Check if this is a redirect error and re-throw it
+    // Next.js redirect errors can be identified by:
+    // 1. Having a digest property starting with 'NEXT_REDIRECT'
+    // 2. Having a message containing 'NEXT_REDIRECT'
+    // 3. Being a RedirectError type
+    const isRedirectError = 
+      (error && typeof error === 'object' && 'digest' in error && 
+       String((error as { digest?: unknown }).digest).startsWith('NEXT_REDIRECT')) ||
+      (error instanceof Error && error.message === 'NEXT_REDIRECT') ||
+      (error && typeof error === 'object' && 'message' in error && 
+       String((error as { message?: unknown }).message) === 'NEXT_REDIRECT');
     
-    // Only redirect to login if it's clearly an auth/session error
-    // Otherwise show error page to prevent redirect loops
-    if (errorMessage.includes('session') || errorMessage.includes('auth') || errorMessage.includes('cookie') || errorMessage.includes('Unauthorized')) {
-      redirect('/login?next=' + encodeURIComponent('/admin'));
+    if (isRedirectError) {
+      // Re-throw the redirect error so Next.js can handle it
+      throw error;
     }
     
-    // For other errors, show error page instead of redirecting (prevents loops)
+    // For actual errors (not redirects), log and show error page
+    console.error('Admin layout error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
     return (
       <div style={{ 
         minHeight: '100vh', 
