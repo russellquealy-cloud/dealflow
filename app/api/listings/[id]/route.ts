@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { createServerClient } from '@/supabase/server';
 import { geocodeAddress } from '@/lib/geocoding';
 
 export const dynamic = 'force-dynamic';
@@ -15,11 +15,11 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createSupabaseServer();
+    const supabase = await createServerClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized. Please sign in to edit listings.' }, { status: 401 });
     }
 
     // Verify listing exists and belongs to user
@@ -27,14 +27,17 @@ export async function PATCH(
       .from('listings')
       .select('id, owner_id, address, city, state, zip, latitude, longitude')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !existingListing) {
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (existingListing.owner_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const ownerId = (existingListing as { owner_id?: string | null }).owner_id;
+    if (ownerId !== user.id) {
+      return NextResponse.json({ 
+        error: 'You do not have permission to edit this listing. Only the listing owner can make changes.' 
+      }, { status: 403 });
     }
 
     const body = await request.json();
@@ -192,15 +195,34 @@ export async function PATCH(
     // Update listing
     const { data: updatedListing, error: updateError } = await supabase
       .from('listings')
-      .update(updatePayload)
+      .update(updatePayload as never)
       .eq('id', id)
+      .eq('owner_id', user.id) // Double-check ownership in update WHERE clause
       .select('id, latitude, longitude')
       .single();
 
     if (updateError) {
-      console.error('Error updating listing:', updateError);
+      console.error('Error updating listing:', {
+        error: updateError,
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        userId: user.id,
+        listingId: id,
+        payloadKeys: Object.keys(updatePayload),
+      });
+      
+      // Provide user-friendly error messages
+      if (updateError.code === '42501' || updateError.message.includes('permission denied') || updateError.message.includes('RLS')) {
+        return NextResponse.json(
+          { error: 'You do not have permission to update this listing. Please contact support.' },
+          { status: 403 }
+        );
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to update listing', details: updateError.message },
+        { error: updateError.message || 'Failed to update listing. Please try again.' },
         { status: 500 }
       );
     }
@@ -210,7 +232,7 @@ export async function PATCH(
     if (addressChanged && updatePayload.latitude && updatePayload.longitude) {
       // Try to update geom using RPC (if available), otherwise rely on database trigger
       try {
-        const { error: geomError } = await supabase.rpc('update_listing_geom', {
+        const { error: geomError } = await (supabase.rpc as any)('update_listing_geom', {
           listing_id: id,
           lng: updatePayload.longitude as number,
           lat: updatePayload.latitude as number,
@@ -226,11 +248,14 @@ export async function PATCH(
     }
 
     const hasNewCoordinates = addressChanged && updatePayload.latitude && updatePayload.longitude;
+    const updatedListingId = (updatedListing as { id?: string }).id;
+    const updatedLatitude = (updatedListing as { latitude?: number | null }).latitude;
+    const updatedLongitude = (updatedListing as { longitude?: number | null }).longitude;
     
     return NextResponse.json({
-      id: updatedListing.id,
-      latitude: updatedListing.latitude,
-      longitude: updatedListing.longitude,
+      id: updatedListingId,
+      latitude: updatedLatitude || null,
+      longitude: updatedLongitude || null,
       message: addressChanged 
         ? (hasNewCoordinates 
           ? 'Listing updated successfully with new coordinates' 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getListingsForSearch, type ListingsQueryParams } from '@/lib/listings';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { createServerClient } from '@/supabase/server';
 import { isAdmin } from '@/lib/admin';
 import { geocodeAddress } from '@/lib/geocoding';
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Get Supabase client and user for owner profiles and admin checks
-    const supabase = await createSupabaseServer();
+    const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     const userIsAdmin = user ? isAdmin(user.email || user.id) : false;
 
@@ -154,7 +154,10 @@ export async function GET(request: NextRequest) {
         console.error('Owner profile fetch error', ownerError);
       } else if (ownerProfiles) {
         ownerProfiles.forEach((profileRow) => {
-          ownerProfilesMap.set(profileRow.id, profileRow);
+          const profileId = (profileRow as { id?: string }).id;
+          if (profileId) {
+            ownerProfilesMap.set(profileId, profileRow);
+          }
         });
       }
     }
@@ -216,7 +219,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = await createServerClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
@@ -322,30 +325,58 @@ export async function POST(request: NextRequest) {
     // Insert listing
     const { data: insertedListing, error: insertError } = await supabase
       .from('listings')
-      .insert(listingPayload)
+      .insert(listingPayload as never)
       .select('id')
       .single();
 
     if (insertError) {
-      console.error('Error creating listing:', insertError);
+      console.error('Error creating listing:', {
+        error: insertError,
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        userId: user.id,
+        payloadKeys: Object.keys(listingPayload),
+      });
+      
+      // Provide user-friendly error messages
+      if (insertError.code === '42501' || insertError.message.includes('permission denied') || insertError.message.includes('RLS')) {
+        return NextResponse.json(
+          { error: 'You do not have permission to create listings. Please contact support.' },
+          { status: 403 }
+        );
+      }
+      
+      if (insertError.code === '23505' || insertError.message.includes('unique constraint')) {
+        return NextResponse.json(
+          { error: 'A listing with these details already exists.' },
+          { status: 409 }
+        );
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to create listing', details: insertError.message },
+        { error: insertError.message || 'Failed to create listing. Please try again.' },
         { status: 500 }
       );
     }
 
     // Update geom using PostGIS - try RPC first, fallback gracefully
     // Note: Database trigger should also handle this automatically
-    if (coordinates) {
+    if (coordinates && insertedListing) {
       try {
-        const { error: geomError } = await supabase.rpc('update_listing_geom', {
-          listing_id: insertedListing.id,
-          lng: coordinates.lng,
-          lat: coordinates.lat,
-        });
+        const listingId = (insertedListing as { id?: string }).id;
+        if (listingId) {
+          // RPC might not be in generated types - use type assertion
+          const { error: geomError } = await (supabase.rpc as any)('update_listing_geom', {
+            listing_id: listingId,
+            lng: coordinates.lng,
+            lat: coordinates.lat,
+          });
 
-        if (geomError) {
-          console.warn('Failed to update geom via RPC (non-critical, trigger should handle it):', geomError);
+          if (geomError) {
+            console.warn('Failed to update geom via RPC (non-critical, trigger should handle it):', geomError);
+          }
         }
       } catch (rpcError) {
         // RPC might not exist yet - non-critical
@@ -354,8 +385,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const listingId = (insertedListing as { id?: string }).id;
+    
     return NextResponse.json({
-      id: insertedListing.id,
+      id: listingId,
       latitude: coordinates?.lat || null,
       longitude: coordinates?.lng || null,
       message: coordinates 

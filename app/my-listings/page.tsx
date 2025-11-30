@@ -182,7 +182,21 @@ export default function MyListingsPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to update listing' }));
-        throw new Error(errorData.error || 'Failed to update listing');
+        
+        // Provide user-friendly error messages
+        let errorMessage = errorData.error || 'Failed to update listing';
+        
+        if (response.status === 401) {
+          errorMessage = 'Please sign in to edit listings.';
+        } else if (response.status === 403) {
+          errorMessage = errorData.error || 'You do not have permission to edit this listing.';
+        } else if (response.status === 404) {
+          errorMessage = 'Listing not found. It may have been deleted.';
+        } else if (response.status === 400) {
+          errorMessage = errorData.error || 'Please check your input and try again.';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

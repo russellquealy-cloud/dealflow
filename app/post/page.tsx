@@ -123,7 +123,19 @@ export default function PostDealPage() {
 
       if (!createResponse.ok) {
         const errorData = await createResponse.json().catch(() => ({ error: 'Failed to create listing' }));
-        throw new Error(errorData.error || 'Failed to create listing');
+        
+        // Provide user-friendly error messages
+        let errorMessage = errorData.error || 'Failed to create listing';
+        
+        if (createResponse.status === 401) {
+          errorMessage = 'Please sign in to create a listing.';
+        } else if (createResponse.status === 403) {
+          errorMessage = 'You do not have permission to create listings. Please contact support.';
+        } else if (createResponse.status === 400) {
+          errorMessage = errorData.error || 'Please check your input and try again.';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const { id: insertedId } = await createResponse.json();
