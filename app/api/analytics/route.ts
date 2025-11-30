@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import type { UserAnalytics } from "@/lib/analytics";
+import type { Database } from "@/types/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
@@ -11,10 +13,42 @@ export const dynamic = 'force-dynamic';
  * Returns per-user analytics for any authenticated user (investor, wholesaler, admin).
  * Returns user-specific metrics like listings posted, views received, saved properties, etc.
  */
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Try to get user from cookies first (standard approach)
+    let supabase = await createServerClient();
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    // If cookie-based auth fails, try Authorization header as fallback
+    if (userError || !user) {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '');
+        try {
+          // Create a regular Supabase client with the token (not SSR client)
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+          if (supabaseUrl && supabaseAnonKey) {
+            const tokenClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            });
+            const { data: { user: headerUser }, error: headerError } = await tokenClient.auth.getUser(token);
+            if (headerUser && !headerError) {
+              user = headerUser;
+              userError = null;
+              // Use the token client for subsequent queries so RLS works correctly
+              supabase = tokenClient;
+            }
+          }
+        } catch (tokenError) {
+          console.error('[analytics] Failed to validate token from Authorization header:', tokenError);
+        }
+      }
+    }
 
     // Log auth status for debugging
     if (process.env.NODE_ENV === 'development') {
@@ -23,6 +57,7 @@ export async function GET(_request: NextRequest) {
         userId: user?.id,
         userEmail: user?.email,
         error: userError?.message,
+        authMethod: user ? (request.headers.get('authorization') ? 'header' : 'cookie') : 'none',
       });
     }
 
@@ -32,6 +67,7 @@ export async function GET(_request: NextRequest) {
         hasError: !!userError,
         errorMessage: userError?.message || 'No user found',
         hasUser: !!user,
+        hasAuthHeader: !!request.headers.get('authorization'),
       });
       return NextResponse.json(
         { error: "Unauthorized. Please sign in to view analytics." },
