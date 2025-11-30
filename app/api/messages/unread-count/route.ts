@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUserServer, createSupabaseRouteClient } from "@/lib/auth/server";
+import { createServerClient } from "@/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
-    if (!user) {
+    // Use the same auth pattern as working routes (e.g., /api/alerts, /api/billing/create-checkout-session)
+    const supabase = await createServerClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

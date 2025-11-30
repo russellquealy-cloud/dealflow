@@ -80,7 +80,6 @@ export default function ListingsPage() {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
   const [mapZoom, setMapZoom] = useState<number | undefined>(undefined);
   const [mapViewport, setMapViewport] = useState<{ north: number; south: number; east: number; west: number } | undefined>(undefined);
-  const [shouldLoadMap, setShouldLoadMap] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     minPrice: null,
     maxPrice: null,
@@ -440,11 +439,22 @@ export default function ListingsPage() {
   }, [filters, requestListings]);
 
   // Handle geocoding events from search bar
+  // Now supports both placeDetails (from PlacesService) and geocode API fallback
   useEffect(() => {
     const handleGeocode = async (e: Event) => {
-      const customEvent = e as CustomEvent<{ q: string; placeId?: string }>;
+      const customEvent = e as CustomEvent<{
+        q: string;
+        placeId?: string;
+        placeDetails?: {
+          lat: number;
+          lng: number;
+          viewport?: { north: number; south: number; east: number; west: number };
+          formattedAddress?: string;
+        };
+      }>;
       const query = customEvent.detail.q;
       const placeId = customEvent.detail.placeId;
+      const placeDetails = customEvent.detail.placeDetails;
       
       if (!query) return;
       
@@ -452,6 +462,84 @@ export default function ListingsPage() {
       setGeocodeError(null);
       setError(null); // Clear any fatal errors
       
+      // If we have placeDetails from PlacesService, use them directly (no API call needed)
+      if (placeDetails && typeof placeDetails.lat === 'number' && typeof placeDetails.lng === 'number') {
+        logger.log('✅ Using place details from PlacesService', {
+          query,
+          lat: placeDetails.lat,
+          lng: placeDetails.lng,
+          viewport: placeDetails.viewport,
+        });
+        
+        // Clear any geocode errors
+        setGeocodeError(null);
+        
+        // Use viewport from placeDetails if available, otherwise calculate one
+        let newBounds: {
+          north: number;
+          south: number;
+          east: number;
+          west: number;
+        };
+        
+        if (placeDetails.viewport) {
+          newBounds = placeDetails.viewport;
+          logger.log('📍 Using viewport from PlacesService', newBounds);
+        } else {
+          // Calculate a reasonable viewport around the location
+          // Use a default zoom level that shows a city-sized area
+          const latDelta = 0.1; // ~11km
+          const lngDelta = 0.1; // ~11km at mid-latitudes
+          
+          newBounds = {
+            north: placeDetails.lat + latDelta,
+            south: placeDetails.lat - latDelta,
+            east: placeDetails.lng + lngDelta,
+            west: placeDetails.lng - lngDelta,
+          };
+          logger.log('📍 Calculated viewport (no viewport from PlacesService)', newBounds);
+        }
+        
+        // Set viewport for fitBounds
+        setMapViewport(newBounds);
+        // Clear zoom when using viewport (fitBounds will handle it)
+        setMapZoom(undefined);
+        // Also set center for fallback
+        setMapCenter({ lat: placeDetails.lat, lng: placeDetails.lng });
+        
+        // IMPORTANT: Clear search query to avoid address text filtering
+        // When using place search, we filter by location bounds, not by address text
+        setSearchQuery('');
+        
+        // Set map bounds to filter listings by location
+        setMapBounds(newBounds);
+        setActiveMapBounds(true);
+        
+        // Immediately fetch listings with the new bounds (location-based filtering)
+        try {
+          logger.log('🔄 Fetching listings with place bounds', newBounds);
+          setLoading(true);
+          const { items, points } = await requestListings(filters, {
+            bounds: newBounds,
+            limit: 200, // Get more results for the area
+          });
+          setAllListings(items);
+          setAllPoints(points);
+          setLoading(false);
+          setShowSkeleton(false);
+          setError(null);
+        } catch (err) {
+          logger.error('Error fetching listings with place bounds:', err);
+          const message = err instanceof Error ? err.message : 'Failed to load listings';
+          const code = (err as { code?: string }).code;
+          setError({ message, code });
+          setLoading(false);
+          setShowSkeleton(false);
+        }
+        return; // Exit early - we have place details, no need for geocode API
+      }
+      
+      // Fallback: Use geocode API if placeDetails not available (e.g., typed search without autocomplete)
       try {
         const response = await fetch('/api/geocode', {
           method: 'POST',
@@ -538,20 +626,35 @@ export default function ListingsPage() {
           // Also set center for fallback
           setMapCenter({ lat: data.lat, lng: data.lng });
           
+          // IMPORTANT: Clear search query to avoid address text filtering
+          // When using geocode, we filter by location bounds, not by address text
+          setSearchQuery('');
+          
           // Set map bounds to filter listings by location
           setMapBounds(newBounds);
           setActiveMapBounds(true);
           
-          // Trigger a refresh of listings with the new bounds
-          // Use a delay to ensure map has time to update
-          setTimeout(() => {
-            logger.log('🔄 Triggering map bounds change after geocode', newBounds);
-            handleMapBoundsChange(newBounds);
-          }, 300);
-          
-          // Update search query to show the formatted address
-          if (data.formattedAddress) {
-            setSearchQuery(data.formattedAddress);
+          // Immediately fetch listings with the new bounds (location-based filtering)
+          // Don't wait for map bounds change handler - call requestListings directly
+          try {
+            logger.log('🔄 Fetching listings with geocode bounds', newBounds);
+            setLoading(true);
+            const { items, points } = await requestListings(filters, {
+              bounds: newBounds,
+              limit: 200, // Get more results for the area
+            });
+            setAllListings(items);
+            setAllPoints(points);
+            setLoading(false);
+            setShowSkeleton(false);
+            setError(null);
+          } catch (err) {
+            logger.error('Error fetching listings with geocode bounds:', err);
+            const message = err instanceof Error ? err.message : 'Failed to load listings';
+            const code = (err as { code?: string }).code;
+            setError({ message, code });
+            setLoading(false);
+            setShowSkeleton(false);
           }
         } else {
           // Fallback: invalid response format
@@ -569,7 +672,7 @@ export default function ListingsPage() {
     return () => {
       window.removeEventListener('df:geocode', handleGeocode);
     };
-  }, [handleMapBoundsChange]);
+  }, [filters, requestListings]);
 
   // Apply filters to listings
   const filteredListings = useMemo(() => {

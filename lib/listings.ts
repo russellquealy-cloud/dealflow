@@ -131,12 +131,15 @@ export async function getListingsForSearch(
     }
     
     // Apply map bounds filter (spatial)
-    if (
+    // When bounds are provided, we filter by location only, not by address text
+    const hasBounds = (
       filters.south !== undefined &&
       filters.north !== undefined &&
       filters.west !== undefined &&
       filters.east !== undefined
-    ) {
+    );
+    
+    if (hasBounds) {
       query = query
         .gte('latitude', filters.south)
         .lte('latitude', filters.north)
@@ -177,15 +180,21 @@ export async function getListingsForSearch(
     }
     
     // Apply city/state filters (exact match for indexed columns)
-    if (filters.city) {
-      query = query.eq('city', filters.city);
-    }
-    if (filters.state) {
-      query = query.eq('state', filters.state);
+    // IMPORTANT: Skip city/state filters when bounds are provided (location-based search)
+    // When using geocode, we filter by location bounds, not by city/state text
+    if (!hasBounds) {
+      if (filters.city) {
+        query = query.eq('city', filters.city);
+      }
+      if (filters.state) {
+        query = query.eq('state', filters.state);
+      }
     }
     
     // Apply search filter (prefix match on address, city, state)
-    if (filters.search && filters.search.trim()) {
+    // IMPORTANT: Skip address text filtering when bounds are provided (location-based search)
+    // When using geocode, we filter by location bounds, not by address text
+    if (!hasBounds && filters.search && filters.search.trim()) {
       const rawSearch = filters.search.trim();
       
       // Extract potential city/state parts
