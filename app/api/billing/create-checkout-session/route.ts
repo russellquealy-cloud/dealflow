@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { getAuthUserServer, createSupabaseRouteClient } from "@/lib/auth/server";
+import { createServerClient } from "@/supabase/server";
 import { STRIPE_PRICES, getStripe } from "@/lib/stripe";
 import { getOrCreateStripeCustomerId } from "@/lib/billing/stripeCustomer";
 
@@ -34,11 +34,41 @@ function resolvePriceId(
 
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
-    if (!user) {
+    // Log request details for debugging
+    const authHeader = req.headers.get('authorization');
+    const cookieHeader = req.headers.get('cookie');
+    console.log('🔐 Checkout session request received', {
+      hasAuthHeader: !!authHeader,
+      hasCookieHeader: !!cookieHeader,
+      cookieLength: cookieHeader?.length || 0,
+      url: req.url,
+    });
+
+    // Use the same auth pattern as working routes (e.g., /api/alerts)
+    // This uses createServerClient which properly handles cookies in Next.js 15
+    const supabase = await createServerClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    // Log authentication result
+    console.log('🔍 Authentication check result', {
+      hasUser: !!user,
+      userId: user?.id || 'none',
+      userEmail: user?.email || 'none',
+      userError: userError?.message || 'none',
+    });
+
+    if (userError || !user) {
+      console.error('❌ Checkout session: User not authenticated', {
+        userError: userError?.message || 'No error but no user',
+        hasCookies: !!cookieHeader,
+      });
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    console.log('✅ Checkout session: User authenticated', {
+      userId: user.id,
+      userEmail: user.email,
+    });
 
     const body = await req.json();
     const rawSegment = body?.segment as string | undefined;
