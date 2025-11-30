@@ -847,13 +847,13 @@ export default function ListingsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', overflow: 'hidden', position: 'relative' }}>
       {/* header + search */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 lg:px-6 lg:py-4 gap-4 flex-shrink-0 bg-white z-30 relative" style={{ overflow: 'visible' }}>
         <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
           Find Deals
         </h1>
 
-        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center flex-1 lg:flex-none">
-          <div className="flex-1 lg:w-80">
+        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center flex-1 lg:flex-none" style={{ overflow: 'visible' }}>
+          <div className="flex-1 lg:w-80" style={{ overflow: 'visible', position: 'relative' }}>
             <SearchBarClient
               value={searchQuery}
               onChange={setSearchQuery}

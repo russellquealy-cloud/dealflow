@@ -351,7 +351,8 @@ export default function SearchBarClient({
         position: 'relative', 
         width: '100%',
         minWidth: 0,
-        flex: 1
+        flex: 1,
+        overflow: 'visible' // Ensure dropdown can extend outside
       }}>
         <input
           value={q}
@@ -375,16 +376,21 @@ export default function SearchBarClient({
         {suggestions.length > 0 && (
           <ul style={{
             position: 'absolute',
-            zIndex: 50,
-            marginTop: 4,
+            top: '100%',
+            left: 0,
             width: '100%',
-            overflow: 'hidden',
+            zIndex: 9999,
+            marginTop: 4,
             borderRadius: 8,
             border: '1px solid #e5e7eb',
             background: '#fff',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
             maxHeight: '300px',
             overflowY: 'auto',
+            overflowX: 'hidden',
+            listStyle: 'none',
+            margin: '4px 0 0 0',
+            padding: 0,
             WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
           }}>
             {suggestions.map((suggestion, index) => (

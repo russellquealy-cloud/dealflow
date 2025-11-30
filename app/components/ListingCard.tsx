@@ -39,7 +39,8 @@ export type ListingLike = {
   bedrooms?: number;
   bathrooms?: number;
   home_sqft?: number;
-  lot_size?: number;
+  lot_sqft?: number; // Standardized lot size field (square feet)
+  lot_size?: number; // Deprecated: kept for backward compatibility
   garage?: boolean;
   year_built?: number;
   assignment_fee?: number;

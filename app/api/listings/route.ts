@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getListingsForSearch, type ListingsQueryParams } from '@/lib/listings';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { isAdmin } from '@/lib/admin';
+import { geocodeAddress } from '@/lib/geocoding';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10; // Vercel max duration
@@ -204,6 +205,128 @@ export async function GET(request: NextRequest) {
           elapsed: elapsed
         }
       },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/listings
+ * Create a new listing with automatic geocoding
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createSupabaseServer();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const {
+      address,
+      city,
+      state,
+      zip,
+      title,
+      price,
+      arv,
+      repairs,
+      bedrooms,
+      bathrooms,
+      home_sqft,
+      lot_sqft,
+      lot_size,
+      lot_unit,
+      garage,
+      year_built,
+      description,
+      status = 'live',
+      contact_name,
+      contact_phone,
+      contact_email,
+      property_type,
+    } = body;
+
+    // Validate required fields
+    if (!address) {
+      return NextResponse.json(
+        { error: 'Address is required' },
+        { status: 400 }
+      );
+    }
+
+    // Build full address for geocoding
+    const addressParts = [address];
+    if (city) addressParts.push(city);
+    if (state) addressParts.push(state);
+    if (zip) addressParts.push(zip);
+    const fullAddress = addressParts.join(', ');
+
+    // Geocode the address server-side
+    const coordinates = await geocodeAddress(fullAddress);
+
+    if (!coordinates) {
+      return NextResponse.json(
+        { error: 'Could not geocode address. Please verify and try again.' },
+        { status: 400 }
+      );
+    }
+
+    // Prepare listing payload
+    const listingPayload: Record<string, unknown> = {
+      owner_id: user.id,
+      title: title || null,
+      address: address.trim() || null,
+      city: city?.trim() || null,
+      state: state?.trim() || null,
+      zip: zip?.trim() || null,
+      price: typeof price === 'number' ? price : typeof price === 'string' ? parseFloat(price) || 0 : 0,
+      arv: typeof arv === 'number' ? arv : typeof arv === 'string' ? parseFloat(arv) || null : null,
+      repairs: typeof repairs === 'number' ? repairs : typeof repairs === 'string' ? parseFloat(repairs) || null : null,
+      bedrooms: typeof bedrooms === 'number' ? bedrooms : typeof bedrooms === 'string' ? parseInt(bedrooms, 10) || null : null,
+      bathrooms: typeof bathrooms === 'number' ? bathrooms : typeof bathrooms === 'string' ? parseInt(bathrooms, 10) || null : null,
+      home_sqft: typeof home_sqft === 'number' ? home_sqft : typeof home_sqft === 'string' ? parseInt(home_sqft, 10) || null : null,
+      lot_sqft: typeof lot_sqft === 'number' ? lot_sqft : typeof lot_size === 'number' ? lot_size : typeof lot_sqft === 'string' ? parseFloat(lot_sqft) || null : typeof lot_size === 'string' ? parseFloat(lot_size) || null : null,
+      lot_unit: lot_unit || null,
+      garage: typeof garage === 'boolean' ? garage : typeof garage === 'number' ? garage > 0 : null,
+      year_built: typeof year_built === 'number' ? year_built : typeof year_built === 'string' ? parseInt(year_built, 10) || null : null,
+      description: description?.trim() || null,
+      status: status || 'live',
+      latitude: coordinates.lat,
+      longitude: coordinates.lng,
+      contact_name: contact_name?.trim() || null,
+      contact_phone: contact_phone?.trim() || null,
+      contact_email: contact_email?.trim() || null,
+      property_type: property_type || null,
+    };
+
+    // Insert listing
+    const { data: insertedListing, error: insertError } = await supabase
+      .from('listings')
+      .insert(listingPayload)
+      .select('id')
+      .single();
+
+    if (insertError) {
+      console.error('Error creating listing:', insertError);
+      return NextResponse.json(
+        { error: 'Failed to create listing', details: insertError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      id: insertedListing.id,
+      latitude: coordinates.lat,
+      longitude: coordinates.lng,
+      message: 'Listing created successfully with geocoded coordinates',
+    });
+  } catch (error) {
+    console.error('Error in listings POST:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

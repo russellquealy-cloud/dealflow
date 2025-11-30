@@ -67,7 +67,9 @@ export interface ListingRow {
   arv: number | null;
   repairs: number | null;
   year_built: number | null;
-  lot_size: number | null;
+  lot_sqft: number | null; // Standardized lot size field (square feet)
+  lot_size: number | null; // Deprecated: kept for backward compatibility
+  lot_unit: string | null; // Deprecated: unit for lot_size (e.g., "sqft", "acres")
   description: string | null;
   images: string[] | null;
   created_at: string | null;
