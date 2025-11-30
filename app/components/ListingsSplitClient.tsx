@@ -211,10 +211,15 @@ export default function ListingsSplitClient({ points, listings, MapComponent, on
                     <div style={{ 
                       textAlign: 'center', 
                       color: '#6b7280', 
-                      padding: 20,
+                      padding: 40,
                       gridColumn: '1 / -1'
                     }}>
-                      No listings found
+                      <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
+                        No listings found in this area yet
+                      </div>
+                      <div style={{ fontSize: 14 }}>
+                        Try adjusting your filters or searching a different location
+                      </div>
                     </div>
                   ) : (
                     listings.map((l) => <ListingCard key={String(l.id)} listing={l} />)

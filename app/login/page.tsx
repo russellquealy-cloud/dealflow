@@ -26,32 +26,54 @@ function LoginInner() {
   // Handle magic link callback - detect session from URL on mobile
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (session) return; // Already have session, skip callback handling
     
     const handleMagicLinkCallback = async () => {
-      // Check if we have a hash fragment with access_token (implicit flow)
+      // Check if we have a hash fragment with access_token (PKCE flow)
       const hash = window.location.hash;
-      if (hash && hash.includes('access_token')) {
+      if (hash && (hash.includes('access_token') || hash.includes('code='))) {
         logger.log('🔐 Magic link callback detected in URL hash');
         
         // The Supabase client should automatically detect this with detectSessionInUrl: true
-        // But we can force a session refresh to ensure it's picked up
+        // Wait a moment for Supabase to process the callback, then check session
+        // Only call refreshSession once to avoid rate limiting
         try {
+          // Give Supabase time to process the URL hash
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Check if session was automatically detected by Supabase
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData?.session) {
+            logger.log('✅ Magic link session detected automatically, redirecting to:', next);
+            // Clear the hash to clean up the URL
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            router.replace(next);
+            return;
+          }
+          
+          // If not automatically detected, try one refresh (but only once)
           await refreshSession();
-          // Small delay to ensure session is set
-          setTimeout(() => {
-            if (session) {
-              logger.log('✅ Magic link session detected, redirecting to:', next);
-              router.replace(next);
-            }
-          }, 500);
+          // Wait for session state to update
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Check session state after refresh
+          if (session) {
+            logger.log('✅ Magic link session detected after refresh, redirecting to:', next);
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            router.replace(next);
+          }
         } catch (error) {
           logger.error('❌ Error handling magic link callback:', error);
+          // Handle rate limit errors gracefully
+          if (error instanceof Error && (error.message.includes('rate limit') || error.message.includes('429'))) {
+            setMessage('⚠️ Too many requests. Please wait a moment and refresh the page.');
+          }
         }
       }
     };
     
     handleMagicLinkCallback();
-  }, [refreshSession, session, next, router]);
+  }, [session, next, router, refreshSession]);
 
   useEffect(() => {
     if (authLoading || !session || autoRedirected) {
@@ -139,19 +161,15 @@ function LoginInner() {
             // Ignore localStorage errors
           }
           
-          // Wait for session to be fully set in cookies before redirecting
-          // This ensures server-side can read the session
-          setTimeout(async () => {
-            await refreshSession();
-            // Additional delay to ensure cookies are written to browser
-            // Server-side needs time to read cookies after they're set
-            // Use window.location for full page reload to ensure cookies are sent
-            setTimeout(() => {
-              console.log('🔐 Redirecting after session refresh and cookie write delay');
-              // Use window.location for full page reload to ensure cookies are sent with request
-              window.location.href = next;
-            }, 500);
-          }, 300);
+          // Session is already available from signInWithPassword
+          // Supabase client will handle cookie persistence automatically
+          // Only wait a brief moment for cookies to be written, then redirect
+          // Avoid calling refreshSession() here to prevent rate limiting
+          setTimeout(() => {
+            console.log('🔐 Redirecting after login');
+            // Use window.location for full page reload to ensure cookies are sent with request
+            window.location.href = next;
+          }, 200);
         } else {
           console.error('❌ Login: No session created after password authentication');
           logger.error('❌ Login: No session created after password authentication', {

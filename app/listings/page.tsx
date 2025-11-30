@@ -72,6 +72,7 @@ export default function ListingsPage() {
   const [allPoints, setAllPoints] = useState<MapPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [mapBounds, setMapBounds] = useState<BoundsPayload | null>(null);
@@ -403,7 +404,7 @@ export default function ListingsPage() {
         setAllPoints(points);
         setLoading(false);
         setShowSkeleton(false);
-        setError(null);
+        setError(null); // Clear fatal errors when listings load successfully (even if empty)
       } catch (err) {
         if (!isMounted) return;
         logger.error('Error loading listings:', err);
@@ -447,6 +448,10 @@ export default function ListingsPage() {
       
       if (!query) return;
       
+      // Clear previous geocode errors
+      setGeocodeError(null);
+      setError(null); // Clear any fatal errors
+      
       try {
         const response = await fetch('/api/geocode', {
           method: 'POST',
@@ -454,15 +459,8 @@ export default function ListingsPage() {
           body: JSON.stringify({ query, placeId })
         });
         
-        if (!response.ok) {
-          const errorText = await response.text();
-          logger.error('Geocoding failed', { status: response.status, error: errorText, query });
-          // Show user-friendly error message
-          setError({ message: `Could not find location: ${query}`, code: 'GEOCODE_ERROR' });
-          return;
-        }
-        
         const data = await response.json() as {
+          found?: boolean;
           lat?: number;
           lng?: number;
           viewport?: {
@@ -473,18 +471,39 @@ export default function ListingsPage() {
           };
           formattedAddress?: string;
           error?: string;
+          reason?: string;
         };
         
-        // Check if we got an error response
-        if (data.error) {
-          logger.warn('Geocoding returned error:', data.error);
-          setError({ message: data.error || `Could not find location: ${query}`, code: 'GEOCODE_ERROR' });
+        // Handle the new structured response format
+        if (data.found === false) {
+          if (data.reason === 'NO_RESULTS') {
+            // ZERO_RESULTS - show inline error, don't show fatal error screen
+            logger.log('📍 Geocode: No results found', { query });
+            setGeocodeError(`Location not found: "${query}". Please try a different location.`);
+            return;
+          } else {
+            // Other errors (invalid request, denied, etc.) - show inline error
+            const errorMsg = data.error || `Could not geocode location: ${query}`;
+            logger.warn('Geocoding error:', { reason: data.reason, error: errorMsg, query });
+            setGeocodeError(errorMsg);
+            return;
+          }
+        }
+        
+        // Handle HTTP errors (shouldn't happen for NO_RESULTS anymore, but handle other 4xx/5xx)
+        if (!response.ok) {
+          const errorMsg = data.error || `Could not find location: ${query}`;
+          logger.error('Geocoding HTTP error', { status: response.status, error: errorMsg, query });
+          setGeocodeError(errorMsg);
           return;
         }
         
-        // Check if we got valid coordinates
-        if (typeof data.lat === 'number' && typeof data.lng === 'number') {
+        // Success: found location with valid coordinates
+        if (data.found === true && typeof data.lat === 'number' && typeof data.lng === 'number') {
           logger.log('✅ Geocoding successful', { query, lat: data.lat, lng: data.lng, viewport: data.viewport });
+          
+          // Clear any geocode errors
+          setGeocodeError(null);
           
           // Use viewport from API if available, otherwise calculate one
           let newBounds: {
@@ -535,11 +554,14 @@ export default function ListingsPage() {
             setSearchQuery(data.formattedAddress);
           }
         } else {
+          // Fallback: invalid response format
           logger.warn('Geocoding returned invalid response:', data);
-          setError({ message: `Could not find location: ${query}`, code: 'GEOCODE_INVALID_RESPONSE' });
+          setGeocodeError(`Could not find location: ${query}`);
         }
       } catch (error) {
         logger.error('Error geocoding:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Failed to geocode location';
+        setGeocodeError(errorMsg);
       }
     };
     
@@ -670,7 +692,9 @@ export default function ListingsPage() {
     );
   }
 
-  if (error) {
+  // Only show fatal error screen for non-geocode errors (e.g., API failures, network errors)
+  // Geocode errors should be shown inline, not as fatal errors
+  if (error && error.code !== 'GEOCODE_ERROR') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
         <div style={{ textAlign: 'center', maxWidth: 500 }}>
@@ -725,13 +749,26 @@ export default function ListingsPage() {
           Find Deals
         </h1>
 
-        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center">
+        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 lg:items-center flex-1 lg:flex-none">
           <div className="flex-1 lg:w-80">
             <SearchBarClient
-            value={searchQuery}
+              value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search by address, city, or state..."
             />
+            {geocodeError && (
+              <div style={{
+                marginTop: 8,
+                padding: '8px 12px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 6,
+                color: '#dc2626',
+                fontSize: 14
+              }}>
+                {geocodeError}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -756,3 +793,5 @@ export default function ListingsPage() {
     </div>
   );
 }
+
+
