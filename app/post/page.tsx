@@ -13,15 +13,17 @@ type FormState = {
   price: string;
   arv: string;
   repairs: string;
-  bedrooms: string;
-  bathrooms: string;
-  home_sqft: string;
-  lot_size: string;
-  lot_unit: 'sqft' | 'acre';
-  garage: string;
+  // Canonical fields
+  beds: string;
+  baths: string;
+  sqft: string;
+  lot_sqft: string;
+  garage_spaces: string;
+  year_built: string;
+  property_type: string;
+  age_restricted: boolean;
   description: string;
   imageFile: File | null;
-  // NEW
   contact_name: string;
   contact_phone: string;
   contact_email: string;
@@ -42,12 +44,14 @@ export default function PostDealPage() {
     price: '',
     arv: '',
     repairs: '',
-    bedrooms: '',
-    bathrooms: '',
-    home_sqft: '',
-    lot_size: '',
-    lot_unit: 'sqft',
-    garage: '',
+    beds: '',
+    baths: '',
+    sqft: '',
+    lot_sqft: '',
+    garage_spaces: '',
+    year_built: '',
+    property_type: 'single_family',
+    age_restricted: false,
     description: '',
     imageFile: null,
     contact_name: '',
@@ -77,84 +81,54 @@ export default function PostDealPage() {
     setError(null);
 
     try {
-      // Geocode the address to get coordinates
-      let latitude: number | null = null;
-      let longitude: number | null = null;
-      
-      const addressString = [
-        form.address.trim(),
-        form.city.trim(),
-        form.state.trim(),
-        form.zip.trim()
-      ]
-        .filter(Boolean)
-        .join(', ');
-      
-      if (addressString) {
-        try {
-          const geocodeResponse = await fetch('/api/geocode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: addressString }),
-          });
-          
-          if (geocodeResponse.ok) {
-            const geocodeData = await geocodeResponse.json();
-            if (geocodeData.ok && geocodeData.lat && geocodeData.lng) {
-              latitude = geocodeData.lat;
-              longitude = geocodeData.lng;
-              console.log('✅ Geocoded address:', { address: addressString, lat: latitude, lng: longitude });
-            } else {
-              console.warn('⚠️ Geocoding returned no coordinates:', geocodeData);
-              setError('Could not find coordinates for this address. The listing will be created without map location.');
-            }
-          } else {
-            const errorData = await geocodeResponse.json().catch(() => ({ error: 'Geocoding failed' }));
-            console.warn('⚠️ Geocoding failed:', errorData);
-            setError(`Could not geocode address: ${errorData.error || 'Unknown error'}. The listing will be created without map location.`);
-          }
-        } catch (geocodeError) {
-          console.error('❌ Geocoding error:', geocodeError);
-          setError('Failed to geocode address. The listing will be created without map location.');
-        }
-      } else {
+      // Validate address
+      if (!form.address.trim() && !form.city.trim()) {
         setError('Please enter at least an address or city to create a listing.');
         setSubmitting(false);
         return;
       }
 
-      // Insert listing row first
+      // Use API route for listing creation (handles geocoding server-side)
       const payload = {
-        owner_id: userId,
         address: form.address.trim(),
         city: form.city.trim() || null,
         state: form.state.trim() || null,
         zip: form.zip.trim() || null,
-        price: numOrNull(form.price) ?? 0,
-        arv: numOrNull(form.arv),
-        repairs: numOrNull(form.repairs),
-        bedrooms: numOrNull(form.bedrooms),
-        bathrooms: numOrNull(form.bathrooms),
-        home_sqft: numOrNull(form.home_sqft),
-        lot_size: numOrNull(form.lot_size),
-        lot_unit: form.lot_size.trim() ? form.lot_unit : null,
-        garage: numOrNull(form.garage),
+        price: form.price || '0',
+        arv: form.arv || null,
+        repairs: form.repairs || null,
+        // Canonical fields
+        beds: form.beds || null,
+        baths: form.baths || null,
+        sqft: form.sqft || null,
+        lot_sqft: form.lot_sqft || null,
+        garage_spaces: form.garage_spaces || null,
+        year_built: form.year_built || null,
+        property_type: form.property_type || 'single_family',
+        age_restricted: form.age_restricted || false,
         description: form.description.trim() || null,
-        status: 'live' as const,
-        image_url: null as string | null,
-        latitude,
-        longitude,
-        // NEW contact fields
+        status: 'live',
         contact_name: form.contact_name.trim() || null,
         contact_phone: form.contact_phone.trim() || null,
         contact_email: form.contact_email.trim() || null,
       };
 
-      const { data: inserted, error: insErr } = await supabase
-        .from('listings')
-        .insert(payload)
-        .select('id')
-        .single();
+      // Call API route which handles geocoding server-side
+      const createResponse = await fetch('/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json().catch(() => ({ error: 'Failed to create listing' }));
+        throw new Error(errorData.error || 'Failed to create listing');
+      }
+
+      const { id: insertedId } = await createResponse.json();
+      const inserted = { id: insertedId };
+      const insErr = null;
 
       if (insErr) throw insErr;
       const listingId = inserted!.id as string;
@@ -268,33 +242,28 @@ export default function PostDealPage() {
             <h2 style={sectionH2}>Property Specs</h2>
             <Grid cols={3}>
               <div>
-                <Label htmlFor="bedrooms">Bedrooms</Label>
-                <Input id="bedrooms" inputMode="numeric" value={form.bedrooms} onChange={(e) => onChange('bedrooms', e.target.value)} />
+                <Label htmlFor="beds">Bedrooms</Label>
+                <Input id="beds" inputMode="numeric" value={form.beds} onChange={(e) => onChange('beds', e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="bathrooms">Bathrooms</Label>
-                <Input id="bathrooms" inputMode="numeric" value={form.bathrooms} onChange={(e) => onChange('bathrooms', e.target.value)} />
+                <Label htmlFor="baths">Bathrooms</Label>
+                <Input id="baths" inputMode="numeric" value={form.baths} onChange={(e) => onChange('baths', e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="home_sqft">Home Sq Ft</Label>
-                <Input id="home_sqft" inputMode="numeric" value={form.home_sqft} onChange={(e) => onChange('home_sqft', e.target.value)} />
+                <Label htmlFor="sqft">Home Sq Ft</Label>
+                <Input id="sqft" inputMode="numeric" value={form.sqft} onChange={(e) => onChange('sqft', e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="lot_size">Lot Size</Label>
-                <Input id="lot_size" inputMode="numeric" value={form.lot_size} onChange={(e) => onChange('lot_size', e.target.value)} />
+                <Label htmlFor="lot_sqft">Lot Size (sq ft)</Label>
+                <Input id="lot_sqft" inputMode="numeric" value={form.lot_sqft} onChange={(e) => onChange('lot_sqft', e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="lot_unit">Lot Unit</Label>
-                <Select
-                  id="lot_unit"
-                  value={form.lot_unit}
-                  onChange={(e) => onChange('lot_unit', e.target.value as 'sqft' | 'acre')}
-                  options={[{ value: 'sqft', label: 'Sq Ft' }, { value: 'acre', label: 'Acre' }]}
-                />
+                <Label htmlFor="garage_spaces">Garage Spaces</Label>
+                <Input id="garage_spaces" inputMode="numeric" value={form.garage_spaces} onChange={(e) => onChange('garage_spaces', e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="garage">Garage (spaces)</Label>
-                <Input id="garage" inputMode="numeric" value={form.garage} onChange={(e) => onChange('garage', e.target.value)} />
+                <Label htmlFor="year_built">Year Built</Label>
+                <Input id="year_built" inputMode="numeric" value={form.year_built} onChange={(e) => onChange('year_built', e.target.value)} />
               </div>
             </Grid>
           </section>

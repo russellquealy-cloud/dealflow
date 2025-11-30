@@ -3,16 +3,23 @@ import { createServerClient } from '@/supabase/server';
 
 export const runtime = 'nodejs';
 
+/**
+ * GET /api/notifications/unread-count
+ * Returns the count of unread notifications for the authenticated user.
+ * Always returns HTTP 200 with { count: number }.
+ * Returns { count: 0 } if user is not authenticated or on error.
+ */
 export async function GET(request: NextRequest) {
   try {
-    // Use the same auth pattern as working routes (e.g., /api/alerts, /api/billing/create-checkout-session)
     const supabase = await createServerClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
+    // If user is not authenticated, return count 0 (not an error)
     if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ count: 0 }, { status: 200 });
     }
 
+    // Query unread notifications: notifications where user_id matches and is_read is false
     const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
@@ -21,19 +28,15 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Failed to load unread notification count', error);
-      return NextResponse.json(
-        { error: 'Failed to load unread notification count' },
-        { status: 500 }
-      );
+      // Return count 0 instead of error
+      return NextResponse.json({ count: 0 }, { status: 200 });
     }
 
-    return NextResponse.json({ count: count ?? 0 });
+    return NextResponse.json({ count: count ?? 0 }, { status: 200 });
   } catch (error) {
     console.error('Error loading unread notification count', error);
-    return NextResponse.json(
-      { error: 'Failed to load unread notification count' },
-      { status: 500 }
-    );
+    // Return count 0 instead of error
+    return NextResponse.json({ count: 0 }, { status: 200 });
   }
 }
 

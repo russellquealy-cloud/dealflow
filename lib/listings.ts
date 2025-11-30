@@ -58,24 +58,32 @@ export interface ListingRow {
   state: string | null;
   zip: string | null;
   price: number | null;
+  // Canonical fields only
   beds: number | null;
-  bedrooms: number | null;
   baths: number | null;
   sqft: number | null;
+  lot_sqft: number | null;
+  garage_spaces: number | null;
+  year_built: number | null;
+  property_type: string | null;
+  age_restricted: boolean | null;
+  views: number | null;
+  // Location fields
   latitude: number | null;
   longitude: number | null;
+  geom: unknown | null; // PostGIS geography/geometry type
+  // Investment fields
   arv: number | null;
   repairs: number | null;
-  year_built: number | null;
-  lot_sqft: number | null; // Standardized lot size field (square feet)
-  lot_size: number | null; // Deprecated: kept for backward compatibility
-  lot_unit: string | null; // Deprecated: unit for lot_size (e.g., "sqft", "acres")
+  // Metadata
   description: string | null;
   images: string[] | null;
   created_at: string | null;
+  updated_at: string | null;
   featured: boolean | null;
   featured_until: string | null;
   status: string | null;
+  // Legacy fields removed: bedrooms, bathrooms, home_sqft, lot_size, lot_unit, garage
 }
 
 /**
@@ -105,7 +113,7 @@ export async function getListingsForSearch(
     // Build base query
     let query = supabase
       .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, sqft, latitude, longitude, arv, repairs, year_built, lot_size, description, images, created_at, featured, featured_until, status', { count: 'exact' });
+      .select('id, owner_id, title, address, city, state, zip, price, beds, baths, sqft, lot_sqft, garage_spaces, year_built, property_type, age_restricted, views, latitude, longitude, geom, arv, repairs, description, images, created_at, updated_at, featured, featured_until, status', { count: 'exact' });
     
     // Filter by coordinates if required (for map display)
     if (requireCoordinates) {

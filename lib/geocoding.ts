@@ -9,6 +9,22 @@
  */
 
 /**
+ * Geocode address components to latitude/longitude coordinates
+ * 
+ * @param address - Street address
+ * @param city - City name
+ * @param state - State code (e.g., "AZ")
+ * @param zip - ZIP code
+ * @returns Promise resolving to { lat: number, lng: number } or null if geocoding fails
+ */
+export async function geocodeAddress(
+  address: string,
+  city?: string,
+  state?: string,
+  zip?: string
+): Promise<{ lat: number; lng: number } | null>;
+
+/**
  * Geocode a full address string to latitude/longitude coordinates
  * 
  * @param fullAddress - Full address string (e.g., "123 Main St, Tucson, AZ 85747")
@@ -16,7 +32,29 @@
  */
 export async function geocodeAddress(
   fullAddress: string
+): Promise<{ lat: number; lng: number } | null>;
+
+/**
+ * Geocode implementation - handles both overloads
+ */
+export async function geocodeAddress(
+  addressOrFullAddress: string,
+  city?: string,
+  state?: string,
+  zip?: string
 ): Promise<{ lat: number; lng: number } | null> {
+  // Build full address string from components if separate params provided
+  let fullAddress: string;
+  if (city !== undefined || state !== undefined || zip !== undefined) {
+    const addressParts = [addressOrFullAddress];
+    if (city) addressParts.push(city);
+    if (state) addressParts.push(state);
+    if (zip) addressParts.push(zip);
+    fullAddress = addressParts.filter(Boolean).join(', ') + ', USA';
+  } else {
+    fullAddress = addressOrFullAddress;
+  }
+
   if (!fullAddress || !fullAddress.trim()) {
     console.warn('geocodeAddress: Empty address provided');
     return null;

@@ -106,6 +106,7 @@ export default function Header() {
   }, [userId]);
 
   const loadUnreadCount = React.useCallback(async () => {
+    // If no user, set count to 0 and don't make API call
     if (!userId) {
       setUnreadCount(0);
       return;
@@ -122,21 +123,24 @@ export default function Header() {
         credentials: "include",
         headers,
       });
-      if (response.status === 401) {
-        setUnreadCount(0);
-        await refreshSession();
-        return;
-      }
+
+      // Endpoint always returns HTTP 200 with { count: number }
       if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.count || 0);
+        const data = await response.json() as { count?: number };
+        setUnreadCount(typeof data.count === 'number' ? data.count : 0);
+      } else {
+        // Fallback: set count to 0 if response is not ok (shouldn't happen, but handle gracefully)
+        logger.warn("Header: unread count endpoint returned non-OK status", { status: response.status });
+        setUnreadCount(0);
       }
     } catch (error) {
       logger.error("Header: error loading unread count", error);
+      setUnreadCount(0);
     }
-  }, [userId, refreshSession, session?.access_token]);
+  }, [userId, session?.access_token]);
 
   const loadNotificationCount = React.useCallback(async () => {
+    // If no user, set count to 0 and don't make API call
     if (!userId) {
       setNotificationCount(0);
       return;
@@ -154,27 +158,29 @@ export default function Header() {
         headers,
       });
 
-      if (response.status === 401) {
-        setNotificationCount(0);
-        await refreshSession();
-        return;
-      }
-
+      // Endpoint always returns HTTP 200 with { count: number }
       if (response.ok) {
-        const data = await response.json();
-        setNotificationCount(data.count || 0);
+        const data = await response.json() as { count?: number };
+        setNotificationCount(typeof data.count === 'number' ? data.count : 0);
+      } else {
+        // Fallback: set count to 0 if response is not ok (shouldn't happen, but handle gracefully)
+        logger.warn("Header: notification count endpoint returned non-OK status", { status: response.status });
+        setNotificationCount(0);
       }
     } catch (error) {
       logger.error("Header: error loading notification count", error);
+      setNotificationCount(0);
     }
-  }, [userId, session?.access_token, refreshSession]);
+  }, [userId, session?.access_token]);
 
   React.useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
   React.useEffect(() => {
+    // Guard: only fetch if user is authenticated
     if (!userId) {
+      setUnreadCount(0);
       return;
     }
 
@@ -184,12 +190,14 @@ export default function Header() {
   }, [userId, loadUnreadCount]);
 
   React.useEffect(() => {
+    // Guard: only fetch if user is authenticated
     if (!userId) {
+      setNotificationCount(0);
       return;
     }
 
     loadNotificationCount();
-    const interval = setInterval(loadNotificationCount, 45000);
+    const interval = setInterval(loadNotificationCount, 30000);
     return () => clearInterval(interval);
   }, [userId, loadNotificationCount]);
 

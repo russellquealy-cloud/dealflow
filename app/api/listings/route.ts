@@ -233,20 +233,26 @@ export async function POST(request: NextRequest) {
       price,
       arv,
       repairs,
-      bedrooms,
-      bathrooms,
-      home_sqft,
+      // Canonical fields
+      beds,
+      baths,
+      sqft,
       lot_sqft,
-      lot_size,
-      lot_unit,
-      garage,
+      garage_spaces,
       year_built,
+      property_type,
+      age_restricted,
       description,
       status = 'live',
       contact_name,
       contact_phone,
       contact_email,
-      property_type,
+      // Legacy fields (supported during transition, converted to canonical)
+      bedrooms,
+      bathrooms,
+      home_sqft,
+      lot_size,
+      garage,
     } = body;
 
     // Validate required fields
@@ -257,15 +263,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build full address for geocoding
-    const addressParts = [address];
-    if (city) addressParts.push(city);
-    if (state) addressParts.push(state);
-    if (zip) addressParts.push(zip);
-    const fullAddress = addressParts.join(', ');
-
-    // Geocode the address server-side
-    const coordinates = await geocodeAddress(fullAddress);
+    // Geocode the address server-side using address components
+    const coordinates = await geocodeAddress(address || '', city, state, zip);
 
     if (!coordinates) {
       return NextResponse.json(
@@ -274,24 +273,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare listing payload
+    // Prepare listing payload with canonical fields only
     const listingPayload: Record<string, unknown> = {
       owner_id: user.id,
-      title: title || null,
-      address: address.trim() || null,
+      title: title?.trim() || null,
+      address: address?.trim() || null,
       city: city?.trim() || null,
       state: state?.trim() || null,
       zip: zip?.trim() || null,
       price: typeof price === 'number' ? price : typeof price === 'string' ? parseFloat(price) || 0 : 0,
       arv: typeof arv === 'number' ? arv : typeof arv === 'string' ? parseFloat(arv) || null : null,
       repairs: typeof repairs === 'number' ? repairs : typeof repairs === 'string' ? parseFloat(repairs) || null : null,
-      bedrooms: typeof bedrooms === 'number' ? bedrooms : typeof bedrooms === 'string' ? parseInt(bedrooms, 10) || null : null,
-      bathrooms: typeof bathrooms === 'number' ? bathrooms : typeof bathrooms === 'string' ? parseInt(bathrooms, 10) || null : null,
-      home_sqft: typeof home_sqft === 'number' ? home_sqft : typeof home_sqft === 'string' ? parseInt(home_sqft, 10) || null : null,
-      lot_sqft: typeof lot_sqft === 'number' ? lot_sqft : typeof lot_size === 'number' ? lot_size : typeof lot_sqft === 'string' ? parseFloat(lot_sqft) || null : typeof lot_size === 'string' ? parseFloat(lot_size) || null : null,
-      lot_unit: lot_unit || null,
-      garage: typeof garage === 'boolean' ? garage : typeof garage === 'number' ? garage > 0 : null,
+      // Canonical fields - prefer direct values, fallback to legacy during transition
+      beds: typeof beds === 'number' ? beds : typeof beds === 'string' ? parseInt(beds, 10) || null : typeof bedrooms === 'number' ? bedrooms : typeof bedrooms === 'string' ? parseInt(bedrooms, 10) || null : null,
+      baths: typeof baths === 'number' ? baths : typeof baths === 'string' ? parseInt(baths, 10) || null : typeof bathrooms === 'number' ? bathrooms : typeof bathrooms === 'string' ? parseInt(bathrooms, 10) || null : null,
+      sqft: typeof sqft === 'number' ? sqft : typeof sqft === 'string' ? parseInt(sqft, 10) || null : typeof home_sqft === 'number' ? home_sqft : typeof home_sqft === 'string' ? parseInt(home_sqft, 10) || null : null,
+      lot_sqft: typeof lot_sqft === 'number' ? lot_sqft : typeof lot_sqft === 'string' ? parseFloat(lot_sqft) || null : typeof lot_size === 'number' ? lot_size : typeof lot_size === 'string' ? parseFloat(lot_size) || null : null,
+      garage_spaces: typeof garage_spaces === 'number' ? garage_spaces : typeof garage_spaces === 'string' ? parseInt(garage_spaces, 10) || null : typeof garage === 'boolean' ? (garage ? 1 : null) : typeof garage === 'number' ? (garage > 0 ? garage : null) : typeof garage === 'string' ? (parseInt(garage, 10) > 0 ? parseInt(garage, 10) : null) : null,
       year_built: typeof year_built === 'number' ? year_built : typeof year_built === 'string' ? parseInt(year_built, 10) || null : null,
+      property_type: property_type || null,
+      age_restricted: typeof age_restricted === 'boolean' ? age_restricted : age_restricted === 'true' || age_restricted === true ? true : false,
       description: description?.trim() || null,
       status: status || 'live',
       latitude: coordinates.lat,
@@ -299,8 +300,10 @@ export async function POST(request: NextRequest) {
       contact_name: contact_name?.trim() || null,
       contact_phone: contact_phone?.trim() || null,
       contact_email: contact_email?.trim() || null,
-      property_type: property_type || null,
     };
+
+    // Update geom using PostGIS - we'll use RPC or let database trigger handle it
+    // For now, we set latitude/longitude and geom will be updated via trigger or RPC
 
     // Insert listing
     const { data: insertedListing, error: insertError } = await supabase
@@ -315,6 +318,23 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to create listing', details: insertError.message },
         { status: 500 }
       );
+    }
+
+    // Update geom using PostGIS - try RPC first, fallback gracefully
+    try {
+      const { error: geomError } = await supabase.rpc('update_listing_geom', {
+        listing_id: insertedListing.id,
+        lng: coordinates.lng,
+        lat: coordinates.lat,
+      });
+
+      if (geomError) {
+        console.warn('Failed to update geom (non-critical, coordinates are saved):', geomError);
+      }
+    } catch (rpcError) {
+      // RPC might not exist yet - non-critical
+      // Coordinates are saved, geom can be updated separately or via database trigger
+      console.warn('RPC function might not exist (non-critical):', rpcError);
     }
 
     return NextResponse.json({
