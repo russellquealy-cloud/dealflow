@@ -121,15 +121,28 @@ export async function getSubscription(subscriptionId: string): Promise<Stripe.Su
   }
 }
 
-// Cancel subscription
-export async function cancelSubscription(subscriptionId: string): Promise<boolean> {
+// Cancel subscription with optional proration
+export async function cancelSubscription(
+  subscriptionId: string,
+  options?: { immediately?: boolean; prorate?: boolean }
+): Promise<Stripe.Subscription | null> {
   try {
     const stripe = getStripe();
-    await stripe.subscriptions.cancel(subscriptionId);
-    return true;
+    
+    if (options?.immediately) {
+      // Cancel immediately - no proration, access ends now
+      const subscription = await stripe.subscriptions.cancel(subscriptionId);
+      return subscription;
+    } else {
+      // Cancel at period end - user keeps access until period ends, no refund
+      const subscription = await stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      });
+      return subscription;
+    }
   } catch (error) {
     console.error('Error canceling subscription:', error);
-    return false;
+    return null;
   }
 }
 

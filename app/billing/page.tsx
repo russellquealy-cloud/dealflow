@@ -23,6 +23,8 @@ export default function BillingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isManagingBilling, setIsManagingBilling] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [cancelMode, setCancelMode] = useState<'immediate' | 'period-end' | null>(null);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -122,6 +124,62 @@ export default function BillingPage() {
     } catch (error) {
       console.error('Error creating checkout session:', error);
       alert('Error processing payment. Please try again.');
+    }
+  };
+
+  const handleCancelSubscription = async (immediately: boolean) => {
+    if (!confirm(
+      immediately
+        ? 'Are you sure you want to cancel your subscription immediately? You will lose access right away and will not receive a refund.'
+        : 'Cancel your subscription at the end of the current billing period? You will retain access until then, and no refund will be issued.'
+    )) {
+      return;
+    }
+
+    setIsCanceling(true);
+    try {
+      if (!authToken) {
+        alert('Please sign in again to cancel your subscription.');
+        return;
+      }
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      };
+
+      const response = await fetch('/api/billing/cancel-subscription', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ immediately }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to cancel subscription.');
+      }
+
+      const data = await response.json();
+      alert(data.message || 'Subscription canceled successfully.');
+      
+      // Reload profile to reflect changes
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(data);
+      }
+      
+      setCancelMode(null);
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      alert(error instanceof Error ? error.message : 'Error canceling subscription. Please try again.');
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -283,23 +341,102 @@ export default function BillingPage() {
             
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               {profile.tier !== 'free' && (
-                <button
-                  onClick={handleManageBilling}
-                  disabled={isManagingBilling}
-                  style={{
-                    background: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '12px 24px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: isManagingBilling ? 'not-allowed' : 'pointer',
-                    opacity: isManagingBilling ? 0.7 : 1
-                  }}
-                >
-                  {isManagingBilling ? 'Loading...' : 'Manage Billing'}
-                </button>
+                <>
+                  <button
+                    onClick={handleManageBilling}
+                    disabled={isManagingBilling}
+                    style={{
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '12px 24px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: isManagingBilling ? 'not-allowed' : 'pointer',
+                      opacity: isManagingBilling ? 0.7 : 1
+                    }}
+                  >
+                    {isManagingBilling ? 'Loading...' : 'Manage Billing'}
+                  </button>
+                  
+                  {cancelMode === null ? (
+                    <button
+                      onClick={() => setCancelMode('period-end')}
+                      disabled={isCanceling}
+                      style={{
+                        background: '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '12px 24px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: isCanceling ? 'not-allowed' : 'pointer',
+                        opacity: isCanceling ? 0.7 : 1
+                      }}
+                    >
+                      Cancel Subscription
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '14px', color: '#6b7280', marginRight: '8px' }}>
+                        Cancel:
+                      </span>
+                      <button
+                        onClick={() => handleCancelSubscription(false)}
+                        disabled={isCanceling}
+                        style={{
+                          background: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '8px 16px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: isCanceling ? 'not-allowed' : 'pointer',
+                          opacity: isCanceling ? 0.7 : 1
+                        }}
+                      >
+                        {isCanceling ? 'Processing...' : 'At Period End'}
+                      </button>
+                      <button
+                        onClick={() => handleCancelSubscription(true)}
+                        disabled={isCanceling}
+                        style={{
+                          background: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '8px 16px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: isCanceling ? 'not-allowed' : 'pointer',
+                          opacity: isCanceling ? 0.7 : 1
+                        }}
+                      >
+                        {isCanceling ? 'Processing...' : 'Immediately'}
+                      </button>
+                      <button
+                        onClick={() => setCancelMode(null)}
+                        disabled={isCanceling}
+                        style={{
+                          background: '#6b7280',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '8px 16px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: isCanceling ? 'not-allowed' : 'pointer',
+                          opacity: isCanceling ? 0.7 : 1
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
               
               <Link 

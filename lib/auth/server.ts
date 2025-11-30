@@ -17,7 +17,8 @@ export function createSupabaseRouteClient() {
 }
 
 export async function getAuthUserServer() {
-  const supabase = createSupabaseServerComponent();
+  // Use route handler client for API routes (works in both API routes and server components)
+  const supabase = createSupabaseRouteClient();
   const {
     data: { user },
     error,

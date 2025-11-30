@@ -112,6 +112,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Off Axis Deals" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
+        <meta httpEquiv="x-dns-prefetch-control" content="off" />
       </head>
       <body style={{ height: '100%', margin: 0, padding: 0 }}>
         <script
