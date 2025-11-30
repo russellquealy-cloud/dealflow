@@ -34,7 +34,6 @@ interface ListingData {
   latitude?: number;
   longitude?: number;
   created_at?: string;
-  updated_at?: string;
   featured?: boolean;
   featured_until?: string;
 }
@@ -61,9 +60,9 @@ interface Row {
   latitude?: number;
   longitude?: number;
   created_at?: string;
-  updated_at?: string;
   featured?: boolean;
   featured_until?: string;
+  status?: string;
 }
 
 
@@ -126,9 +125,9 @@ export default function ListingsPage() {
         latitude: toNum(r.latitude),
         longitude: toNum(r.longitude),
         created_at: r.created_at ?? undefined,
-        updated_at: r.updated_at ?? undefined,
         featured: r.featured,
-        featured_until: r.featured_until
+        featured_until: r.featured_until,
+        status: r.status
       } as ListingData;
     });
 

@@ -13,6 +13,7 @@ type FormState = {
   beds: number | "";
   baths: number | "";
   sqft: number | "";
+  lot_sqft: number | "";
   price: number | "";
   description: string;
   arv: number | "";
@@ -31,6 +32,7 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
     beds: "",
     baths: "",
     sqft: "",
+    lot_sqft: "",
     price: "",
     description: "",
     arv: "",
@@ -96,48 +98,14 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
     setMessage(null);
 
     try {
-      // Geocode the address first to get coordinates
-      let latitude: number | null = null;
-      let longitude: number | null = null;
-      
-      const addressString = [form.address, form.city, form.state, form.zip]
-        .filter(Boolean)
-        .join(', ');
-      
-      if (addressString) {
-        try {
-          const geocodeResponse = await fetch('/api/geocode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: addressString }),
-          });
-          
-          if (geocodeResponse.ok) {
-            const geocodeData = await geocodeResponse.json();
-            if (geocodeData.ok && geocodeData.lat && geocodeData.lng) {
-              latitude = geocodeData.lat;
-              longitude = geocodeData.lng;
-              console.log('✅ Geocoded address:', { address: addressString, lat: latitude, lng: longitude });
-            } else {
-              console.warn('⚠️ Geocoding returned no coordinates:', geocodeData);
-              setMessage('⚠️ Could not find coordinates for this address. The listing will be created without map location.');
-            }
-          } else {
-            const errorData = await geocodeResponse.json().catch(() => ({ error: 'Geocoding failed' }));
-            console.warn('⚠️ Geocoding failed:', errorData);
-            setMessage(`⚠️ Could not geocode address: ${errorData.error || 'Unknown error'}. The listing will be created without map location.`);
-          }
-        } catch (geocodeError) {
-          console.error('❌ Geocoding error:', geocodeError);
-          setMessage('⚠️ Failed to geocode address. The listing will be created without map location.');
-        }
-      } else {
+      // Validate address
+      if (!form.address.trim() && !form.city.trim()) {
         setMessage('⚠️ Please enter at least an address or city to create a listing.');
         setLoading(false);
         return;
       }
 
-      // Create the listing first
+      // Use API route for listing creation (handles geocoding server-side)
       const listingData = {
         title: form.title || `${form.beds} bed, ${form.baths} bath in ${form.city}`,
         address: form.address,
@@ -147,25 +115,45 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
         beds: form.beds || null,
         baths: form.baths || null,
         sqft: form.sqft || null,
+        lot_sqft: form.lot_sqft || null,
         price: form.price || null,
         arv: form.arv || null,
         repairs: form.repairs || null,
         description: form.description,
         property_type: form.property_type || "single-family",
         age_restricted: form.age_restricted || false,
-        owner_id: ownerId,
         contact_email: "russell.quealy@gmail.com", // You can make this dynamic
         contact_phone: "555-0123", // You can make this dynamic
-        latitude,
-        longitude,
-        status: 'live' as const, // Set status to 'live' so listing appears in search
+        status: 'live',
       };
 
-      const { data: listing, error: listingError } = await supabase
+      // Call API route which handles geocoding server-side
+      const createResponse = await fetch('/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(listingData),
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json().catch(() => ({ error: 'Failed to create listing' }));
+        throw new Error(errorData.error || 'Failed to create listing');
+      }
+
+      const { id: listingId } = await createResponse.json();
+      
+      // Fetch the created listing for image upload
+      const { data: listing, error: fetchError } = await supabase
         .from('listings')
-        .insert([listingData])
-        .select()
+        .select('id')
+        .eq('id', listingId)
         .single();
+
+      if (fetchError || !listing) {
+        throw new Error('Failed to fetch created listing');
+      }
+      
+      const listingError = null;
 
       if (listingError) {
         throw listingError;
@@ -221,6 +209,7 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
         beds: "",
         baths: "",
         sqft: "",
+        lot_sqft: "",
         price: "",
         description: "",
         arv: "",
@@ -374,6 +363,17 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
                 onChange={onChange} 
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                 placeholder="1800"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Lot Size (sq ft)</label>
+              <input 
+                name="lot_sqft" 
+                type="number" 
+                value={form.lot_sqft} 
+                onChange={onChange} 
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                placeholder="7200"
               />
             </div>
             <div>

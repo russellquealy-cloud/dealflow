@@ -264,13 +264,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Geocode the address server-side using address components
-    const coordinates = await geocodeAddress(address || '', city, state, zip);
-
-    if (!coordinates) {
-      return NextResponse.json(
-        { error: 'Could not geocode address. Please verify and try again.' },
-        { status: 400 }
-      );
+    const addressParts = [address, city, state, zip].filter(Boolean) as string[];
+    const fullAddress = addressParts.join(', ');
+    
+    let coordinates: { lat: number; lng: number } | null = null;
+    if (fullAddress) {
+      try {
+        coordinates = await geocodeAddress(address || '', city, state, zip);
+        if (coordinates) {
+          console.log('✅ Geocoding successful:', { address: fullAddress, lat: coordinates.lat, lng: coordinates.lng });
+        } else {
+          console.error('❌ Geocoding failed: No coordinates returned for address:', fullAddress);
+        }
+      } catch (geocodeError) {
+        console.error('❌ Geocoding error:', {
+          address: fullAddress,
+          error: geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
+        });
+        // Continue without coordinates - listing will be saved but won't show on map
+      }
+    } else {
+      console.warn('⚠️ No address provided for geocoding');
     }
 
     // Prepare listing payload with canonical fields only
@@ -295,8 +309,8 @@ export async function POST(request: NextRequest) {
       age_restricted: typeof age_restricted === 'boolean' ? age_restricted : age_restricted === 'true' || age_restricted === true ? true : false,
       description: description?.trim() || null,
       status: status || 'live',
-      latitude: coordinates.lat,
-      longitude: coordinates.lng,
+      latitude: coordinates?.lat || null,
+      longitude: coordinates?.lng || null,
       contact_name: contact_name?.trim() || null,
       contact_phone: contact_phone?.trim() || null,
       contact_email: contact_email?.trim() || null,
@@ -321,27 +335,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Update geom using PostGIS - try RPC first, fallback gracefully
-    try {
-      const { error: geomError } = await supabase.rpc('update_listing_geom', {
-        listing_id: insertedListing.id,
-        lng: coordinates.lng,
-        lat: coordinates.lat,
-      });
+    // Note: Database trigger should also handle this automatically
+    if (coordinates) {
+      try {
+        const { error: geomError } = await supabase.rpc('update_listing_geom', {
+          listing_id: insertedListing.id,
+          lng: coordinates.lng,
+          lat: coordinates.lat,
+        });
 
-      if (geomError) {
-        console.warn('Failed to update geom (non-critical, coordinates are saved):', geomError);
+        if (geomError) {
+          console.warn('Failed to update geom via RPC (non-critical, trigger should handle it):', geomError);
+        }
+      } catch (rpcError) {
+        // RPC might not exist yet - non-critical
+        // Database trigger should handle geom update automatically when latitude/longitude are set
+        console.warn('RPC function might not exist (non-critical, trigger should handle geom):', rpcError);
       }
-    } catch (rpcError) {
-      // RPC might not exist yet - non-critical
-      // Coordinates are saved, geom can be updated separately or via database trigger
-      console.warn('RPC function might not exist (non-critical):', rpcError);
     }
 
     return NextResponse.json({
       id: insertedListing.id,
-      latitude: coordinates.lat,
-      longitude: coordinates.lng,
-      message: 'Listing created successfully with geocoded coordinates',
+      latitude: coordinates?.lat || null,
+      longitude: coordinates?.lng || null,
+      message: coordinates 
+        ? 'Listing created successfully with geocoded coordinates' 
+        : 'Listing created successfully, but geocoding failed (listing saved without coordinates)',
     });
   } catch (error) {
     console.error('Error in listings POST:', error);

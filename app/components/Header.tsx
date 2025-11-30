@@ -125,16 +125,21 @@ export default function Header() {
       });
 
       // Endpoint always returns HTTP 200 with { count: number }
+      // It never returns 401 - safe to call from layout
       if (response.ok) {
         const data = await response.json() as { count?: number };
         setUnreadCount(typeof data.count === 'number' ? data.count : 0);
       } else {
-        // Fallback: set count to 0 if response is not ok (shouldn't happen, but handle gracefully)
-        logger.warn("Header: unread count endpoint returned non-OK status", { status: response.status });
+        // Endpoint should always return 200, but handle gracefully without logging
+        // This prevents console spam from network issues
         setUnreadCount(0);
       }
     } catch (error) {
-      logger.error("Header: error loading unread count", error);
+      // Silently handle network errors - endpoint is non-critical
+      // Only log in development to avoid console spam
+      if (process.env.NODE_ENV === 'development') {
+        logger.error("Header: error loading unread count", error);
+      }
       setUnreadCount(0);
     }
   }, [userId, session?.access_token]);
@@ -159,16 +164,21 @@ export default function Header() {
       });
 
       // Endpoint always returns HTTP 200 with { count: number }
+      // It never returns 401 - safe to call from layout
       if (response.ok) {
         const data = await response.json() as { count?: number };
         setNotificationCount(typeof data.count === 'number' ? data.count : 0);
       } else {
-        // Fallback: set count to 0 if response is not ok (shouldn't happen, but handle gracefully)
-        logger.warn("Header: notification count endpoint returned non-OK status", { status: response.status });
+        // Endpoint should always return 200, but handle gracefully without logging
+        // This prevents console spam from network issues
         setNotificationCount(0);
       }
     } catch (error) {
-      logger.error("Header: error loading notification count", error);
+      // Silently handle network errors - endpoint is non-critical
+      // Only log in development to avoid console spam
+      if (process.env.NODE_ENV === 'development') {
+        logger.error("Header: error loading notification count", error);
+      }
       setNotificationCount(0);
     }
   }, [userId, session?.access_token]);

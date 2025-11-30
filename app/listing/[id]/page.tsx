@@ -4,6 +4,7 @@ import ContactButtons from '@/components/ContactButtons';
 import { coverUrlFromListing, galleryFromListing } from '@/lib/images';
 import ImageGallery from '@/components/ImageGallery';
 import WatchlistButton from '@/components/WatchlistButton';
+import ListingViewTracker from '@/components/ListingViewTracker';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,8 @@ export const dynamic = 'force-dynamic';
 export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data, error } = await supabase.from('listings').select('*').eq('id', id).maybeSingle();
+  // Include views in the query so we can display it if needed
+  const { data, error } = await supabase.from('listings').select('*, views').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return <div style={{ padding: 24 }}>Listing not found.</div>;
 
@@ -42,6 +44,9 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   return (
     <main style={{ padding: 24 }}>
+      {/* Track view when page loads */}
+      <ListingViewTracker listingId={data.id} />
+      
       <div style={{ marginBottom: 16 }}>
         <Link 
           href="/listings" 

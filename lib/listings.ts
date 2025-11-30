@@ -79,11 +79,11 @@ export interface ListingRow {
   description: string | null;
   images: string[] | null;
   created_at: string | null;
-  updated_at: string | null;
   featured: boolean | null;
   featured_until: string | null;
   status: string | null;
   // Legacy fields removed: bedrooms, bathrooms, home_sqft, lot_size, lot_unit, garage
+  // Note: updated_at column does not exist in listings table
 }
 
 /**
@@ -113,7 +113,7 @@ export async function getListingsForSearch(
     // Build base query
     let query = supabase
       .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, beds, baths, sqft, lot_sqft, garage_spaces, year_built, property_type, age_restricted, views, latitude, longitude, geom, arv, repairs, description, images, created_at, updated_at, featured, featured_until, status', { count: 'exact' });
+      .select('id, owner_id, title, address, city, state, zip, price, beds, baths, sqft, lot_sqft, garage_spaces, year_built, property_type, age_restricted, views, latitude, longitude, geom, arv, repairs, description, images, created_at, featured, featured_until, status', { count: 'exact' });
     
     // Filter by coordinates if required (for map display)
     if (requireCoordinates) {

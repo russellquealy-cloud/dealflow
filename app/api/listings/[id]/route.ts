@@ -154,23 +154,38 @@ export async function PATCH(
 
       if (addressParts.length > 0) {
         const fullAddress = addressParts.join(', ');
-        const coordinates = await geocodeAddress(fullAddress);
-
-        if (!coordinates) {
-          return NextResponse.json(
-            { error: 'Could not geocode address. Please verify and try again.' },
-            { status: 400 }
-          );
-        }
-
-        updatePayload.latitude = coordinates.lat;
-        updatePayload.longitude = coordinates.lng;
         
-        // Update geom using PostGIS function
-        // Note: Supabase client doesn't support raw SQL easily, so we use RPC or set geom to null and let a trigger handle it
-        // For now, we'll use an RPC function if available, or rely on a database trigger
-        // Using SQL template - Supabase will need to have this as an RPC or trigger
-        // We'll update latitude/longitude and let a database function/trigger handle geom
+        try {
+          // Use geocodeAddress with address components for better accuracy
+          const coordinates = await geocodeAddress(
+            address !== undefined ? address : existingListing.address || '',
+            city !== undefined ? city : existingListing.city || undefined,
+            state !== undefined ? state : existingListing.state || undefined,
+            zip !== undefined ? zip : existingListing.zip || undefined
+          );
+
+          if (coordinates) {
+            console.log('✅ Geocoding successful for update:', { 
+              listing_id: id, 
+              address: fullAddress, 
+              lat: coordinates.lat, 
+              lng: coordinates.lng 
+            });
+            updatePayload.latitude = coordinates.lat;
+            updatePayload.longitude = coordinates.lng;
+            // Note: Database trigger should automatically update geom when latitude/longitude change
+          } else {
+            console.error('❌ Geocoding failed: No coordinates returned for address:', fullAddress);
+            // Continue without updating coordinates - listing will be updated but coordinates remain unchanged
+          }
+        } catch (geocodeError) {
+          console.error('❌ Geocoding error during update:', {
+            listing_id: id,
+            address: fullAddress,
+            error: geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
+          });
+          // Continue without updating coordinates - listing will be updated but coordinates remain unchanged
+        }
       }
     }
 
@@ -191,9 +206,9 @@ export async function PATCH(
     }
 
     // If geom needs updating and we have coordinates, call an RPC or let database trigger handle it
-    // For now, we'll update geom separately if coordinates were updated
+    // Note: Database trigger should automatically update geom when latitude/longitude change
     if (addressChanged && updatePayload.latitude && updatePayload.longitude) {
-      // Try to update geom using RPC (if available) or let database trigger handle it
+      // Try to update geom using RPC (if available), otherwise rely on database trigger
       try {
         const { error: geomError } = await supabase.rpc('update_listing_geom', {
           listing_id: id,
@@ -202,20 +217,25 @@ export async function PATCH(
         });
 
         if (geomError) {
-          console.warn('Failed to update geom (non-critical):', geomError);
-          // Non-critical - coordinates are updated, geom can be updated separately
+          console.warn('Failed to update geom via RPC (non-critical, trigger should handle it):', geomError);
         }
       } catch (rpcError) {
-        // RPC might not exist, that's okay - we'll rely on database trigger or manual update
-        console.warn('RPC function might not exist (non-critical):', rpcError);
+        // RPC might not exist, that's okay - database trigger should handle geom update automatically
+        console.warn('RPC function might not exist (non-critical, trigger should handle geom):', rpcError);
       }
     }
 
+    const hasNewCoordinates = addressChanged && updatePayload.latitude && updatePayload.longitude;
+    
     return NextResponse.json({
       id: updatedListing.id,
       latitude: updatedListing.latitude,
       longitude: updatedListing.longitude,
-      message: 'Listing updated successfully',
+      message: addressChanged 
+        ? (hasNewCoordinates 
+          ? 'Listing updated successfully with new coordinates' 
+          : 'Listing updated successfully, but geocoding failed (coordinates unchanged)')
+        : 'Listing updated successfully',
     });
   } catch (error) {
     console.error('Error in listings PATCH:', error);

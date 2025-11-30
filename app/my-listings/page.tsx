@@ -14,11 +14,14 @@ export type ListingLike = {
   state?: string;
   zip?: string;
   price?: number | string;
-  bedrooms?: number;
-  bathrooms?: number;
-  home_sqft?: number;
-  lot_size?: number;
-  garage?: boolean;
+  // Canonical fields
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  lot_sqft?: number;
+  garage_spaces?: number;
+  property_type?: string;
+  age_restricted?: boolean;
   year_built?: number;
   assignment_fee?: number;
   description?: string;
@@ -87,11 +90,14 @@ export default function MyListingsPage() {
           state: row.state as string | undefined,
           zip: row.zip as string | undefined,
           price: toNum(row.price),
-          bedrooms: toNum(row.bedrooms ?? row.beds),
-          bathrooms: toNum(row.bathrooms ?? row.baths),
-          home_sqft: toNum(row.home_sqft ?? row.square_feet),
-          lot_size: toNum(row.lot_size),
-          garage: row.garage as boolean | undefined,
+          // Canonical fields only
+          beds: toNum(row.beds),
+          baths: toNum(row.baths),
+          sqft: toNum(row.sqft),
+          lot_sqft: toNum(row.lot_sqft),
+          garage_spaces: toNum(row.garage_spaces),
+          property_type: row.property_type as string | undefined,
+          age_restricted: row.age_restricted as boolean | undefined,
           year_built: toNum(row.year_built),
           assignment_fee: toNum(row.assignment_fee),
           description: row.description as string | undefined,
@@ -128,101 +134,59 @@ export default function MyListingsPage() {
     try {
       console.log('Updating listing:', editingId, editForm);
       
-      const updateData: Record<string, unknown> = {};
+      // Build update payload with canonical fields only
+      // Use API route which handles geocoding server-side
+      const updatePayload: Record<string, unknown> = {};
       
-      // Only update fields that have values
-      if (editForm.title !== undefined) updateData.title = editForm.title;
-      if (editForm.address !== undefined) updateData.address = editForm.address;
-      if (editForm.city !== undefined) updateData.city = editForm.city;
-      if (editForm.state !== undefined) updateData.state = editForm.state;
-      if (editForm.zip !== undefined) updateData.zip = editForm.zip;
+      // Text fields
+      if (editForm.title !== undefined) updatePayload.title = editForm.title;
+      if (editForm.description !== undefined) updatePayload.description = editForm.description;
+      if (editForm.property_type !== undefined) updatePayload.property_type = editForm.property_type;
+      if (editForm.age_restricted !== undefined) updatePayload.age_restricted = editForm.age_restricted;
       
-      // Geocode address if any address fields are being updated
-      const addressFieldsChanged = editForm.address !== undefined || 
-                                   editForm.city !== undefined || 
-                                   editForm.state !== undefined || 
-                                   editForm.zip !== undefined;
+      // Address fields (geocoding handled by API route)
+      if (editForm.address !== undefined) updatePayload.address = editForm.address;
+      if (editForm.city !== undefined) updatePayload.city = editForm.city;
+      if (editForm.state !== undefined) updatePayload.state = editForm.state;
+      if (editForm.zip !== undefined) updatePayload.zip = editForm.zip;
       
-      if (addressFieldsChanged) {
-        const addressString = [
-          editForm.address || '',
-          editForm.city || '',
-          editForm.state || '',
-          editForm.zip || ''
-        ]
-          .filter(Boolean)
-          .join(', ');
-        
-        if (addressString) {
-          try {
-            const geocodeResponse = await fetch('/api/geocode', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ query: addressString }),
-            });
-            
-            if (geocodeResponse.ok) {
-              const geocodeData = await geocodeResponse.json();
-              if (geocodeData.ok && geocodeData.lat && geocodeData.lng) {
-                updateData.latitude = geocodeData.lat;
-                updateData.longitude = geocodeData.lng;
-                console.log('✅ Geocoded address for update:', { address: addressString, lat: geocodeData.lat, lng: geocodeData.lng });
-              } else {
-                console.warn('⚠️ Geocoding returned no coordinates:', geocodeData);
-              }
-            } else {
-              const errorData = await geocodeResponse.json().catch(() => ({ error: 'Geocoding failed' }));
-              console.warn('⚠️ Geocoding failed:', errorData);
-            }
-          } catch (geocodeError) {
-            console.error('❌ Geocoding error:', geocodeError);
-          }
-        }
-      }
-      if (editForm.price !== undefined) updateData.price = editForm.price;
-      if (editForm.bedrooms !== undefined) updateData.bedrooms = editForm.bedrooms;
-      if (editForm.bathrooms !== undefined) updateData.bathrooms = editForm.bathrooms;
-      if (editForm.home_sqft !== undefined) updateData.home_sqft = editForm.home_sqft;
-      if (editForm.lot_size !== undefined) updateData.lot_size = editForm.lot_size;
-      if (editForm.garage !== undefined) updateData.garage = editForm.garage;
-      if (editForm.year_built !== undefined) updateData.year_built = editForm.year_built;
-      if (editForm.assignment_fee !== undefined) updateData.assignment_fee = editForm.assignment_fee;
-      if (editForm.description !== undefined) updateData.description = editForm.description;
-      if (editForm.owner_phone !== undefined) updateData.contact_phone = editForm.owner_phone;
-      if (editForm.owner_email !== undefined) updateData.contact_email = editForm.owner_email;
-      if (editForm.owner_name !== undefined) updateData.contact_name = editForm.owner_name;
-      if (editForm.arv !== undefined) updateData.arv = editForm.arv;
-      if (editForm.repairs !== undefined) updateData.repairs = editForm.repairs;
-      if (editForm.images !== undefined) updateData.images = editForm.images;
-      // Handle cover image - use first image as cover if no specific cover set
+      // Numeric fields - canonical only
+      if (editForm.price !== undefined) updatePayload.price = editForm.price;
+      if (editForm.beds !== undefined) updatePayload.beds = editForm.beds;
+      if (editForm.baths !== undefined) updatePayload.baths = editForm.baths;
+      if (editForm.sqft !== undefined) updatePayload.sqft = editForm.sqft;
+      if (editForm.lot_sqft !== undefined) updatePayload.lot_sqft = editForm.lot_sqft;
+      if (editForm.garage_spaces !== undefined) updatePayload.garage_spaces = editForm.garage_spaces;
+      if (editForm.year_built !== undefined) updatePayload.year_built = editForm.year_built;
+      if (editForm.arv !== undefined) updatePayload.arv = editForm.arv;
+      if (editForm.repairs !== undefined) updatePayload.repairs = editForm.repairs;
+      
+      // Contact fields
+      if (editForm.owner_phone !== undefined) updatePayload.contact_phone = editForm.owner_phone;
+      if (editForm.owner_email !== undefined) updatePayload.contact_email = editForm.owner_email;
+      if (editForm.owner_name !== undefined) updatePayload.contact_name = editForm.owner_name;
+      
+      // Images
+      if (editForm.images !== undefined) updatePayload.images = editForm.images;
       if (editForm.images && editForm.images.length > 0) {
-        updateData.cover_image_url = editForm.images[0];
+        updatePayload.cover_image_url = editForm.images[0];
       }
 
-      console.log('Update data:', updateData);
+      // Call API route which handles geocoding server-side
+      const response = await fetch(`/api/listings/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updatePayload),
+      });
 
-      // Remove fields that might not exist in the database schema
-      const safeUpdateData = { ...updateData };
-      
-      // Remove fields that might not exist in the database schema
-      if (!safeUpdateData.year_built) {
-        delete safeUpdateData.year_built;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to update listing' }));
+        throw new Error(errorData.error || 'Failed to update listing');
       }
-      if (!safeUpdateData.cover_image_url) {
-        delete safeUpdateData.cover_image_url;
-      }
-      
-      const { error } = await supabase
-        .from('listings')
-        .update(safeUpdateData)
-        .eq('id', editingId);
 
-      if (error) {
-        console.error('Error updating listing:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        alert(`Failed to update listing: ${error.message}`);
-        return;
-      }
+      const result = await response.json();
+      console.log('✅ Listing updated successfully:', result);
 
       // Reload listings
       const { data: { session } } = await supabase.auth.getSession();
@@ -235,7 +199,7 @@ export default function MyListingsPage() {
       alert('Listing updated successfully!');
     } catch (err) {
       console.error('Error saving listing:', err);
-      alert(`Failed to update listing: ${err}`);
+      alert(`Failed to update listing: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -554,8 +518,8 @@ export default function MyListingsPage() {
                       </label>
                       <input
                         type="number"
-                        value={editForm.bedrooms || ''}
-                        onChange={(e) => setEditForm({...editForm, bedrooms: Number(e.target.value)})}
+                        value={editForm.beds || ''}
+                        onChange={(e) => setEditForm({...editForm, beds: Number(e.target.value)})}
                         style={{ 
                           width: '100%', 
                           padding: '12px', 
@@ -578,8 +542,9 @@ export default function MyListingsPage() {
                       </label>
                       <input
                         type="number"
-                        value={editForm.bathrooms || ''}
-                        onChange={(e) => setEditForm({...editForm, bathrooms: Number(e.target.value)})}
+                        step="0.5"
+                        value={editForm.baths || ''}
+                        onChange={(e) => setEditForm({...editForm, baths: Number(e.target.value)})}
                         style={{ 
                           width: '100%', 
                           padding: '12px', 
@@ -602,8 +567,8 @@ export default function MyListingsPage() {
                       </label>
                       <input
                         type="number"
-                        value={editForm.home_sqft || ''}
-                        onChange={(e) => setEditForm({...editForm, home_sqft: Number(e.target.value)})}
+                        value={editForm.sqft || ''}
+                        onChange={(e) => setEditForm({...editForm, sqft: Number(e.target.value)})}
                         style={{ 
                           width: '100%', 
                           padding: '12px', 
@@ -644,6 +609,109 @@ export default function MyListingsPage() {
                       <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
                         Historical properties: 1500-2024
                       </div>
+                    </div>
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        fontSize: 14, 
+                        fontWeight: 500, 
+                        marginBottom: 6 
+                      }}>
+                        Lot Size (sq ft)
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.lot_sqft || ''}
+                        onChange={(e) => setEditForm({...editForm, lot_sqft: Number(e.target.value)})}
+                        style={{ 
+                          width: '100%', 
+                          padding: '12px', 
+                          minHeight: '44px',
+                          border: '1px solid #d1d5db', 
+                          borderRadius: 6,
+                          fontSize: '16px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        fontSize: 14, 
+                        fontWeight: 500, 
+                        marginBottom: 6 
+                      }}>
+                        Garage Spaces
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.garage_spaces || ''}
+                        onChange={(e) => setEditForm({...editForm, garage_spaces: Number(e.target.value)})}
+                        style={{ 
+                          width: '100%', 
+                          padding: '12px', 
+                          minHeight: '44px',
+                          border: '1px solid #d1d5db', 
+                          borderRadius: 6,
+                          fontSize: '16px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', 
+                    gap: '12px' 
+                  }}>
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        fontSize: 14, 
+                        fontWeight: 500, 
+                        marginBottom: 6 
+                      }}>
+                        ARV
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.arv || ''}
+                        onChange={(e) => setEditForm({...editForm, arv: Number(e.target.value)})}
+                        style={{ 
+                          width: '100%', 
+                          padding: '12px', 
+                          minHeight: '44px',
+                          border: '1px solid #d1d5db', 
+                          borderRadius: 6,
+                          fontSize: '16px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        fontSize: 14, 
+                        fontWeight: 500, 
+                        marginBottom: 6 
+                      }}>
+                        Repairs
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.repairs || ''}
+                        onChange={(e) => setEditForm({...editForm, repairs: Number(e.target.value)})}
+                        style={{ 
+                          width: '100%', 
+                          padding: '12px', 
+                          minHeight: '44px',
+                          border: '1px solid #d1d5db', 
+                          borderRadius: 6,
+                          fontSize: '16px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
                     </div>
                   </div>
 
@@ -906,9 +974,10 @@ export default function MyListingsPage() {
                         color: '#6b7280', 
                         marginBottom: 8 
                       }}>
-                        {listing.bedrooms !== undefined && <span>{listing.bedrooms} bd</span>}
-                        {listing.bathrooms !== undefined && <span>{listing.bathrooms} ba</span>}
-                        {listing.home_sqft !== undefined && <span>{listing.home_sqft.toLocaleString()} sqft</span>}
+                        {listing.beds !== undefined && <span>{listing.beds} bd</span>}
+                        {listing.baths !== undefined && <span>{listing.baths} ba</span>}
+                        {listing.sqft !== undefined && <span>{listing.sqft.toLocaleString()} sqft</span>}
+                        {listing.lot_sqft !== undefined && <span>Lot: {listing.lot_sqft.toLocaleString()} sqft</span>}
                       </div>
                     </div>
                   </div>

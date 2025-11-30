@@ -61,9 +61,9 @@ interface Row {
   latitude?: number;
   longitude?: number;
   created_at?: string;
-  updated_at?: string;
   featured?: boolean;
   featured_until?: string;
+  status?: string;
 }
 
 export default function ListingsClient({ initialListings = [], initialPoints = [] }: Props) {

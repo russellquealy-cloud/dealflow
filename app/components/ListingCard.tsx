@@ -56,6 +56,7 @@ export type ListingLike = {
   roi?: number | string; // percent
   featured?: boolean;
   featured_until?: string;
+  status?: string;
   owner_id?: string;
   owner_profile?: OwnerProfileSnapshot | null;
 };
@@ -119,8 +120,12 @@ export default function ListingCard({ listing }: Props) {
   const spread = toNum(listing.spread);
   const roi = toNum(listing.roi);
 
-  // Check if listing is currently featured
-  const isFeatured = listing.featured && (!listing.featured_until || new Date(listing.featured_until) > new Date());
+  // Check if listing is currently featured and live
+  // Only show featured banner for live listings
+  const isFeatured = 
+    listing.featured === true && 
+    listing.status === 'live' && 
+    (!listing.featured_until || new Date(listing.featured_until) > new Date());
 
   const showImage = img && !imageErrored;
   const isSupabaseImage = showImage ? isSupabaseStorageUrl(img) : false;
