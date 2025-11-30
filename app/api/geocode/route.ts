@@ -7,8 +7,10 @@
  * - GOOGLE_GEOCODE_API_KEY (server-side key, preferred)
  * - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (fallback, client-side key)
  * 
- * Returns: { lat: number, lng: number } on success
- *          { error: string } on failure (4xx/5xx status)
+ * Returns: 
+ * - Success: { found: true, lat: number, lng: number, viewport?: {...}, formattedAddress?: string }
+ * - No results: { found: false, reason: "NO_RESULTS" } with HTTP 200
+ * - Errors: { found: false, reason, error?: string } with HTTP 4xx/5xx
  */
 
 export const runtime = "nodejs";
@@ -32,7 +34,11 @@ type GeocodeResult = {
   error_message?: string;
 };
 
-export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number; lng: number } | { error: string }>> {
+type GeocodeResponse = 
+  | { found: true; lat: number; lng: number; viewport?: { north: number; south: number; east: number; west: number }; formattedAddress?: string }
+  | { found: false; reason: "NO_RESULTS" | "INVALID_REQUEST" | "REQUEST_DENIED" | "OVER_QUERY_LIMIT" | "UNKNOWN_ERROR"; error?: string };
+
+export async function POST(req: NextRequest): Promise<NextResponse<GeocodeResponse>> {
   try {
     const body = (await req.json()) as GeoReq;
     const query = (body.query || body.q || body.address || "").trim();
@@ -40,31 +46,54 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
 
     if (!query && !placeId) {
       return NextResponse.json(
-        { error: "Missing query parameter" },
+        { found: false, reason: 'INVALID_REQUEST', error: "Missing query parameter" },
         { status: 400 }
       );
     }
 
-    // Read API key and fail fast if missing
-    const apiKey = process.env.GOOGLE_GEOCODE_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    // Read API key - prefer server key, do NOT fallback to public key in production
+    // The public key should NOT be used server-side as it can have different restrictions
+    const apiKey = process.env.GOOGLE_GEOCODE_API_KEY;
+    const fallbackKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    
+    // Log which key is being used (for debugging)
+    const usingServerKey = !!apiKey;
+    const usingFallbackKey = !apiKey && !!fallbackKey;
+    
+    const activeKey = apiKey || fallbackKey;
 
-    if (!apiKey) {
-      console.error('Geocode API key is missing. Check Vercel env.');
+    if (!activeKey) {
+      console.error('Geocode API key is missing. Check Vercel env. GOOGLE_GEOCODE_API_KEY should be set.');
       return NextResponse.json(
-        { error: 'Geocoding service is not configured.' },
+        { found: false, reason: 'UNKNOWN_ERROR', error: 'Geocoding service is not configured.' },
         { status: 500 }
       );
     }
 
-    // Build the standard Google Geocoding API URL
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
+    if (usingFallbackKey) {
+      console.warn('⚠️ Using NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as fallback. Consider setting GOOGLE_GEOCODE_API_KEY for server-side geocoding.');
+    }
 
-    console.log('Geocode request', {
+    // Build the standard Google Geocoding API URL
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${activeKey}`;
+
+    // Log request details (with key redacted)
+    console.log('🔍 Geocode request initiated', {
       query,
-      url: url.replace(apiKey, '***'),
+      url: url.replace(activeKey, '***'),
+      usingServerKey,
+      usingFallbackKey,
+      keyType: usingServerKey ? 'GOOGLE_GEOCODE_API_KEY' : 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (fallback)'
     });
 
     const fetchResponse = await fetch(url);
+    
+    // Log HTTP response status from Google
+    console.log('📡 Google Geocoding API HTTP response', {
+      status: fetchResponse.status,
+      statusText: fetchResponse.statusText,
+      ok: fetchResponse.ok
+    });
 
     if (!fetchResponse.ok) {
       const text = await fetchResponse.text();
@@ -76,16 +105,34 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
 
       return NextResponse.json(
         {
-          error: 'Geocoding service denied request. Check API key and configuration.',
+          found: false,
+          reason: 'UNKNOWN_ERROR',
+          error: 'Geocoding service HTTP error. Check API key and configuration.',
         },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
     const data = (await fetchResponse.json()) as GeocodeResult;
 
-    console.log('Geocode response status', data.status);
+    // Log the data.status from Google's JSON response
+    console.log('📋 Google Geocoding API response data', {
+      status: data.status,
+      resultsCount: data.results?.length || 0,
+      errorMessage: data.error_message || 'none',
+      query
+    });
 
+    // Handle ZERO_RESULTS as a normal response (not an error) - return 200
+    if (data.status === 'ZERO_RESULTS') {
+      console.log('📍 Geocode returned ZERO_RESULTS', { query });
+      return NextResponse.json(
+        { found: false, reason: 'NO_RESULTS' },
+        { status: 200 } // Use 200 to indicate the request was successful, just no results
+      );
+    }
+
+    // Handle other non-OK statuses as actual errors
     if (data.status !== 'OK' || !data.results?.length) {
       console.error('Geocode API returned non-OK status', {
         status: data.status,
@@ -93,24 +140,39 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
         query,
       });
 
-      // Provide helpful error messages based on status
-      let errorMessage = 'Geocoding service could not find this location or rejected the request.';
+      // Map status codes to reason
+      let reason: "NO_RESULTS" | "INVALID_REQUEST" | "REQUEST_DENIED" | "OVER_QUERY_LIMIT" | "UNKNOWN_ERROR" = 'UNKNOWN_ERROR';
+      let errorMessage = 'Geocoding service could not process this request.';
       
       if (data.status === 'REQUEST_DENIED') {
-        errorMessage = 'Geocoding service denied request. Check key, billing, and restrictions.';
+        reason = 'REQUEST_DENIED';
+        errorMessage = 'Geocoding service denied request. This is a configuration issue - check API key, billing, and restrictions in Google Cloud Console.';
+        // REQUEST_DENIED is a configuration error, return 500 not 400
+        console.error('❌ REQUEST_DENIED from Google - Configuration issue', {
+          query,
+          errorMessage: data.error_message,
+          keyType: usingServerKey ? 'GOOGLE_GEOCODE_API_KEY' : 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (fallback)',
+          recommendation: 'Check that GOOGLE_GEOCODE_API_KEY is set in Vercel env and has Geocoding API enabled'
+        });
       } else if (data.status === 'INVALID_REQUEST') {
+        reason = 'INVALID_REQUEST';
         errorMessage = 'Invalid geocoding request. Please check the query format.';
       } else if (data.status === 'OVER_QUERY_LIMIT') {
+        reason = 'OVER_QUERY_LIMIT';
         errorMessage = 'Geocoding quota exceeded. Please try again later.';
-      } else if (data.status === 'ZERO_RESULTS') {
-        errorMessage = `Could not find location: ${query}. Please try a more specific location.`;
       } else if (data.error_message) {
         errorMessage = `Geocoding failed: ${data.error_message}`;
       }
 
+      // Return 4xx/5xx only for genuine server/request errors
+      // REQUEST_DENIED is a configuration issue, return 500
+      const statusCode = reason === 'REQUEST_DENIED' ? 500 :
+                        reason === 'INVALID_REQUEST' ? 400 : 
+                        reason === 'OVER_QUERY_LIMIT' ? 429 : 500;
+
       return NextResponse.json(
-        { error: errorMessage },
-        { status: 400 }
+        { found: false, reason, error: errorMessage },
+        { status: statusCode }
       );
     }
 
@@ -118,26 +180,18 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
     const viewport = data.results[0].geometry.viewport;
     const formattedAddress = data.results[0].formatted_address;
 
-    console.log('Geocode success', {
+    console.log('✅ Geocode success', {
       query,
       lat,
       lng,
       hasViewport: !!viewport,
       formattedAddress,
+      resultsCount: data.results?.length || 0
     });
 
     // Return coordinates with viewport if available
-    const geocodeResponse: {
-      lat: number;
-      lng: number;
-      viewport?: {
-        north: number;
-        south: number;
-        east: number;
-        west: number;
-      };
-      formattedAddress?: string;
-    } = {
+    const geocodeResponse: GeocodeResponse = {
+      found: true,
       lat,
       lng,
     };
@@ -162,7 +216,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ lat: number
       stack: e instanceof Error ? e.stack : undefined,
     });
     return NextResponse.json(
-      { error: "Geocoding service error. Please try again later." },
+      { found: false, reason: 'UNKNOWN_ERROR', error: "Geocoding service error. Please try again later." },
       { status: 500 }
     );
   }
