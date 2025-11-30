@@ -16,9 +16,25 @@ export async function GET(_request: NextRequest) {
     const supabase = await createServerClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
+    // Log auth status for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[analytics] Auth check:', {
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email,
+        error: userError?.message,
+      });
+    }
+
     if (userError || !user) {
+      // Log in both dev and prod for debugging (avoid logging sensitive data)
+      console.error('[analytics] Unauthorized - auth check failed:', {
+        hasError: !!userError,
+        errorMessage: userError?.message || 'No user found',
+        hasUser: !!user,
+      });
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "Unauthorized. Please sign in to view analytics." },
         { status: 401 }
       );
     }
