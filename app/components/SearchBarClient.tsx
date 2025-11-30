@@ -8,7 +8,7 @@ interface SearchBarClientProps {
   placeholder?: string;
 }
 
-const AUTOCOMPLETE_DEBOUNCE = 200;
+const AUTOCOMPLETE_DEBOUNCE = 300; // Slightly longer debounce for better performance
 
 // Type definitions for autocomplete suggestions
 interface AutocompleteSuggestion {
@@ -287,6 +287,8 @@ export default function SearchBarClient({
     const trimmed = q.trim();
     if (!trimmed) return;
     clearSuggestions();
+    // Always dispatch geocode on Enter, even if suggestions haven't loaded yet
+    // This ensures the search works even if autocomplete is slow
     dispatchGeocode(trimmed);
   }
 
@@ -297,7 +299,8 @@ export default function SearchBarClient({
     if (onChange) {
       onChange(newValue);
     }
-    if (browserCompatible && newValue.length >= 3) {
+    // Start autocomplete after 2-3 characters for better UX
+    if (browserCompatible && newValue.length >= 2) {
       debouncedFetch(newValue);
     } else {
       clearSuggestions();
@@ -317,6 +320,17 @@ export default function SearchBarClient({
   );
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    // Handle Enter key separately - let form submission handle it if no suggestion is selected
+    if (event.key === 'Enter') {
+      if (activeIndex >= 0 && suggestions.length > 0) {
+        // If a suggestion is highlighted, select it
+        event.preventDefault();
+        handleSuggestionSelect(suggestions[activeIndex]);
+      }
+      // Otherwise, let the form submit handler trigger geocoding
+      return;
+    }
+
     if (!suggestions.length) return;
 
     if (event.key === 'ArrowDown') {
@@ -325,9 +339,6 @@ export default function SearchBarClient({
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
-    } else if (event.key === 'Enter' && activeIndex >= 0) {
-      event.preventDefault();
-      handleSuggestionSelect(suggestions[activeIndex]);
     } else if (event.key === 'Escape') {
       clearSuggestions();
     }

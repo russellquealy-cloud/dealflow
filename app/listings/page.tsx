@@ -79,6 +79,7 @@ export default function ListingsPage() {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
   const [mapZoom, setMapZoom] = useState<number | undefined>(undefined);
   const [mapViewport, setMapViewport] = useState<{ north: number; south: number; east: number; west: number } | undefined>(undefined);
+  const [shouldLoadMap, setShouldLoadMap] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     minPrice: null,
     maxPrice: null,
