@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth/server';
+import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
 
 export const runtime = 'nodejs';
 
@@ -15,7 +15,8 @@ function parseBoolean(value: string | null): boolean | null {
 
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -100,7 +101,8 @@ function isPatchPayload(input: unknown): input is PatchPayload {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -113,7 +115,7 @@ export async function PATCH(request: NextRequest) {
 
     const { error } = await supabase
       .from('notifications')
-      .update({ is_read: body.is_read })
+      .update({ is_read: body.is_read } as never)
       .eq('user_id', user.id)
       .in('id', body.ids);
 

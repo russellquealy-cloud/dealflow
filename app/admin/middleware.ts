@@ -14,7 +14,7 @@ export async function adminMiddleware() {
     .from('profiles')
     .select('role, segment')
     .eq('id', session.user.id)
-    .single();
+    .single<{ role: string | null; segment: string | null }>();
 
   const isAdmin = profile?.role === 'admin' || profile?.segment === 'admin';
   if (!isAdmin) {

@@ -1,12 +1,13 @@
 // app/api/billing/portal/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createPortalSession } from '@/lib/stripe';
-import { getAuthUser } from '@/lib/auth/server';
+import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
 
 export async function POST(request: NextRequest) {
   try {
     // Get user from session
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json(
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('stripe_customer_id')
       .eq('id', user.id)
-      .single();
+      .single<{ stripe_customer_id: string | null }>();
 
     if (!profile?.stripe_customer_id) {
       return NextResponse.json(

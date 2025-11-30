@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getAuthUserServer, createSupabaseServerComponent } from '@/app/lib/auth/server';
+import { getAuthUserServer, createSupabaseServerComponent } from '@/lib/auth/server';
 import { isPro } from '@/lib/analytics/proGate';
+import type { AnyProfile } from "@/lib/profileCompleteness";
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export default async function AnalyticsLayout({
     .from('profiles')
     .select('role, segment, tier, membership_tier')
     .eq('id', user.id)
-    .single();
+    .single<AnyProfile>();
 
   // Check if user is admin using the same logic as requireAdminServer
   const isAdminUser =
@@ -33,7 +34,7 @@ export default async function AnalyticsLayout({
     user.email === 'admin@offaxisdeals.com';
 
   // Check if user is Pro (Investor or Wholesaler) - admins bypass this check
-  if (!isAdminUser && !isPro(profile)) {
+  if (!isAdminUser && !isPro(profile?.tier ?? null)) {
     redirect('/pricing?highlight=pro');
   }
 

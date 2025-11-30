@@ -1,10 +1,10 @@
-// app/lib/auth/server.ts
 import { cookies } from "next/headers";
-import { createServerComponentClient, createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-// Using a generic type since Database type may not exist
-// This can be refined later with proper Database types
-type Database = Record<string, unknown>;
+import {
+  createServerComponentClient,
+  createRouteHandlerClient,
+} from "@supabase/auth-helpers-nextjs";
+import type { Database } from "@/types/supabase";
 
 export function createSupabaseServerComponent() {
   const cookieStore = cookies();
@@ -24,7 +24,7 @@ export async function getAuthUserServer() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    return { user: null as const, error };
+    return { user: null, error };
   }
 
   return { user, error: null };

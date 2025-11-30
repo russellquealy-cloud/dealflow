@@ -1,4 +1,5 @@
-import { getAuthUserServer, createSupabaseServerComponent } from '@/app/lib/auth/server';
+import { getAuthUserServer, createSupabaseServerComponent } from '@/lib/auth/server';
+import type { AnyProfile } from "@/lib/profileCompleteness";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export default async function LeadConversionPage() {
     .from('profiles')
     .select('role, segment')
     .eq('id', user.id)
-    .single();
+    .single<AnyProfile>();
 
   const role = (profile?.role || profile?.segment || 'investor').toLowerCase() as 'investor' | 'wholesaler';
   const isWholesaler = role === 'wholesaler';
@@ -26,7 +27,15 @@ export default async function LeadConversionPage() {
     const { data: listings } = await supabase
       .from('listings')
       .select('id, city, state, status')
-      .eq('owner_id', user.id);
+      .eq('owner_id', user.id)
+      .returns<
+        {
+          id: string;
+          status: string | null;
+          owner_id?: string;
+          [key: string]: unknown;
+        }[]
+      >();
 
     const totalListings = listings?.length || 0;
     const soldListings = listings?.filter((l) => {
@@ -41,7 +50,14 @@ export default async function LeadConversionPage() {
       const { data: messages } = await supabase
         .from('messages')
         .select('from_id, listing_id')
-        .in('listing_id', listingIds.slice(0, 1000));
+        .in('listing_id', listingIds.slice(0, 1000))
+        .returns<
+          {
+            from_id: string | null;
+            listing_id: string | null;
+            [key: string]: unknown;
+          }[]
+        >();
       
       contactsReceived = new Set(
         (messages || []).map((m) => m.from_id).filter(Boolean)
@@ -93,8 +109,15 @@ export default async function LeadConversionPage() {
 
   const { data: messages } = await supabase
     .from('messages')
-    .select('listing_id')
-    .eq('from_id', user.id);
+    .select('from_id, listing_id')
+    .eq('from_id', user.id)
+    .returns<
+      {
+        from_id: string | null;
+        listing_id: string | null;
+        [key: string]: unknown;
+      }[]
+    >();
 
   const contactedCount = new Set((messages || []).map((m) => m.listing_id).filter(Boolean)).size;
 

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeStructured, type UserRole, type InvestorQuestionInput, type WholesalerQuestionInput } from '@/lib/ai-analyzer-structured';
 import { getUserSubscriptionTier } from '@/lib/subscription';
-import { getAuthUser } from '@/lib/auth/server';
+import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
 import { checkAndIncrementAiUsage } from '@/lib/ai/usage';
 import type { SubscriptionTier } from '@/lib/stripe';
 import { notifyRepairEstimateReady } from '@/lib/notifications';
 
 export async function POST(request: NextRequest) {
-  let subscriptionTier: SubscriptionTier = 'FREE';
+  let subscriptionTier: SubscriptionTier = 'free';
 
   try {
     const body = await request.json();
@@ -22,18 +22,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const supabase = createSupabaseRouteClient();
 
     // Verify user role matches
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, segment, tier, membership_tier')
       .eq('id', user.id)
-      .single();
+      .single<{ role: string | null; segment: string | null; tier: string | null; membership_tier: string | null }>();
 
     const userRole = profile?.role ?? null;
     const isAdmin = userRole === 'admin';
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'This analysis is only available for wholesalers' }, { status: 403 });
     }
 
-    subscriptionTier = await getUserSubscriptionTier(user.id, supabase);
+    subscriptionTier = await getUserSubscriptionTier(supabase, user.id);
 
     // Get plan and test status from profile
     const profileTier = profile?.tier?.toLowerCase() ?? 'free';
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('is_test')
       .eq('id', user.id)
-      .single();
+      .single<{ is_test: boolean | null }>();
     
     const email = (user.email ?? '').toLowerCase();
     const isTestAccount =
@@ -93,7 +95,7 @@ export async function POST(request: NextRequest) {
           .from('listings')
           .select('owner_id, title')
           .eq('id', listingId)
-          .maybeSingle();
+          .maybeSingle<{ owner_id: string | null; title: string | null }>();
 
         if (listingData?.owner_id && listingData.owner_id === user.id) {
           const repairCost = result.result && typeof result.result === 'object' && 'answer' in result.result

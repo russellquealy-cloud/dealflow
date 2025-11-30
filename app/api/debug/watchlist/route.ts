@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth/server';
+import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
 
 /**
  * Debug endpoint to verify watchlist data and listings
@@ -7,7 +7,8 @@ import { getAuthUser } from '@/lib/auth/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('id', watchlistId)
           .eq('user_id', user.id)
-          .maybeSingle();
+          .maybeSingle<{ property_id: string | null; [key: string]: unknown }>();
 
         debug.watchlistRow = {
           data: watchlistRow,
@@ -83,7 +84,8 @@ export async function GET(request: NextRequest) {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(10)
+        .returns<{ property_id: string | null; [key: string]: unknown }[]>();
 
       debug.watchlistRows = {
         count: watchlistRows?.length || 0,
@@ -100,7 +102,8 @@ export async function GET(request: NextRequest) {
         const { data: listingsData, error: listingsError } = await supabase
           .from('listings')
           .select('id, title, status, owner_id, created_at')
-          .in('id', propertyIds);
+          .in('id', propertyIds)
+          .returns<{ id: string; title: string | null; status: string | null; owner_id: string; created_at: string; [key: string]: unknown }[]>();
 
         debug.listingsQuery = {
           requestedPropertyIds: propertyIds,

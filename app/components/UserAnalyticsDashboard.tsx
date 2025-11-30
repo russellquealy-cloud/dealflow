@@ -187,7 +187,7 @@ function renderCoreMetrics(stats: CoreStats, role: 'investor' | 'wholesaler', av
       <MetricCard
         key={metric.label}
         title={metric.label}
-        value={typeof metric.value === 'string' ? metric.value : formatNumber(metric.value)}
+        value={typeof metric.value === 'string' ? metric.value : formatNumber(typeof metric.value === 'number' ? metric.value : 0)}
         accent={metric.accent}
       />
     ));
@@ -205,7 +205,7 @@ function renderCoreMetrics(stats: CoreStats, role: 'investor' | 'wholesaler', av
     <MetricCard
       key={metric.label}
       title={metric.label}
-      value={formatNumber(metric.value)}
+      value={formatNumber(typeof metric.value === 'number' ? metric.value : 0)}
       accent={metric.accent}
     />
   ));
@@ -241,20 +241,20 @@ function renderHotMarkets(markets: { label: string; value: number }[]) {
 
 function renderInvestorSection(stats: InvestorStats) {
   const activityTone =
-    stats.activityScore >= 70 ? '#16a34a' : stats.activityScore >= 40 ? '#0ea5e9' : '#f97316';
+    (stats.activityScore ?? 0) >= 70 ? '#16a34a' : (stats.activityScore ?? 0) >= 40 ? '#0ea5e9' : '#f97316';
 
   return (
     <div style={gridStyle}>
       <MetricCard
         title="Deals Viewed (30 days)"
-        value={formatNumber(stats.dealsViewed.current)}
-        subLabel={<TrendPill trend={stats.dealsViewed} />}
+        value={formatNumber(stats.dealsViewed?.current ?? 0)}
+        subLabel={stats.dealsViewed ? <TrendPill trend={stats.dealsViewed} /> : null}
       >
         <div style={mutedTextStyle}>Compared to previous 30 days</div>
       </MetricCard>
 
       <MetricCard title="Hot Markets" value="" grow>
-        {renderHotMarkets(stats.hotMarkets)}
+        {Array.isArray(stats.hotMarkets) ? renderHotMarkets(stats.hotMarkets) : null}
       </MetricCard>
 
       <MetricCard
@@ -276,7 +276,7 @@ function renderInvestorSection(stats: InvestorStats) {
 
       <MetricCard
         title="Activity Score"
-        value={stats.activityScore.toString()}
+        value={(stats.activityScore ?? 0).toString()}
         accent={activityTone}
       >
         <div style={mutedTextStyle}>
@@ -288,6 +288,7 @@ function renderInvestorSection(stats: InvestorStats) {
 }
 
 function renderListingBreakdown(breakdown: WholesalerStats['listingStatusBreakdown']) {
+  if (!breakdown) return null;
   const total = breakdown.total || 1;
   const activePercent = breakdown.active / total;
 
@@ -375,16 +376,16 @@ function renderWholesalerSection(stats: WholesalerStats) {
     <div style={gridStyle}>
       <MetricCard
         title="Listings Performance"
-        value={`${formatNumber(stats.listingStatusBreakdown.total)}`}
-        subLabel={<TrendPill trend={stats.listingsPosted} />}
+        value={`${formatNumber(stats.listingStatusBreakdown?.total ?? 0)}`}
+        subLabel={typeof stats.listingsPosted === 'object' && stats.listingsPosted ? <TrendPill trend={stats.listingsPosted} /> : null}
       >
-        {renderListingBreakdown(stats.listingStatusBreakdown)}
+        {stats.listingStatusBreakdown ? renderListingBreakdown(stats.listingStatusBreakdown) : null}
       </MetricCard>
 
       <MetricCard
         title="Leads Generated"
-        value={formatNumber(stats.leadsGenerated.current)}
-        subLabel={<TrendPill trend={stats.leadsGenerated} />}
+        value={formatNumber(stats.leadsGenerated?.current ?? 0)}
+        subLabel={stats.leadsGenerated ? <TrendPill trend={stats.leadsGenerated} /> : null}
       >
         <div style={mutedTextStyle}>Distinct investors contacting you.</div>
       </MetricCard>
@@ -406,7 +407,7 @@ function renderWholesalerSection(stats: WholesalerStats) {
       </MetricCard>
 
       <MetricCard title="Hot Markets" value="" grow>
-        {renderHotMarkets(stats.hotMarkets)}
+        {Array.isArray(stats.hotMarkets) ? renderHotMarkets(stats.hotMarkets) : null}
       </MetricCard>
     </div>
   );
@@ -500,7 +501,7 @@ function AdvancedAnalyticsSection({ isPro, userProfile }: { isPro: boolean; user
   const handleCardClick = (href: string) => {
     // Use the isPro prop that comes from the analytics API (which checks the database)
     // Fallback to checking userProfile if isPro prop is not available
-    const userIsPro = isPro ?? checkIsPro(userProfile);
+    const userIsPro = isPro ?? checkIsPro(userProfile?.tier ?? null);
     
     if (userIsPro) {
       router.push(href);
@@ -559,12 +560,12 @@ export default function UserAnalyticsDashboard({ stats, isPro, userProfile }: Us
       <div style={gridStyle}>
         {renderCoreMetrics(
           stats,
-          stats.role,
-          stats.role === 'wholesaler' ? (stats as WholesalerStats).avgResponseTimeHours : undefined
+          (userProfile?.role || userProfile?.segment || 'investor') as 'investor' | 'wholesaler',
+          (userProfile?.role === 'wholesaler' || userProfile?.segment === 'wholesaler') ? (stats as WholesalerStats).avgResponseTimeHours : undefined
         )}
       </div>
 
-      {stats.role === 'investor'
+      {(userProfile?.role === 'investor' || userProfile?.segment === 'investor')
         ? renderInvestorSection(stats as InvestorStats)
         : renderWholesalerSection(stats as WholesalerStats)}
 

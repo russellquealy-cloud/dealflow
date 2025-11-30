@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
-import { createSupabaseServerServiceRole } from '@/lib/supabase/serverServiceRole';
+import { getSupabaseServiceRole } from '@/lib/supabase/service';
 import { logger } from '@/lib/logger';
 import { notifyBuyerInterest } from '@/lib/notifications';
 
@@ -259,7 +259,7 @@ export async function GET(request: NextRequest) {
     // The user already has access to these listings via their watchlist, so this is safe
     console.log('Watchlist listingIds', listingIds);
 
-    const serviceClient = createSupabaseServerServiceRole();
+    const serviceClient = await getSupabaseServiceRole();
 
     const { data: listingsData, error: listingsError } = await serviceClient
       .from('listings')

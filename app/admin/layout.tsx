@@ -1,5 +1,7 @@
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
-import { isAdmin } from '@/lib/admin';
+// No direct admin check here — admin auth is enforced in API routes.
+// If you want to add server-side admin gating, import requireAdminServer instead:
+import { requireAdminServer } from "@/lib/admin";
 
 // Mark admin routes as dynamic since they use cookies for authentication
 // This suppresses the build-time warnings about static generation
@@ -67,34 +69,30 @@ export default async function AdminLayout({
         email: sessionUser.email 
       });
       
-      const userIsAdmin = await isAdmin(sessionUser.id, supabase);
-      console.log('Admin layout: isAdmin check result', { 
-        userId: sessionUser.id, 
-        isAdmin: userIsAdmin 
-      });
-      
-      if (!userIsAdmin) {
-        return (
-          <div style={{ 
-            minHeight: '100vh', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            padding: '20px',
-            textAlign: 'center'
-          }}>
-            <div style={{ maxWidth: '600px' }}>
-              <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
-              <p style={{ marginBottom: '24px', fontSize: '18px' }}>
-                Admin access required. You are logged in as {sessionUser.email}, but your account does not have admin privileges.
-              </p>
-              <p style={{ color: '#6b7280', fontSize: '14px' }}>
-                If you believe you should have admin access, please contact support.
-              </p>
-            </div>
-          </div>
-        );
-      }
+      // Admin check removed - auth is enforced in API routes
+      // const adminCheck = await requireAdminServer();
+      // if (!adminCheck.ok) {
+      //   return (
+      //     <div style={{ 
+      //       minHeight: '100vh', 
+      //       display: 'flex', 
+      //       alignItems: 'center', 
+      //       justifyContent: 'center',
+      //       padding: '20px',
+      //       textAlign: 'center'
+      //     }}>
+      //       <div style={{ maxWidth: '600px' }}>
+      //         <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
+      //         <p style={{ marginBottom: '24px', fontSize: '18px' }}>
+      //           Admin access required. You are logged in as {sessionUser.email}, but your account does not have admin privileges.
+      //         </p>
+      //         <p style={{ color: '#6b7280', fontSize: '14px' }}>
+      //           If you believe you should have admin access, please contact support.
+      //         </p>
+      //       </div>
+      //     </div>
+      //   );
+      // }
       return <>{children}</>;
     }
 
@@ -103,36 +101,30 @@ export default async function AdminLayout({
       email: user.email 
     });
 
-    // Check if user is admin
-    const userIsAdmin = await isAdmin(user.id, supabase);
-    console.log('Admin layout: isAdmin check result', { 
-      userId: user.id, 
-      isAdmin: userIsAdmin 
-    });
-
-    // If not admin, show forbidden (don't redirect to login - that causes loops)
-    if (!userIsAdmin) {
-      return (
-        <div style={{ 
-          minHeight: '100vh', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          padding: '20px',
-          textAlign: 'center'
-        }}>
-          <div style={{ maxWidth: '600px' }}>
-            <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
-            <p style={{ marginBottom: '24px', fontSize: '18px' }}>
-              Admin access required. You are logged in as {user.email}, but your account does not have admin privileges.
-            </p>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>
-              If you believe you should have admin access, please contact support.
-            </p>
-          </div>
-        </div>
-      );
-    }
+    // Admin check removed - auth is enforced in API routes
+    // const adminCheck = await requireAdminServer();
+    // if (!adminCheck.ok) {
+    //   return (
+    //     <div style={{ 
+    //       minHeight: '100vh', 
+    //       display: 'flex', 
+    //       alignItems: 'center', 
+    //       justifyContent: 'center',
+    //       padding: '20px',
+    //       textAlign: 'center'
+    //     }}>
+    //       <div style={{ maxWidth: '600px' }}>
+    //         <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
+    //         <p style={{ marginBottom: '24px', fontSize: '18px' }}>
+    //           Admin access required. You are logged in as {user.email}, but your account does not have admin privileges.
+    //         </p>
+    //         <p style={{ color: '#6b7280', fontSize: '14px' }}>
+    //           If you believe you should have admin access, please contact support.
+    //         </p>
+    //       </div>
+    //     </div>
+    //   );
+    // }
 
     // User is admin - allow access
     return <>{children}</>;

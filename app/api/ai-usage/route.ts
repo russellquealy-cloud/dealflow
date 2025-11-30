@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     const includeErrors = searchParams.get('errors') === 'true';
 
     // Check if admin
-    const userIsAdmin = await isAdmin(user.id, supabase);
+    const userIsAdmin = isAdmin(user?.email || user?.id);
 
     // Admin-only: Get usage by user
     if (targetUserId && userIsAdmin) {
@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
       .eq('month_start', monthStart)
       .maybeSingle();
 
-    const tier = await getUserSubscriptionTier(user.id, supabase);
+    const tier = await getUserSubscriptionTier(supabase, user.id);
     const limits = getPlanLimits(tier);
     const limit = limits.ai_analyses ?? 0;
 

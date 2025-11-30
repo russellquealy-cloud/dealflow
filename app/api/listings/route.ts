@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     // Get Supabase client and user for owner profiles and admin checks
     const supabase = await createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
-    const userIsAdmin = user ? await isAdmin(user.id, supabase) : false;
+    const userIsAdmin = user ? isAdmin(user.email || user.id) : false;
 
     // Use unified listings helper - single source of truth for map and list views
     const queryParams: ListingsQueryParams = {

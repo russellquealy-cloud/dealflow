@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeProperty, type AIAnalysisInput } from '@/lib/ai-analyzer';
 import { canUserPerformAction, getUserSubscriptionTier } from '@/lib/subscription';
-import { getAuthUser } from '@/lib/auth/server';
+import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
 import { checkAndIncrementAiUsage } from '@/lib/ai/usage';
 
 export async function POST(request: NextRequest) {
@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('tier, membership_tier, is_test, role')
       .eq('id', user.id)
-      .single();
+      .single<{ tier: string | null; membership_tier: string | null; is_test: boolean | null; role: string | null }>();
 
     const isAdmin = profile?.role === 'admin';
     const profileTier = profile?.tier?.toLowerCase() ?? 'free';
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     const quota = await checkAndIncrementAiUsage(user.id, plan, isAdmin || isTestAccount);
     if (!quota.allowed) {
       const status = quota.reason === 'quota_exceeded' ? 429 : 500;
-      const tier = await getUserSubscriptionTier(user.id, supabase);
+      const tier = await getUserSubscriptionTier(supabase, user.id);
       return NextResponse.json({ 
         error: quota.reason === 'quota_exceeded' 
           ? 'Monthly AI analysis quota exceeded. Please upgrade your plan or wait until next month.'
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Check if user can perform AI analysis (legacy check, kept for compatibility)
     const canAnalyze = await canUserPerformAction(user.id, 'ai_analyses', 1, supabase);
     if (!canAnalyze) {
-      const tier = await getUserSubscriptionTier(user.id, supabase);
+      const tier = await getUserSubscriptionTier(supabase, user.id);
       return NextResponse.json({ 
         error: 'AI analysis not available on your plan',
         tier,
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       .eq('analysis_type', 'arv')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .single<{ output_data: unknown }>();
 
     if (existingAnalysis) {
       return NextResponse.json({
@@ -101,7 +102,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from session
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -115,7 +117,7 @@ export async function GET(request: NextRequest) {
       .eq('analysis_type', 'arv')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .single<{ output_data: unknown; created_at: string }>();
 
     if (error && error.code !== 'PGRST116') {
       throw new Error(`Failed to get analysis: ${error.message}`);

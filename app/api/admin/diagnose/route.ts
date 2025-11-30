@@ -1,16 +1,20 @@
-// app/api/admin/diagnose/route.ts
 import { NextResponse } from "next/server";
-import { requireAdminServer } from "@/app/lib/admin";
-import { createSupabaseRouteClient } from "@/app/lib/auth/server";
 
-export const dynamic = "force-dynamic";
+import { requireAdminServer } from "@/lib/admin";
+
+import { createSupabaseRouteClient } from "@/lib/auth/server";
 
 export async function GET() {
   const admin = await requireAdminServer();
+
   if (!admin.ok) {
     return NextResponse.json(
-      { error: "Unauthorized", reason: admin.reason, status: admin.status },
-      { status: admin.status },
+      {
+        error: "Unauthorized",
+        reason: admin.reason,
+        status: admin.status,
+      },
+      { status: admin.status }
     );
   }
 
@@ -18,7 +22,7 @@ export async function GET() {
 
   const {
     data: { user },
-    error: userError,
+    error: authError,
   } = await supabase.auth.getUser();
 
   return NextResponse.json(
@@ -27,8 +31,8 @@ export async function GET() {
       admin: true,
       adminProfile: admin.profile,
       authUser: user,
-      authError: userError?.message ?? null,
+      authError: authError?.message ?? null,
     },
-    { status: 200 },
+    { status: 200 }
   );
 }

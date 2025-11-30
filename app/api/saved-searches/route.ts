@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth/server';
+import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
 
 // GET: Fetch user's saved searches
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest) {
 // POST: Create saved search
 export async function POST(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const { data: search, error } = await supabase
       .from('saved_searches')
-      .insert(insertData)
+      .insert(insertData as never)
       .select('*')
       .single();
 
@@ -101,7 +103,8 @@ export async function POST(request: NextRequest) {
 // PUT: Update saved search
 export async function PUT(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -121,7 +124,7 @@ export async function PUT(request: NextRequest) {
 
     const { data: search, error } = await supabase
       .from('saved_searches')
-      .update(updateData)
+      .update(updateData as never)
       .eq('id', id)
       .eq('user_id', user.id)
       .select('*')
@@ -153,7 +156,8 @@ export async function PUT(request: NextRequest) {
 // DELETE: Delete saved search
 export async function DELETE(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

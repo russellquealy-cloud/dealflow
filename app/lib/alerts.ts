@@ -21,7 +21,7 @@ export async function triggerAlert(
       .from('profiles')
       .select('segment, role, email')
       .eq('id', userId)
-      .single();
+      .single<{ segment: string | null; role: string | null; email: string | null }>();
 
     if (!profile) {
       return { success: false, error: 'User profile not found' };
@@ -37,7 +37,7 @@ export async function triggerAlert(
       .eq('user_id', userId)
       .eq('role', role)
       .eq('alert_type', alertType)
-      .single();
+      .single<{ is_enabled: boolean | null }>();
 
     // If alert is disabled, don't send
     if (alertPref && !alertPref.is_enabled) {

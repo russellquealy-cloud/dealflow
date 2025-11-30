@@ -374,17 +374,17 @@ function getPlanInfo(segment?: string, tier?: string): { name: string; tier: Sub
   const segmentUpper = segment?.toUpperCase() || 'INVESTOR';
   const tierUpper = tier?.toUpperCase() || 'FREE';
   
-  let subscriptionTier: SubscriptionTier = 'FREE';
+  let subscriptionTier: SubscriptionTier = 'free';
   let planName = 'Free';
   const features: string[] = [];
   
   if (tierUpper === 'FREE') {
-    subscriptionTier = 'FREE';
+    subscriptionTier = 'free';
     planName = 'Free';
     features.push('Browse listings');
     features.push('View basic property details');
   } else if (segmentUpper === 'INVESTOR' && tierUpper === 'BASIC') {
-    subscriptionTier = 'INVESTOR_BASIC';
+    subscriptionTier = 'basic';
     planName = 'Investor Basic';
     features.push('Unlimited listing views');
     features.push('Contact property owners');
@@ -394,7 +394,7 @@ function getPlanInfo(segment?: string, tier?: string): { name: string; tier: Sub
     features.push('Map drawing tools');
     features.push('Satellite view');
   } else if (segmentUpper === 'INVESTOR' && tierUpper === 'PRO') {
-    subscriptionTier = 'INVESTOR_PRO';
+    subscriptionTier = 'pro';
     planName = 'Investor Pro';
     features.push('Everything in Basic');
     features.push('Unlimited AI analyses');
@@ -404,7 +404,7 @@ function getPlanInfo(segment?: string, tier?: string): { name: string; tier: Sub
     features.push('Priority support');
     features.push('API access');
   } else if (segmentUpper === 'WHOLESALER' && tierUpper === 'BASIC') {
-    subscriptionTier = 'WHOLESALER_BASIC';
+    subscriptionTier = 'basic';
     planName = 'Wholesaler Basic';
     features.push('Post up to 10 listings/month');
     features.push('Basic analytics (views, saves)');
@@ -412,7 +412,7 @@ function getPlanInfo(segment?: string, tier?: string): { name: string; tier: Sub
     features.push('Contact tracking');
     features.push('Email support');
   } else if (segmentUpper === 'WHOLESALER' && tierUpper === 'PRO') {
-    subscriptionTier = 'WHOLESALER_PRO';
+    subscriptionTier = 'pro';
     planName = 'Wholesaler Pro';
     features.push('Post up to 30 listings/month');
     features.push('AI repair estimator');

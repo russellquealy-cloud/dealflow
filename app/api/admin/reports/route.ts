@@ -1,43 +1,31 @@
-// app/api/admin/reports/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminServer } from "@/app/lib/admin";
+import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-
-export async function GET() {
-  const admin = await requireAdminServer();
-  if (!admin.ok) {
-    return NextResponse.json(
-      { error: "Unauthorized", reason: admin.reason, status: admin.status },
-      { status: admin.status },
-    );
-  }
-
-  return NextResponse.json({
-    ok: true,
-    message: "Reports endpoint is available. Use POST to generate reports.",
-  });
-}
+import { requireAdminServer } from "@/lib/admin";
 
 export async function POST() {
   const admin = await requireAdminServer();
+
   if (!admin.ok) {
     return NextResponse.json(
-      { error: "Unauthorized", reason: admin.reason, status: admin.status },
-      { status: admin.status },
+      {
+        error: "Unauthorized",
+        reason: admin.reason,
+        status: admin.status,
+      },
+      { status: admin.status }
     );
   }
 
-  // Keep this minimal for now – just return a stub "report"
-  // so the front-end stops throwing "Failed to generate report: Unauthorized"
   const now = new Date().toISOString();
 
+  // Stub implementation so the UI stops failing with "Failed to generate report: Unauthorized".
+  // You can later replace this with real reporting logic.
   return NextResponse.json(
     {
       ok: true,
       generatedAt: now,
       summary: "Admin reporting stub in place – replace with real implementation later.",
     },
-    { status: 200 },
+    { status: 200 }
   );
 }

@@ -37,10 +37,10 @@ export async function getUserSubscriptionTier(userId: string, client?: SupabaseC
 
   if (error) {
     console.error('Error getting subscription tier:', error);
-    return 'FREE';
+    return 'free';
   }
 
-  return (data as SubscriptionTier) || 'FREE';
+  return (data as SubscriptionTier) || 'free';
 }
 
 export async function canUserPerformAction(
@@ -107,12 +107,25 @@ export async function getUserUsage(userId: string, client?: SupabaseClient) {
   };
 }
 
+// Map lowercase SubscriptionTier to uppercase SubscriptionTierLegacy for STRIPE_PLANS
+function mapTierToLegacy(tier: SubscriptionTier): 'FREE' | 'INVESTOR_BASIC' | 'INVESTOR_PRO' | 'WHOLESALER_BASIC' | 'WHOLESALER_PRO' {
+  switch (tier) {
+    case 'free': return 'FREE';
+    case 'basic': return 'INVESTOR_BASIC'; // Default to investor basic
+    case 'pro': return 'INVESTOR_PRO'; // Default to investor pro
+    case 'enterprise': return 'INVESTOR_PRO'; // Map enterprise to pro for now
+    default: return 'FREE';
+  }
+}
+
 export function getPlanLimits(tier: SubscriptionTier): PlanLimits {
-  return STRIPE_PLANS[tier].limits;
+  const legacyTier = mapTierToLegacy(tier);
+  return STRIPE_PLANS[legacyTier].limits;
 }
 
 export function getPlanFeatures(tier: SubscriptionTier) {
-  return STRIPE_PLANS[tier].features;
+  const legacyTier = mapTierToLegacy(tier);
+  return STRIPE_PLANS[legacyTier].features;
 }
 
 export async function logContactAction(

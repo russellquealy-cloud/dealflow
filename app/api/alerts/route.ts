@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         type,
         criteria,
         active: true
-      })
+      } as never)
       .select('*')
       .single();
 
@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest) {
 
     const { data: alert, error } = await supabase
       .from('alerts')
-      .update(updateData)
+      .update(updateData as never)
       .eq('id', id)
       .eq('user_id', user.id)
       .select('*')

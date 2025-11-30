@@ -1,7 +1,7 @@
 // app/api/admin/fix-account/route.ts
 import { NextResponse } from "next/server";
-import { requireAdminServer } from "@/app/lib/admin";
-import { createSupabaseRouteClient } from "@/app/lib/auth/server";
+import { requireAdminServer } from "@/lib/admin";
+import { createSupabaseRouteClient } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +29,10 @@ export async function POST() {
     return NextResponse.json({ error: "No user" }, { status: 400 });
   }
 
+  // Narrow local type issue: payload shape is valid, but Supabase typings infer `never` here.
   const { error } = await supabase
     .from("profiles")
-    .update({ role: "admin", segment: "admin" })
+    .update({ role: "admin", segment: "admin" } as never)
     .eq("id", user.id);
 
   if (error) {

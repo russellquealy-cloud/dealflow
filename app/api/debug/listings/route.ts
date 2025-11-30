@@ -11,7 +11,7 @@ export async function GET(_request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
-    const userIsAdmin = user ? await isAdmin(user.id, supabase) : false;
+    const userIsAdmin = user ? isAdmin(user.email || user.id) : false;
 
     // Note: city and state filters could be added here if needed for future filtering
     // const { searchParams } = new URL(request.url);

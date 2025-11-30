@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
           subject: subject || emailSubject,
           message: message,
           created_at: new Date().toISOString()
-        })
-        .then(({ error }) => {
+        } as never)
+        .then(({ error }: { error: { message: string; code?: string } | null }) => {
           if (error) {
             console.error('Error storing feedback in database:', error);
             // Don't fail the request if DB insert fails

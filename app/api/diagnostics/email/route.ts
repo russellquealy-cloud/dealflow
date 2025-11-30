@@ -1,6 +1,6 @@
 // app/api/diagnostics/email/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminServer } from '@/app/lib/admin';
+import { requireAdminServer } from '@/lib/admin';
 import { sendViaSMTP } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
@@ -27,27 +27,21 @@ export async function POST(req: NextRequest) {
       <p>Best regards,<br/>The OffAxis Deals Team</p>
     `;
 
-    const { success, details, messageId, accepted, rejected } = await sendViaSMTP({
+    const { messageId, accepted, rejected, response } = await sendViaSMTP({
       to,
       subject,
-      htmlContent,
+      html: htmlContent,
     });
 
-    if (success) {
-      return NextResponse.json({
-        success: true,
-        message: 'Test email sent successfully.',
-        sentTo: to,
-        messageId,
-        accepted,
-        rejected,
-      });
-    } else {
-      return NextResponse.json(
-        { success: false, error: 'Failed to send test email.', details },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Test email sent successfully.',
+      sentTo: to,
+      messageId,
+      accepted,
+      rejected,
+      response,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },

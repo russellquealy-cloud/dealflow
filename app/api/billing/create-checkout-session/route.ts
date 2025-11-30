@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { getAuthUser } from "@/lib/auth/server";
+import { getAuthUserServer, createSupabaseRouteClient } from "@/lib/auth/server";
 import { STRIPE_PRICES, getStripe } from "@/lib/stripe";
 import { getOrCreateStripeCustomerId } from "@/lib/billing/stripeCustomer";
 
@@ -34,7 +34,8 @@ function resolvePriceId(
 
 export async function POST(req: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(req);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
       .from("profiles")
       .select("role, segment, tier")
       .eq("id", user.id)
-      .single();
+      .single<{ role: string | null; segment: string | null; tier: string | null }>();
 
     // CRITICAL: Validate that user's role matches the requested segment
     // Prevent mismatches (e.g., investor trying to buy wholesaler plan)

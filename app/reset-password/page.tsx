@@ -17,7 +17,7 @@ export default function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
-    const code = searchParams.get('code');
+    const code = searchParams?.get('code');
 
     if (!code) {
       logger.warn('Password reset: No code found in URL');

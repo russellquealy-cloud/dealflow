@@ -4,9 +4,9 @@
  * 
  * @returns Supabase client configured for server-side usage
  */
-import { getSupabaseServer } from "@/lib/auth/server";
+import { createSupabaseServerComponent } from "@/lib/auth/server";
 
 export async function createSupabaseServer() {
-  return getSupabaseServer();
+  return createSupabaseServerComponent();
 }
 

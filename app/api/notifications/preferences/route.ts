@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getAuthUser } from '@/lib/auth/server';
+import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
 
 export const runtime = 'nodejs';
 
@@ -70,9 +70,10 @@ async function fetchOrCreatePreferences(
 
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
-    if (!user || !supabase) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -92,9 +93,10 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
 
-    if (!user || !supabase) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -112,7 +114,7 @@ export async function PUT(request: NextRequest) {
 
     const { data: updated, error: updateError } = await supabase
       .from('notification_preferences')
-      .update(body)
+      .update(body as never)
       .eq('user_id', user.id)
       .select('*')
       .single();

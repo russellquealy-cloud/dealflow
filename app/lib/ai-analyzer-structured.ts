@@ -383,12 +383,12 @@ export async function analyzeStructured(
   options?: AnalyzeOptions
 ): Promise<AnalysisResult> {
   const supabase = supabaseClient ?? (await createClient());
-  const planTier: SubscriptionTier = options?.planTier ?? 'FREE';
+  const planTier: SubscriptionTier = options?.planTier ?? 'free';
   const isTestAccount = options?.isTestAccount ?? false;
   const bypassLimits = options?.bypassLimits === true;
   const planLimits = getPlanLimits(planTier);
   const configuredLimit = planLimits.ai_analyses ?? 0;
-  const hasPlanUnlimited = planTier === 'INVESTOR_PRO';
+  const hasPlanUnlimited = planTier === 'pro' || planTier === 'enterprise';
   const unlimitedUsage = bypassLimits || isTestAccount || hasPlanUnlimited;
   let shouldIncrementUsage = false;
 

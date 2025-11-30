@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/supabase/client';
-import { checkIsAdminClient } from '@/lib/admin';
+import { checkIsAdminClient } from '@/lib/admin-client';
 import Link from 'next/link';
 
 interface AuditLog {

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/auth/server";
+import { getAuthUserServer, createSupabaseRouteClient } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

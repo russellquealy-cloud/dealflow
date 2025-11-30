@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/supabase/client';
-import { checkIsAdminClient } from '@/lib/admin';
+import { checkIsAdminClient } from '@/lib/admin-client';
 
 export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);

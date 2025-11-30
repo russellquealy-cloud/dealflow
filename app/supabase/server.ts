@@ -1,5 +1,5 @@
-import { getSupabaseServer } from "@/lib/auth/server";
+import { createSupabaseServerComponent } from "@/lib/auth/server";
 
 export async function createServerClient() {
-  return getSupabaseServer();
+  return createSupabaseServerComponent();
 }

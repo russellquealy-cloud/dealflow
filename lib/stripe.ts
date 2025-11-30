@@ -3,6 +3,11 @@
 
 import Stripe from 'stripe';
 
+// Minimal representation of subscription tiers used in the account page.
+// Expand this later once real Stripe integration is finalized.
+
+export type SubscriptionTier = "free" | "basic" | "pro" | "enterprise";
+
 // Lazy initialization to avoid build-time errors
 let stripeInstance: Stripe | null = null;
 
@@ -166,3 +171,117 @@ export function verifyWebhookSignature(
   const stripe = getStripe();
   return stripe.webhooks.constructEvent(payload, signature, secret);
 }
+
+// Types for subscription system (legacy uppercase format)
+export type SubscriptionTierLegacy = 'FREE' | 'INVESTOR_BASIC' | 'INVESTOR_PRO' | 'WHOLESALER_BASIC' | 'WHOLESALER_PRO';
+
+export interface PlanLimits {
+  contacts: number;
+  ai_analyses: number;
+  listings: number;
+}
+
+export interface PlanFeatures {
+  contact_info: boolean;
+  ai_tools: boolean;
+  advanced_search: boolean;
+  priority_support: boolean;
+  api_access: boolean;
+  white_label: boolean;
+}
+
+export interface Plan {
+  name: string;
+  price: number;
+  limits: PlanLimits;
+  features: PlanFeatures;
+}
+
+// Plan definitions
+export const STRIPE_PLANS: Record<SubscriptionTierLegacy, Plan> = {
+  FREE: {
+    name: 'Free',
+    price: 0,
+    limits: {
+      contacts: 5,
+      ai_analyses: 2,
+      listings: 1,
+    },
+    features: {
+      contact_info: false,
+      ai_tools: false,
+      advanced_search: false,
+      priority_support: false,
+      api_access: false,
+      white_label: false,
+    },
+  },
+  INVESTOR_BASIC: {
+    name: 'Investor Basic',
+    price: 35, // Unified pricing: $35/month
+    limits: {
+      contacts: 50,
+      ai_analyses: 20,
+      listings: 5,
+    },
+    features: {
+      contact_info: true,
+      ai_tools: true,
+      advanced_search: true,
+      priority_support: false,
+      api_access: false,
+      white_label: false,
+    },
+  },
+  INVESTOR_PRO: {
+    name: 'Investor Pro',
+    price: 60, // Unified pricing: $60/month
+    limits: {
+      contacts: 200,
+      ai_analyses: 100,
+      listings: 20,
+    },
+    features: {
+      contact_info: true,
+      ai_tools: true,
+      advanced_search: true,
+      priority_support: true,
+      api_access: true,
+      white_label: false,
+    },
+  },
+  WHOLESALER_BASIC: {
+    name: 'Wholesaler Basic',
+    price: 35, // Unified pricing: $35/month (same as Investor Basic)
+    limits: {
+      contacts: 100,
+      ai_analyses: 50,
+      listings: 10,
+    },
+    features: {
+      contact_info: true,
+      ai_tools: true,
+      advanced_search: true,
+      priority_support: false,
+      api_access: false,
+      white_label: false,
+    },
+  },
+  WHOLESALER_PRO: {
+    name: 'Wholesaler Pro',
+    price: 60, // Unified pricing: $60/month (same as Investor Pro)
+    limits: {
+      contacts: 500,
+      ai_analyses: 200,
+      listings: 50,
+    },
+    features: {
+      contact_info: true,
+      ai_tools: true,
+      advanced_search: true,
+      priority_support: true,
+      api_access: true,
+      white_label: true,
+    },
+  },
+};

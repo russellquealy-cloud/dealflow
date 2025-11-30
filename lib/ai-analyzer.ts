@@ -306,3 +306,4 @@ function calculateAICost(analysis: AIAnalysisOutput): number {
   const complexityMultiplier = analysis.comps.length * 0.5;
   return Math.round((baseCost + complexityMultiplier) * 100);
 }
+

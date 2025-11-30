@@ -287,3 +287,8 @@ function canVerifiedBadge(profile: UserProfile): boolean {
   if (profile.segment !== 'wholesaler') return false;
   return profile.tier === 'pro' || profile.tier === 'enterprise';
 }
+
+// Get paywall message from reason
+export function getPaywallMessage({ reason }: { reason: PaywallReason }): string {
+  return reason.message;
+}

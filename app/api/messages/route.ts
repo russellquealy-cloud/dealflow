@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
-import { getAuthUser } from "@/lib/auth/server";
+import { getAuthUserServer, createSupabaseRouteClient } from "@/lib/auth/server";
 import { notifyLeadMessage } from "@/lib/notifications";
 
 // Generate deterministic UUID v5 from a string
@@ -23,7 +23,8 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
       .from("listings")
       .select("owner_id")
       .eq("id", listingId)
-      .single();
+      .single<{ owner_id: string | null }>();
 
     if (listingQueryError) {
       console.error("Error fetching listing:", listingQueryError);
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
         .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
         .order("created_at", { ascending: true })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle<{ thread_id: string; [key: string]: unknown }>();
 
       if (existingThread?.thread_id) {
         threadId = existingThread.thread_id;
@@ -83,7 +84,8 @@ export async function GET(request: NextRequest) {
       .from("messages")
       .select("*")
       .eq("thread_id", threadId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .returns<{ from_id: string | null; to_id: string | null; [key: string]: unknown }[]>();
 
     if (error) {
       console.error("Error fetching messages:", error);
@@ -101,7 +103,7 @@ export async function GET(request: NextRequest) {
     if (messages?.length) {
       await supabase
         .from("messages")
-        .update({ read_at: new Date().toISOString() })
+        .update({ read_at: new Date().toISOString() } as never)
         .eq("thread_id", threadId)
         .eq("to_id", user.id)
         .is("read_at", null);
@@ -141,7 +143,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, supabase } = await getAuthUser(request);
+    const { user } = await getAuthUserServer();
+    const supabase = createSupabaseRouteClient();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -163,7 +166,7 @@ export async function POST(request: NextRequest) {
       .from("listings")
       .select("owner_id, title")
       .eq("id", listingId)
-      .single();
+      .single<{ owner_id: string | null; title: string | null }>();
 
     if (listingError || !listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
@@ -184,7 +187,7 @@ export async function POST(request: NextRequest) {
         listing_id: listingId,
         body: message,
         read_at: null
-      })
+      } as never)
       .select("*")
       .single();
 
