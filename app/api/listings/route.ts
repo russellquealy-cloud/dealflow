@@ -368,6 +368,7 @@ export async function POST(request: NextRequest) {
         const listingId = (insertedListing as { id?: string }).id;
         if (listingId) {
           // RPC might not be in generated types - use type assertion
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: geomError } = await (supabase.rpc as any)('update_listing_geom', {
             listing_id: listingId,
             lng: coordinates.lng,

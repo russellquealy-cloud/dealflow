@@ -33,7 +33,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    const ownerId = (existingListing as { owner_id?: string | null }).owner_id;
+    type ExistingListing = {
+      id: string;
+      owner_id: string | null;
+      address: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      latitude: number | null;
+      longitude: number | null;
+    };
+
+    const listing = existingListing as ExistingListing;
+    const ownerId = listing.owner_id;
     if (ownerId !== user.id) {
       return NextResponse.json({ 
         error: 'You do not have permission to edit this listing. Only the listing owner can make changes.' 
@@ -131,28 +143,28 @@ export async function PATCH(
     let addressChanged = false;
     if (address !== undefined) {
       updatePayload.address = address?.trim() || null;
-      if (address?.trim() !== existingListing.address) addressChanged = true;
+      if (address?.trim() !== listing.address) addressChanged = true;
     }
     if (city !== undefined) {
       updatePayload.city = city?.trim() || null;
-      if (city?.trim() !== existingListing.city) addressChanged = true;
+      if (city?.trim() !== listing.city) addressChanged = true;
     }
     if (state !== undefined) {
       updatePayload.state = state?.trim() || null;
-      if (state?.trim() !== existingListing.state) addressChanged = true;
+      if (state?.trim() !== listing.state) addressChanged = true;
     }
     if (zip !== undefined) {
       updatePayload.zip = zip?.trim() || null;
-      if (zip?.trim() !== existingListing.zip) addressChanged = true;
+      if (zip?.trim() !== listing.zip) addressChanged = true;
     }
 
     // Geocode if address changed
     if (addressChanged) {
       const addressParts = [
-        address !== undefined ? address : existingListing.address,
-        city !== undefined ? city : existingListing.city,
-        state !== undefined ? state : existingListing.state,
-        zip !== undefined ? zip : existingListing.zip,
+        address !== undefined ? address : listing.address,
+        city !== undefined ? city : listing.city,
+        state !== undefined ? state : listing.state,
+        zip !== undefined ? zip : listing.zip,
       ].filter(Boolean) as string[];
 
       if (addressParts.length > 0) {
@@ -161,10 +173,10 @@ export async function PATCH(
         try {
           // Use geocodeAddress with address components for better accuracy
           const coordinates = await geocodeAddress(
-            address !== undefined ? address : existingListing.address || '',
-            city !== undefined ? city : existingListing.city || undefined,
-            state !== undefined ? state : existingListing.state || undefined,
-            zip !== undefined ? zip : existingListing.zip || undefined
+            address !== undefined ? address : listing.address || '',
+            city !== undefined ? city : listing.city || undefined,
+            state !== undefined ? state : listing.state || undefined,
+            zip !== undefined ? zip : listing.zip || undefined
           );
 
           if (coordinates) {
@@ -232,6 +244,7 @@ export async function PATCH(
     if (addressChanged && updatePayload.latitude && updatePayload.longitude) {
       // Try to update geom using RPC (if available), otherwise rely on database trigger
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: geomError } = await (supabase.rpc as any)('update_listing_geom', {
           listing_id: id,
           lng: updatePayload.longitude as number,
