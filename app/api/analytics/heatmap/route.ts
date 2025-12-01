@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
  * 
  * Returns: [{ id, lat, lng, views, address, city, state, zip }]
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createServerClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('role, segment')
       .eq('id', user.id)
-      .maybeSingle();
+      .maybeSingle<{ role: string | null; segment: string | null }>();
 
-    const role = (profile?.role || profile?.segment || 'investor').toLowerCase();
-    const isWholesaler = role === 'wholesaler';
+    const roleValue = (profile?.role || profile?.segment || 'investor').toLowerCase();
+    const isWholesaler = roleValue === 'wholesaler';
 
     let query = supabase
       .from('listings')
@@ -55,13 +55,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform to heatmap data format
-    const heatmapData = (listings || [])
+    type ListingRow = {
+      id: string;
+      latitude: number | null;
+      longitude: number | null;
+      views: number | null;
+      address: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      status: string | null;
+    };
+    
+    const heatmapData = ((listings || []) as ListingRow[])
       .filter((listing) => listing.latitude != null && listing.longitude != null)
       .map((listing) => ({
         id: listing.id,
         lat: listing.latitude as number,
         lng: listing.longitude as number,
-        views: (listing.views ?? 0) as number,
+        views: listing.views ?? 0,
         address: listing.address || null,
         city: listing.city || null,
         state: listing.state || null,

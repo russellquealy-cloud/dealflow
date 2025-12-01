@@ -21,13 +21,6 @@ const MAP_CONTAINER_STYLE: React.CSSProperties = {
   borderRadius: '8px',
 };
 
-const DEFAULT_CENTER: google.maps.LatLngLiteral = {
-  lat: 39.8283,
-  lng: -98.5795,
-};
-
-const DEFAULT_ZOOM = 4;
-
 const MAP_LIBRARIES: ('visualization')[] = ['visualization'];
 
 /**
@@ -84,8 +77,6 @@ export default function HeatmapClient() {
     // Normalize views to a weight (0-1 scale)
     // Use logarithmic scaling to handle wide ranges of view counts
     const maxViews = Math.max(...heatmapData.map((p) => p.views), 1);
-    const minViews = Math.min(...heatmapData.map((p) => p.views), 0);
-    const viewsRange = maxViews - minViews || 1;
     
     // Logarithmic normalization: log(view + 1) / log(maxViews + 1)
     // This gives better distribution for wide ranges
@@ -111,7 +102,6 @@ export default function HeatmapClient() {
 
   // Heatmap options
   const heatmapOptions: google.maps.visualization.HeatmapLayerOptions = {
-    data: heatmapDataPoints,
     radius: 50, // Radius of heat influence in pixels
     opacity: 0.8,
     gradient: heatmapGradient,
@@ -185,7 +175,7 @@ export default function HeatmapClient() {
           fullscreenControl: true,
         }}
       >
-        <HeatmapLayer options={heatmapOptions} />
+        <HeatmapLayer data={heatmapDataPoints} options={heatmapOptions} />
       </GoogleMap>
       <div
         style={{
