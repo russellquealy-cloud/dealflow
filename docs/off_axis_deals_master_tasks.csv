@@ -1,5 +1,5 @@
 ID,Feature / Area,Page / Route,Description,Priority,Status,Owner,Environment,Last Updated,Test Instructions,Notes,,
-TASK-001,Listings,/post /api/listings,Enable multi-image upload - also fix 401 Unauthorized error when creating listings,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Login as wholesaler (test account like wholesaler.free@test.com).
+TASK-001,Listings,/post /api/listings,Enable multi-image upload - also fix 401 Unauthorized error when creating listings,High,Passed Testing,,Both,11/30/2025,"1) Login as wholesaler (test account like wholesaler.free@test.com).
 2) Navigate to Post a Deal page (/post).
 3) Fill out listing form with required fields (address, city, state, zip, price).
 4) Upload multiple images (3-5 photos) - verify all images upload successfully.

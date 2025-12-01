@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  // Include views in the query so we can display it if needed
+  // Include views in the query; year_built and garage_spaces are included in *
   const { data, error } = await supabase.from('listings').select('*, views').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return <div style={{ padding: 24 }}>Listing not found.</div>;
@@ -33,11 +33,30 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
     });
   }
 
-  const price = data.price ?? 0;
-  const arv = data.arv ?? 0;
-  const repairs = data.repairs ?? 0;
-  const spread = Math.max(0, arv - repairs - price);
-  const roi = price > 0 ? Math.round((spread / price) * 100) : 0;
+  // Fix Spread and ROI calculations
+  const purchasePrice = typeof data.price === 'number' ? data.price : typeof data.price === 'string' ? parseFloat(data.price) || null : null;
+  const arv = typeof data.arv === 'number' ? data.arv : typeof data.arv === 'string' ? parseFloat(data.arv) || null : null;
+  const repairs = typeof data.repairs === 'number' ? data.repairs : typeof data.repairs === 'string' ? parseFloat(data.repairs) || null : 0;
+  
+  // Spread = ARV - Purchase Price (gross profit before costs)
+  let spread: number | null = null;
+  if (purchasePrice != null && arv != null && purchasePrice > 0 && arv > 0) {
+    spread = arv - purchasePrice;
+  }
+  
+  // ROI = (Spread - Total Costs) / Total Investment * 100
+  // Total Investment = Purchase Price + Repairs + Closing Costs
+  let roi: number | null = null;
+  if (spread != null && purchasePrice != null && purchasePrice > 0) {
+    const totalInvestment = purchasePrice + (repairs || 0);
+    if (totalInvestment > 0) {
+      const netProfit = spread - (repairs || 0);
+      roi = (netProfit / totalInvestment) * 100;
+    }
+  }
+  
+  // Format price for display (fallback to 0 for display purposes)
+  const price = purchasePrice ?? 0;
 
   const lotSqft: number | null =
     data.lot_size ?? data.lot_sqft ?? (typeof data.lot_acres === 'number' ? Math.round(data.lot_acres * 43560) : null);
@@ -91,10 +110,19 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               : '—'
           }
         />
-        <Info label="ARV" value={formatCurrency(arv)} />
-        <Info label="Repairs" value={formatCurrency(repairs)} />
-        <Info label="Spread" value={formatCurrency(spread)} />
-        <Info label="ROI" value={`${roi}%`} />
+        <Info label="Year Built" value={data.year_built ? String(data.year_built) : 'N/A'} />
+        <Info 
+          label="Garage" 
+          value={
+            data.garage_spaces != null && data.garage_spaces >= 0
+              ? `${data.garage_spaces} ${data.garage_spaces === 1 ? 'space' : 'spaces'}`
+              : 'N/A'
+          } 
+        />
+        <Info label="ARV" value={formatCurrency(arv ?? 0)} />
+        <Info label="Repairs" value={formatCurrency(repairs ?? 0)} />
+        <Info label="Spread" value={spread != null ? formatCurrency(spread) : 'N/A'} />
+        <Info label="ROI" value={roi != null ? `${roi.toFixed(1)}%` : 'N/A'} />
       </div>
 
       <div style={{ marginTop: 18, whiteSpace: 'pre-wrap' }}>{data.description || ''}</div>

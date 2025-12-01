@@ -22,6 +22,8 @@ type FormState = {
   repairs: number | "";
   property_type: string;
   age_restricted: boolean;
+  year_built: number | "";
+  garage_spaces: number | "";
 };
 
 export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
@@ -44,6 +46,8 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
     repairs: "",
     property_type: "single-family",
     age_restricted: false,
+    year_built: "",
+    garage_spaces: "",
   });
 
   const [images, setImages] = React.useState<File[]>([]);
@@ -135,6 +139,8 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
         description: form.description,
         property_type: form.property_type || "single-family",
         age_restricted: form.age_restricted || false,
+        year_built: form.year_built || null,
+        garage_spaces: form.garage_spaces || null,
         contact_email: "russell.quealy@gmail.com", // You can make this dynamic
         contact_phone: "555-0123", // You can make this dynamic
         status: 'live',
@@ -404,6 +410,35 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
               className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
               placeholder="25000"
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Year Built</label>
+              <input 
+                name="year_built" 
+                type="number" 
+                value={form.year_built} 
+                onChange={onChange} 
+                min="1800"
+                max={new Date().getFullYear() + 1}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                placeholder="e.g. 1998"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Garage Spaces</label>
+              <input 
+                name="garage_spaces" 
+                type="number" 
+                value={form.garage_spaces} 
+                onChange={onChange} 
+                min="0"
+                max="10"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                placeholder="e.g. 2"
+              />
+            </div>
           </div>
 
           <div className="mt-6">
