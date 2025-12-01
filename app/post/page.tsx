@@ -32,7 +32,7 @@ type FormState = {
 
 export default function PostDealPage() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, loading: authLoading, refreshSession } = useAuth();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -62,14 +62,15 @@ export default function PostDealPage() {
   });
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id ?? null;
-      setUserId(uid);
-      if (!uid) router.replace('/login');
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (authLoading) return;
+    
+    if (!session) {
+      router.replace('/login');
+      return;
+    }
+    
+    setUserId(session.user.id);
+  }, [session, authLoading, router]);
 
   const onChange = (field: keyof FormState, value: string | File | null) => {
     setForm((f) => ({ ...f, [field]: value } as FormState));
@@ -77,7 +78,20 @@ export default function PostDealPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!userId) return;
+    
+    // Wait for both userId and session to be available
+    if (!userId || !session) {
+      setError('Please wait while we verify your session...');
+      return;
+    }
+
+    // Ensure we have a valid session token - refresh if needed
+    if (!session?.access_token) {
+      console.warn('No access token in session, attempting to refresh...');
+      await refreshSession();
+      setError('Session expired. Please try again.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -116,14 +130,11 @@ export default function PostDealPage() {
       };
 
       // Call API route which handles geocoding server-side
+      // Always include Authorization header with session token
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
       };
-      
-      // Include Authorization header if session is available (fallback for cookie-based auth)
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
 
       const createResponse = await fetch('/api/listings', {
         method: 'POST',
@@ -194,6 +205,22 @@ export default function PostDealPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <main style={pageWrap}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
+          <p style={{ color: '#9ca3af' }}>Checking your session...</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!session || !userId) {
+    return null; // Router will redirect
   }
 
   return (
@@ -340,11 +367,11 @@ export default function PostDealPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="submit"
-              disabled={submitting || !userId}
+              disabled={submitting || !userId || !session || !session.access_token}
               style={{
                 ...btnPrimary,
-                opacity: submitting ? 0.7 : 1,
-                cursor: submitting ? 'not-allowed' : 'pointer',
+                opacity: submitting || !userId || !session || !session.access_token ? 0.7 : 1,
+                cursor: submitting || !userId || !session || !session.access_token ? 'not-allowed' : 'pointer',
               }}
             >
               {submitting ? 'Posting…' : 'Post Deal'}

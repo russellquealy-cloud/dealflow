@@ -242,36 +242,55 @@ export async function POST(request: NextRequest) {
               },
             });
             const { data: { user: headerUser }, error: headerError } = await tokenClient.auth.getUser(token);
+            
+            console.log('[listings POST] Token validation result:', {
+              hasUser: !!headerUser,
+              userId: headerUser?.id,
+              error: headerError?.message || null,
+              tokenLength: token.length,
+            });
+            
             if (headerUser && !headerError) {
               user = headerUser;
               userError = null;
               // Use the token client for subsequent queries so RLS works correctly
               supabase = tokenClient;
+              console.log('[listings POST] Successfully authenticated via Authorization header');
+            } else {
+              console.error('[listings POST] Token validation failed:', {
+                error: headerError?.message || 'Unknown error',
+                hasUser: !!headerUser,
+              });
             }
           }
         } catch (tokenError) {
-          console.error('[listings POST] Failed to validate token from Authorization header:', tokenError);
+          console.error('[listings POST] Exception validating token from Authorization header:', {
+            error: tokenError instanceof Error ? tokenError.message : String(tokenError),
+            stack: tokenError instanceof Error ? tokenError.stack : undefined,
+          });
         }
       }
     }
 
-    // Log auth status for debugging (development only)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔐 POST /api/listings - Auth check:', {
-        hasUser: !!user,
-        userId: user?.id,
-        userEmail: user?.email,
-        userError: userError?.message || null,
-        authMethod: user ? (request.headers.get('authorization') ? 'header' : 'cookie') : 'none',
-        hasCookies: !!request.headers.get('cookie'),
-      });
-    }
+    // Log auth status for debugging (always log in production for this critical endpoint)
+    console.log('🔐 POST /api/listings - Auth check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      userError: userError?.message || null,
+      authMethod: user ? (request.headers.get('authorization') ? 'header' : 'cookie') : 'none',
+      hasCookies: !!request.headers.get('cookie'),
+      hasAuthHeader: !!request.headers.get('authorization'),
+      authHeaderLength: request.headers.get('authorization')?.length || 0,
+    });
 
     if (userError || !user) {
       console.error('❌ POST /api/listings - Unauthorized:', {
         error: userError?.message || 'No user found',
         hasCookies: !!request.headers.get('cookie'),
         hasAuthHeader: !!request.headers.get('authorization'),
+        cookieHeader: request.headers.get('cookie')?.substring(0, 50) || 'none',
+        authHeader: request.headers.get('authorization')?.substring(0, 50) || 'none',
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
