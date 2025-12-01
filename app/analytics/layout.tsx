@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getAuthUserServer, createSupabaseServerComponent } from '@/lib/auth/server';
-import { isPro } from '@/lib/analytics/proGate';
+import { createServerClient } from '@/supabase/server';
 import type { AnyProfile } from "@/lib/profileCompleteness";
 
 export const dynamic = 'force-dynamic';
@@ -11,32 +10,23 @@ export default async function AnalyticsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, error: authError } = await getAuthUserServer();
+  // Use modern auth pattern - same as analytics API route
+  const supabase = await createServerClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  if (authError || !user) {
+  if (userError || !user) {
     redirect('/login?next=/analytics/lead-conversion');
   }
 
   // Fetch user profile
-  const supabase = createSupabaseServerComponent();
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, segment, tier, membership_tier')
     .eq('id', user.id)
-    .single<AnyProfile>();
+    .maybeSingle<AnyProfile>();
 
-  // Check if user is admin using the same logic as requireAdminServer
-  const isAdminUser =
-    profile?.role === 'admin' ||
-    profile?.segment === 'admin' ||
-    profile?.tier === 'enterprise' ||
-    profile?.membership_tier === 'enterprise' ||
-    user.email === 'admin@offaxisdeals.com';
-
-  // Check if user is Pro (Investor or Wholesaler) - admins bypass this check
-  if (!isAdminUser && !isPro(profile?.tier ?? null)) {
-    redirect('/pricing?highlight=pro');
-  }
+  // All authenticated users can access analytics - no Pro gate
+  // Analytics API route returns data for any authenticated user
 
   const role = (profile?.role || profile?.segment || 'investor').toLowerCase() as 'investor' | 'wholesaler';
   const isWholesaler = role === 'wholesaler';

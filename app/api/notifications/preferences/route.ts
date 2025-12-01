@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
+import { createServerClient } from '@/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -70,10 +70,11 @@ async function fetchOrCreatePreferences(
 
 export async function GET(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    // Use modern auth pattern - same as other working routes
+    const supabase = await createServerClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -93,10 +94,11 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    // Use modern auth pattern - same as other working routes
+    const supabase = await createServerClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

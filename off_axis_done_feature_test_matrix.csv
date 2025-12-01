@@ -1,0 +1,41 @@
+ID,Feature,Scenario,TestSteps,ExpectedResult,Pass/Fail,Bugs Found,Notes,CONSOL Log
+T1,Multi-image upload,Create listing with multiple images,"1) Log in as wholesaler.
+2) Create listing with 3–5 images.
+3) Save and open listing detail.",Images upload and display correctly in gallery.,,,,
+T2,Multi-image upload,Image type/size validation,"1) Upload unsupported or huge image.
+2) Save listing.",Invalid files rejected; valid ones save normally.,,,,
+T3,Multi-image upload,Edit listing and modify images,"1) Edit listing.
+2) Remove one image and add another.
+3) Save.",Image set updates correctly.,,,,
+T4,Multi-image upload,Non-owner viewing,1) View another user’s listing.,Images visible read-only; no edit/delete controls.,,,,
+T5,Lead Conversion Trends,Page load,"1) Admin login.
+2) Open /analytics/lead-conversion.",Page loads with metrics; no errors.,,,,
+T6,Lead Conversion Trends,Filter behavior,1) Apply date and tier filters.,Metrics update without UI errors.,,,,
+T7,Lead Conversion Trends,No-data state,1) Select empty date range.,Clean 'no data' message appears.,,,,
+T8,Geographic Heatmap,Page load,"1) Admin login.
+2) Open /analytics/heatmap.",Heatmap loads (no gray map/failures).,,,,
+T9,Geographic Heatmap,Zoom/pan & tooltip,"1) Zoom, pan, hover.",Smooth interactions; tooltips show values.,,,,
+T10,Geographic Heatmap,Filter behavior,1) Change filters.,Heatmap updates correctly.,,,,
+T11,Alerts Admin,Load alerts list,"1) Admin login.
+2) Open /admin/alerts.",Alerts load without errors.,,,,
+T12,Alerts Admin,Create/edit alert,"1) Create alert.
+2) Edit it.",Alert appears and updates persist.,,,,
+T13,Alerts Admin,Real-time updates,"1) Open alerts in 2 sessions.
+2) Create alert in session B.",Session A updates in realtime or on refresh.,,,,
+T14,Watchlist Admin,Page load,"1) Admin login.
+2) Open /admin/watchlists.",Watchlists load without errors.,,,,
+T15,Watchlist Admin,View user watchlist,1) Open a user watchlist.,Properties load; deleted ones handled gracefully.,,,,
+T16,Watchlist Admin,Search/filter,1) Use search/filter.,Filtered results correct and stable.,,,,
+T17,Analytics Dashboard,Load dashboard,"1) Admin login.
+2) Open /admin/analytics.",Dashboard loads with metrics; no NaN/undefined.,,,,
+T18,Analytics Dashboard,Filters,1) Change date range.,Charts and metrics update cleanly.,,,,
+T19,Analytics Dashboard,Navigation,1) Click “view more”.,Routes correctly to detail pages.,,,,
+T20,Stripe Webhooks,New subscription,"1) Perform test checkout.
+2) Verify DB subscription.",Subscription created; correct tier set.,,,,
+T21,Stripe Webhooks,Upgrade flow,"1) Upgrade plan via portal.
+2) Verify DB.",Tier updated; features unlocked.,,,,
+T22,Stripe Webhooks,Cancel subscription,"1) Cancel.
+2) Wait for event.
+3) Check UI.",Subscription marked canceled; restricted features locked.,,,,
+T23,Stripe Webhooks,Failed payment,1) Use failed payment test card.,Status moves to past_due; UI reflects correctly.,,,,
+T24,Stripe Webhooks,Idempotency,1) Re-send webhook.,No duplicate records; idempotent behavior working.,,,,

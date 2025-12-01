@@ -102,12 +102,11 @@ export async function GET(request: NextRequest) {
         .select('id, views, status', { count: 'exact', head: false })
         .eq('owner_id', user.id),
       
-      // Total views across all user's listings
+      // Total views across all user's listings (including null/zero views)
       supabase
         .from('listings')
         .select('views')
-        .eq('owner_id', user.id)
-        .not('views', 'is', null),
+        .eq('owner_id', user.id),
       
       // Watchlists (saved properties) for this user
       supabase
@@ -151,6 +150,15 @@ export async function GET(request: NextRequest) {
     const activeListings = listingsByStatus['live'] || 0;
     const totalListings = listingsResult.count ?? 0;
 
+    // Get top viewed listings (for wholesalers, their own listings)
+    const topViewedListings = listingsResult.data
+      ?.map((listing) => ({
+        id: (listing as { id: string }).id,
+        views: (listing as { views?: number | null }).views ?? 0,
+      }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 10) || [];
+
     // Build analytics response - only include fields defined in UserAnalytics type
     const stats: UserAnalytics = {
       userId: user.id,
@@ -171,6 +179,8 @@ export async function GET(request: NextRequest) {
       activeListings: activeListings,
       savedSearches: savedSearchesResult.count ?? 0,
       activeAlerts: alertsResult.count ?? 0,
+      topViewedListings: topViewedListings, // Top 10 listings by view count
+      averageViewsPerListing: totalListings > 0 ? Math.round(totalViewsReceived / totalListings) : 0,
     };
 
     return NextResponse.json(

@@ -1,0 +1,1950 @@
+Category,Priority,Task,CursorPrompt,Status,StatusNotes
+Listings,P0,Enable multi-image upload,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Listings
+- Priority: P0
+- Task: Enable multi-image upload
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Done,CreateListingForm supports multiple images and uploads successfully; UX can be refined later.
+Analytics,P0,Fix Lead Conversion Trends page,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Analytics
+- Priority: P0
+- Task: Fix Lead Conversion Trends page
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Done,Lead Conversion Trends page implemented with funnel logic; needs ongoing data accuracy checks.
+Analytics,P0,Fix Geographic Heatmap,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Analytics
+- Priority: P0
+- Task: Fix Geographic Heatmap
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Done,Heatmap analytics page implemented; performance and visualization can be improved later.
+Admin Panel,P0,Fix Alerts Admin page,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Admin Panel
+- Priority: P0
+- Task: Fix Alerts Admin page
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Done,Alerts admin UI implemented with real-time subscriptions; needs extended testing and error handling.
+Admin Panel,P0,Fix Watchlist Admin page,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Admin Panel
+- Priority: P0
+- Task: Fix Watchlist Admin page
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Done,Watchlist admin UI implemented; needs feature expansion and robustness testing.
+Admin Panel,P0,Fix Analytics Dashboard,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Admin Panel
+- Priority: P0
+- Task: Fix Analytics Dashboard
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Done,Admin analytics dashboard implemented with basic metrics; data accuracy and performance tuning remain.
+Subscriptions,P0,Verify Stripe webhooks,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Subscriptions
+- Priority: P0
+- Task: Verify Stripe webhooks
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Done,Stripe webhook handlers implemented with idempotency; needs comprehensive production event testing.
+Core Stability,P0,Fix map rendering issues,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Core Stability
+- Priority: P0
+- Task: Fix map rendering issues
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,"Map and polygon drawing exist; flicker, drawing persistence, and AdvancedMarkerElement deprecation still unresolved."
+Admin Panel,P0,Fix CRM Export,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Admin Panel
+- Priority: P0
+- Task: Fix CRM Export
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,CRM export page is a stub ('Coming Soon'); no export pipeline implemented yet.
+AI Tools,P0,Fix Repair Estimator blank page,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: AI Tools
+- Priority: P0
+- Task: Fix Repair Estimator blank page
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,Estimator logic exists in shared library; UI and routing are currently stubbed.
+AI Tools,P0,Fix AI Usage Reporting,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: AI Tools
+- Priority: P0
+- Task: Fix AI Usage Reporting
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,Usage tracking and quota logic implemented; admin-facing reporting UI still missing.
+Infrastructure,P0,Fix production env vars,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Infrastructure
+- Priority: P0
+- Task: Fix production env vars
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Listings,P1,Improve image carousel,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Listings
+- Priority: P1
+- Task: Improve image carousel
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,Carousel works at a basic level but still needs UX and polish; no focused work completed yet.
+Listings,P1,Add pagination or infinite scroll,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Listings
+- Priority: P1
+- Task: Add pagination or infinite scroll
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,Listing pagination/scrolling not yet implemented.
+AI Tools,P1,Add downloadable PDF output,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: AI Tools
+- Priority: P1
+- Task: Add downloadable PDF output
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,No PDF generation pipeline exists for AI reports yet.
+Analytics,P1,Add national trend scraping,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Analytics
+- Priority: P1
+- Task: Add national trend scraping
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,No national trend scraping jobs implemented.
+Analytics,P1,Add RecData sold comps,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Analytics
+- Priority: P1
+- Task: Add RecData sold comps
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+CRM,P1,Add lead notes section,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: CRM
+- Priority: P1
+- Task: Add lead notes section
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,Notes field and UI for leads not implemented.
+UX,P1,Improve homepage design,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: UX
+- Priority: P1
+- Task: Improve homepage design
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,Homepage functional but needs visual redesign and stronger value proposition.
+UX,P1,Add testimonials and trust badges,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: UX
+- Priority: P1
+- Task: Add testimonials and trust badges
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,No testimonials/trust content currently displayed.
+UX,P1,Add loading skeletons,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: UX
+- Priority: P1
+- Task: Add loading skeletons
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,Skeleton loaders not implemented for key views.
+Onboarding,P1,Add wholesaler/investor flows,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Onboarding
+- Priority: P1
+- Task: Add wholesaler/investor flows
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Onboarding,P1,Add landing page lead capture,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Onboarding
+- Priority: P1
+- Task: Add landing page lead capture
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Backend,P1,Add DB indexing,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Backend
+- Priority: P1
+- Task: Add DB indexing
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Backend,P1,Add rate limits to public APIs,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Backend
+- Priority: P1
+- Task: Add rate limits to public APIs
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,No formal rate limiting on public APIs yet.
+Marketing,P2,Add blog system,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Marketing
+- Priority: P2
+- Task: Add blog system
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Marketing,P2,SEO article templates,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Marketing
+- Priority: P2
+- Task: SEO article templates
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Marketing,P2,Add wholesaling document packs,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Marketing
+- Priority: P2
+- Task: Add wholesaling document packs
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Marketing,P2,Add PDF lead magnets,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Marketing
+- Priority: P2
+- Task: Add PDF lead magnets
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Education,P2,Wholesaling 101 module,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Education
+- Priority: P2
+- Task: Wholesaling 101 module
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Education,P2,Seller scripts,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Education
+- Priority: P2
+- Task: Seller scripts
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Education,P2,Buyer scripts,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Education
+- Priority: P2
+- Task: Buyer scripts
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Education,P2,How-to videos,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Education
+- Priority: P2
+- Task: How-to videos
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Education,P2,MAO/ARV/ROI calculators,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Education
+- Priority: P2
+- Task: MAO/ARV/ROI calculators
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Investor Tools,P2,Distressed area heatmaps,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Investor Tools
+- Priority: P2
+- Task: Distressed area heatmaps
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Investor Tools,P2,Rental yield analyzer,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Investor Tools
+- Priority: P2
+- Task: Rental yield analyzer
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Investor Tools,P2,Cashflow calculator,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Investor Tools
+- Priority: P2
+- Task: Cashflow calculator
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Investor Tools,P2,Market comparison tool,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Investor Tools
+- Priority: P2
+- Task: Market comparison tool
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Subscriptions,P2,Referral system,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Subscriptions
+- Priority: P2
+- Task: Referral system
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Subscriptions,P2,Promo codes,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Subscriptions
+- Priority: P2
+- Task: Promo codes
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Subscriptions,P2,Featured Listing add-on,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Subscriptions
+- Priority: P2
+- Task: Featured Listing add-on
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+UX,P3,Dark mode,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: UX
+- Priority: P3
+- Task: Dark mode
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+UX,P3,Improved animations,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: UX
+- Priority: P3
+- Task: Improved animations
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Mobile App,P3,Native app build,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Mobile App
+- Priority: P3
+- Task: Native app build
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Mobile App,P3,Push notifications,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Mobile App
+- Priority: P3
+- Task: Push notifications
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Mobile App,P3,Offline mode,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Mobile App
+- Priority: P3
+- Task: Offline mode
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Branding,P3,Video ads,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Branding
+- Priority: P3
+- Task: Video ads
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Branding,P3,Expanded blog categories,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Branding
+- Priority: P3
+- Task: Expanded blog categories
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Not Started,
+Core Stability,P0,Fix sign-in loops across all pages,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Core Stability
+- Priority: P0
+- Task: Fix sign-in loops across all pages
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,getAuthUserServer updated to use route client; needs production testing and session/cookie verification.
+Core Stability,P0,Fix mobile responsiveness across entire UI,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Core Stability
+- Priority: P0
+- Task: Fix mobile responsiveness across entire UI
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Core responsive styles and MobileLayout exist; full UI audit across devices still needed.
+Core Stability,P0,Fix session persistence issues,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Core Stability
+- Priority: P0
+- Task: Fix session persistence issues
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Mobile session manager uses localStorage; server-side session handling and cookie config still needed.
+Listings,P0,Owner-only edit/delete,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Listings
+- Priority: P0
+- Task: Owner-only edit/delete
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,my-listings filters by owner_id; API routes and UI still need strict permission enforcement.
+Listings,P0,Fix watchlist errors,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Listings
+- Priority: P0
+- Task: Fix watchlist errors
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Improved error handling in watchlist API; further testing needed for deleted/unavailable listings.
+Analytics,P0,Fix CSV/API Export,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Analytics
+- Priority: P0
+- Task: Fix CSV/API Export
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Export route exists and returns JSON; CSV generation and proper download support still required.
+Admin Panel,P0,Fix Export Reports,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Admin Panel
+- Priority: P0
+- Task: Fix Export Reports
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Admin reports UI wired to /api/admin/reports; backend logic and CSV generation incomplete.
+AI Tools,P0,Fix AI Analyzer errors,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: AI Tools
+- Priority: P0
+- Task: Fix AI Analyzer errors
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Error handling and quota checks improved; requires runtime testing and edge-case coverage.
+Infrastructure,P0,Add error logging,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Infrastructure
+- Priority: P0
+- Task: Add error logging
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Basic dev logger exists; production-ready logging (Sentry/LogRocket) and error tracking not yet wired.
+Listings,P1,Improve mobile-first search,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Listings
+- Priority: P1
+- Task: Improve mobile-first search
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Search and filters work; fine-tuned mobile UX and layout improvements still needed.
+AI Tools,P1,Add line-item output to repair estimator,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: AI Tools
+- Priority: P1
+- Task: Add line-item output to repair estimator
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Underlying structured repair estimate data exists; UI for line items not yet implemented.
+CRM,P1,Add message notifications,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: CRM
+- Priority: P1
+- Task: Add message notifications
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Partially Done,Messaging exists; notification layer is partially implemented and needs completion and testing.
+Core Stability,P0,Fix mobile login rate-limit behavior,"You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task right now is:
+
+- Category: Core Stability
+- Priority: P0
+- Task: Fix mobile login rate-limit behavior
+
+Objectives:
+- Implement or fix this behavior so it is fully working in production.
+- Do NOT change or refactor unrelated features.
+- Keep the codebase Vercel-ready with zero TypeScript errors and no failing builds.
+
+Follow this process:
+1. Scan the repository for files and modules related to this task (routes, components, hooks, API routes, Supabase helpers, Stripe logic, etc.).
+2. Identify the root cause or missing implementation for this task.
+3. Implement the minimal but robust code changes required to complete the task.
+4. Ensure correct auth, role checks (admin/investor/wholesaler), and Supabase RLS alignment where applicable.
+5. Run these commands and iterate on failures until they ALL pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+6. If any command fails, read the error carefully, fix the cause, and re-run until everything succeeds.
+7. Remove any unused variables/imports or dead code introduced during this change.
+
+Definition of done for this task:
+- The described feature/bugfix is working end-to-end in the local dev environment.
+- All pages related to this task load with no runtime errors.
+- pnpm run build completes successfully.
+- No new TypeScript errors or ESLint warnings specific to this change remain.
+",Started,Mobile session manager exists; rate limiting logic and error handling still need implementation.
+Core Stability,P0,"Fix location search/geocoding errors (GEOCODE_ERROR, /api/geocode 400) so city searches like ""Tucson"" work reliably","You are Cursor, an AI pair programmer working on the Off Axis Deals production codebase (Next.js 15 App Router + TypeScript + Supabase + Stripe, deployed on Vercel).
+
+Your SINGLE focused task is:
+
+- Fix location search and geocoding so that typing a city like ""Tucson"" into the search bar and pressing Enter:
+  - Successfully geocodes the location,
+  - Pans/zooms the map to that location,
+  - Loads any listings in that area,
+  - And if no listings exist, shows an empty-state (no markers) instead of a fatal error page.
+
+Current behavior and errors (from production):
+- When the map is over Miami and I type ""Tucson"" and press Enter, the UI shows:
+  - ""Failed to Load Listings – Could not find location: Tucson – Error code: GEOCODE_ERROR""
+- Browser console logs:
+  - api/geocode ? 400 (Bad Request)
+  - A log ""Geocoding failed Object""
+- I expect ""Tucson"" to be a valid location and NOT produce an error.
+
+What you must do:
+
+1. Find the search bar / location search component used on the listings page (e.g. components related to the main map search and the ""Failed to Load Listings"" screen).
+2. Find the /api/geocode route handler and:
+   - Inspect how it builds the geocoding request,
+   - Understand why a simple query like ""Tucson"" returns HTTP 400,
+   - Fix the logic so that city names alone are accepted and properly geocoded.
+3. Normalize /api/geocode behavior:
+   - On valid geocode ? return lat/lng, place information, and any metadata needed to query listings.
+   - On ZERO_RESULTS ? return a structured JSON response (e.g. { found: false, reason: ""NO_RESULTS"" }) with HTTP 200 or 404, NOT 400.
+   - Only use HTTP 4xx/5xx for genuine server/request errors (invalid key, malformed request, internal error).
+4. Update the frontend search flow so that:
+   - Pressing Enter in the search bar always triggers a geocode for the current input text, even if autocomplete suggestions are slow or missing.
+   - If geocode succeeds but there are no listings in the area, the app:
+     - Centers the map on the new location,
+     - Shows a “No listings found in this area yet” message,
+     - DOES NOT show the red “Failed to Load Listings” error screen.
+   - If geocode truly fails (e.g. bogus string):
+     - Show a small inline error near the search bar (e.g. “Location not found”),
+     - Keep the existing map center,
+     - DO NOT show the fatal error screen.
+5. Improve autocomplete UX:
+   - Start suggestions after 2–3 characters.
+   - Ensure network calls are debounced sensibly (not so slow that nothing appears).
+   - Autocomplete should not block the Enter key flow; if suggestions lag, still geocode the raw text.
+6. After changes, test all of the following flows:
+   - Map centered over a random city, search ""Tucson"" ? map pans to Tucson; if no listings, show empty-state (no error).
+   - Search a clearly invalid string (e.g. ""zzzzzzz"") ? inline “location not found”, no fatal error.
+   - Search a full address or “Tucson, AZ” ? still works.
+7. Run and fix until all pass:
+   - pnpm lint
+   - pnpm test (if tests exist)
+   - pnpm run build
+
+Definition of done:
+- /api/geocode no longer returns HTTP 400 for valid city strings like ""Tucson"".
+- The listings page never shows the full red “Failed to Load Listings” screen just because a location has 0 listings.
+- Typing a city name and pressing Enter reliably moves the map to that city.
+- The new behavior works on both desktop and mobile views.
+",Started,Map not searching

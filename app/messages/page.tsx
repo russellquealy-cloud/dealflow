@@ -32,6 +32,11 @@ export default function MessagesPage() {
       return;
     }
 
+    // Reset redirectRef when session changes (allows retry after login)
+    if (session) {
+      redirectRef.current = false;
+    }
+
     if (!session) {
       setConversations([]);
       setLoading(false);
@@ -65,9 +70,13 @@ export default function MessagesPage() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          logger.error('API error response:', errorText);
           
+          // Only log 401 errors in development to avoid console spam
           if (response.status === 401) {
+            if (process.env.NODE_ENV === 'development') {
+              logger.error('API error response:', errorText);
+            }
+            // Only redirect once - use redirectRef to prevent loops
             if (!redirectRef.current) {
               redirectRef.current = true;
               router.push('/login?next=/messages');
@@ -77,6 +86,9 @@ export default function MessagesPage() {
             }
             return;
           }
+          
+          // Log other errors normally
+          logger.error('API error response:', errorText);
           throw new Error(`Failed to load conversations: ${response.status} - ${errorText}`);
         }
 
