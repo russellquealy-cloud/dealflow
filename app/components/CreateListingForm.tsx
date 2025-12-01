@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/supabase/client";
+import { useAuth } from "@/providers/AuthProvider";
 
 type FormState = {
   title: string;
@@ -23,6 +25,9 @@ type FormState = {
 };
 
 export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
+  const router = useRouter();
+  const { session } = useAuth();
+  
   const [form, setForm] = React.useState<FormState>({
     title: "",
     address: "",
@@ -94,6 +99,14 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    
+    // Ensure we have a valid session before proceeding
+    if (!session || !session.access_token) {
+      setMessage('⚠️ Your session has expired. Please refresh the page and try again.');
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setMessage(null);
 
@@ -128,35 +141,41 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
       };
 
       // Call API route which handles geocoding server-side
+      // Include Authorization header with session token for dual auth support
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const createResponse = await fetch('/api/listings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify(listingData),
       });
 
       if (!createResponse.ok) {
         const errorData = await createResponse.json().catch(() => ({ error: 'Failed to create listing' }));
-        throw new Error(errorData.error || 'Failed to create listing');
+        
+        // Provide user-friendly error messages
+        let errorMessage = errorData.error || 'Failed to create listing';
+        if (createResponse.status === 401) {
+          errorMessage = 'Please sign in to create a listing.';
+        } else if (createResponse.status === 403) {
+          errorMessage = 'You do not have permission to create listings. Please contact support.';
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      const { id: listingId } = await createResponse.json();
+      const responseData = await createResponse.json();
+      const listingId = responseData.id;
       
-      // Fetch the created listing for image upload
-      const { data: listing, error: fetchError } = await supabase
-        .from('listings')
-        .select('id')
-        .eq('id', listingId)
-        .single();
-
-      if (fetchError || !listing) {
-        throw new Error('Failed to fetch created listing');
-      }
-      
-      const listingError = null;
-
-      if (listingError) {
-        throw listingError;
+      if (!listingId) {
+        throw new Error('Failed to create listing: No listing ID returned');
       }
 
       // Upload images if any
@@ -166,7 +185,7 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
         for (let i = 0; i < images.length; i++) {
           const file = images[i];
           const fileExt = file.name.split('.').pop();
-          const fileName = `${listing.id}-${i}.${fileExt}`;
+          const fileName = `${listingId}-${i}.${fileExt}`;
           const filePath = `listings/${fileName}`;
 
           const { error: uploadError } = await supabase.storage
@@ -187,37 +206,23 @@ export default function CreateListingForm({ ownerId }: { ownerId?: string }) {
 
         // Update listing with image URLs
         if (imageUrls.length > 0) {
-          await supabase
+          const { error: updateError } = await supabase
             .from('listings')
             .update({ 
               images: imageUrls,
               cover_image_url: imageUrls[0] // First image as cover
             })
-            .eq('id', listing.id);
+            .eq('id', listingId);
+            
+          if (updateError) {
+            console.error('Error updating listing with images:', updateError);
+            // Don't fail the whole operation if image update fails
+          }
         }
       }
 
-      setMessage('Listing created successfully!');
-      
-      // Reset form
-      setForm({
-        title: "",
-        address: "",
-        city: "",
-        state: "",
-        zip: "",
-        beds: "",
-        baths: "",
-        sqft: "",
-        lot_sqft: "",
-        price: "",
-        description: "",
-        arv: "",
-        repairs: "",
-        property_type: "single-family",
-        age_restricted: false,
-      });
-      setImages([]);
+      // Navigate to My Listings page on success
+      router.push('/my-listings');
 
     } catch (error) {
       console.error('Error creating listing:', error);
