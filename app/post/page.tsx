@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
+import { useAuth } from '@/providers/AuthProvider';
 
 type FormState = {
   address: string;
@@ -31,6 +32,7 @@ type FormState = {
 
 export default function PostDealPage() {
   const router = useRouter();
+  const { session } = useAuth();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -114,9 +116,18 @@ export default function PostDealPage() {
       };
 
       // Call API route which handles geocoding server-side
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Include Authorization header if session is available (fallback for cookie-based auth)
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const createResponse = await fetch('/api/listings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify(payload),
       });

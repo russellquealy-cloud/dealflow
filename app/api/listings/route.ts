@@ -3,6 +3,8 @@ import { getListingsForSearch, type ListingsQueryParams } from '@/lib/listings';
 import { createServerClient } from '@/supabase/server';
 import { isAdmin } from '@/lib/admin';
 import { geocodeAddress } from '@/lib/geocoding';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10; // Vercel max duration
@@ -219,10 +221,58 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Primary: Use cookie-based auth (standard for SSR)
+    let supabase = await createServerClient();
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    // Fallback: If cookie auth fails, try Authorization header (for client-side calls)
+    if ((userError || !user) && request.headers.get('authorization')) {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '');
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+          if (supabaseUrl && supabaseAnonKey) {
+            const tokenClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            });
+            const { data: { user: headerUser }, error: headerError } = await tokenClient.auth.getUser(token);
+            if (headerUser && !headerError) {
+              user = headerUser;
+              userError = null;
+              // Use the token client for subsequent queries so RLS works correctly
+              supabase = tokenClient;
+            }
+          }
+        } catch (tokenError) {
+          console.error('[listings POST] Failed to validate token from Authorization header:', tokenError);
+        }
+      }
+    }
+
+    // Log auth status for debugging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 POST /api/listings - Auth check:', {
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email,
+        userError: userError?.message || null,
+        authMethod: user ? (request.headers.get('authorization') ? 'header' : 'cookie') : 'none',
+        hasCookies: !!request.headers.get('cookie'),
+      });
+    }
 
     if (userError || !user) {
+      console.error('❌ POST /api/listings - Unauthorized:', {
+        error: userError?.message || 'No user found',
+        hasCookies: !!request.headers.get('cookie'),
+        hasAuthHeader: !!request.headers.get('authorization'),
+      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
