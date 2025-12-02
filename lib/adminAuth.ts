@@ -1,4 +1,4 @@
-import { createServerClient } from "@/supabase/server";
+import { getSupabaseRouteClient } from "../app/lib/supabaseRoute";
 import type { AdminProfile } from "@/lib/admin";
 import { isAdmin } from "@/lib/admin";
 
@@ -39,12 +39,33 @@ export async function getAdminContext(request?: { headers: Headers }): Promise<A
     const { cookies } = await import('next/headers');
     const cookieStore = await cookies();
     const cookieList = cookieStore.getAll().map((c) => c.name);
+    
+    // Get cookie values for Supabase auth cookies (for debugging)
+    const supabaseCookies = cookieList
+      .filter(name => name.includes('sb-') || name.includes('supabase') || name.includes('auth-token'))
+      .map(name => ({
+        name,
+        hasValue: !!cookieStore.get(name)?.value,
+        valueLength: cookieStore.get(name)?.value?.length ?? 0,
+      }));
+    
     console.log('[adminAuth] cookies seen in route handler:', cookieList);
-    console.log('[adminAuth] has supabase cookies:', cookieList.some(name => 
-      name.includes('sb-') || name.includes('supabase') || name.includes('auth-token')
-    ));
+    console.log('[adminAuth] supabase cookies detail:', supabaseCookies);
+    
+    // Log server Supabase config to compare with client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    console.log('[adminAuth] server Supabase config', {
+      url: supabaseUrl,
+      keyPrefix: supabaseAnonKey ? supabaseAnonKey.slice(0, 20) + '...' : null,
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      // Check for mismatched env vars
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseAnonKey: !!process.env.SUPABASE_ANON_KEY,
+    });
 
-    const supabase = await createServerClient();
+    const supabase = await getSupabaseRouteClient();
 
     // Try getUser() first (preferred for Next.js 15)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -54,15 +75,25 @@ export async function getAdminContext(request?: { headers: Headers }): Promise<A
     if (userError || !user) {
       console.log('[adminAuth] getUser() failed, trying getSession()', {
         userError: userError?.message,
+        errorCode: userError?.status,
         hasUser: !!user,
       });
       
       const { data: { session: sessionData }, error: sessionError } = await supabase.auth.getSession();
       
+      console.log('[adminAuth] getSession() result', {
+        hasSession: !!sessionData,
+        sessionError: sessionError?.message,
+        sessionErrorCode: sessionError?.status,
+        // Check what cookies Supabase client can see
+        sessionUser: sessionData?.user?.id ? 'present' : 'missing',
+      });
+      
       if (sessionData && !sessionError) {
         console.log('[adminAuth] got session from getSession()', {
           userId: sessionData.user.id,
           email: sessionData.user.email,
+          accessTokenPresent: !!sessionData.access_token,
         });
         session = {
           user: sessionData.user,
@@ -71,8 +102,9 @@ export async function getAdminContext(request?: { headers: Headers }): Promise<A
         user = sessionData.user;
         userError = null;
       } else {
-        console.log('[adminAuth] getSession() also failed', {
+        console.log('[adminAuth] getSession() also failed - no valid session', {
           sessionError: sessionError?.message,
+          sessionErrorCode: sessionError?.status,
           hasSession: !!sessionData,
         });
       }

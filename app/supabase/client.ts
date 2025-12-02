@@ -48,6 +48,16 @@ export const supabase = (() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lwhxmwvvostzlidmnays.supabase.co';
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHhtd3Z2b3N0emxpZG1uYXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTg2NDYsImV4cCI6MjA3NDM5NDY0Nn0.YeXIZyYKuxVictEKcWe9GRsgMlVoFQJAPawdsIy8ye8';
     
+    // Log client config (browser only, for debugging)
+    if (typeof window !== 'undefined') {
+      console.log('[supabase-client] browser config', {
+        url: supabaseUrl,
+        keyPrefix: supabaseAnonKey ? supabaseAnonKey.slice(0, 20) + '...' : null,
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseAnonKey,
+      });
+    }
+    
     // CRITICAL FIX: Change flowType to 'pkce' to match Supabase's PKCE flow
     // Supabase is sending PKCE codes in magic links, so we must use PKCE flow
     // This ensures the code verifier is stored in cookies for server-side exchange

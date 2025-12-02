@@ -6,27 +6,28 @@ import type { Database } from '@/types/supabase';
 let configLogged = false;
 
 /**
- * Server-side Supabase client for API routes
- * Uses @supabase/ssr which properly handles Next.js 15 async cookies
+ * Centralized route-handler Supabase client
  * 
  * IMPORTANT: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY MUST match
  * the values used in the browser client (app/supabase/client.ts) for cookie-based
  * authentication to work correctly.
+ * 
+ * This ensures all route handlers use the same configuration.
  */
-export async function createServerClient() {
+export async function getSupabaseRouteClient() {
   const cookieStore = await cookies();
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Log server config for debugging (only first call to avoid spam)
+  // Log config on first call only (to avoid log spam)
   if (!configLogged) {
-    console.log('[supabase-server] server config', {
+    console.log('[supabaseRoute] creating route client', {
       url: supabaseUrl,
       keyPrefix: supabaseAnonKey ? supabaseAnonKey.slice(0, 20) + '...' : null,
       hasUrl: !!supabaseUrl,
       hasKey: !!supabaseAnonKey,
-      // Also check for old env var names that might conflict
+      // Check for old env vars that might conflict
       hasOldSupabaseUrl: !!process.env.SUPABASE_URL,
       hasOldSupabaseKey: !!process.env.SUPABASE_ANON_KEY,
     });
@@ -34,7 +35,11 @@ export async function createServerClient() {
   }
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase configuration. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
+    throw new Error(
+      'Missing Supabase configuration. ' +
+      'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables. ' +
+      'These MUST match the values used in the browser client.'
+    );
   }
 
   return createSupabaseSSRClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -47,7 +52,7 @@ export async function createServerClient() {
           cookieStore.set({ name, value, ...options });
         } catch (error) {
           // Handle cookie setting in route handlers
-          console.error('Error setting cookie:', error);
+          console.error('[supabaseRoute] Error setting cookie:', error);
         }
       },
       remove(name: string, options) {
@@ -55,9 +60,10 @@ export async function createServerClient() {
           cookieStore.set({ name, value: '', ...options });
         } catch (error) {
           // Handle cookie removal in route handlers
-          console.error('Error removing cookie:', error);
+          console.error('[supabaseRoute] Error removing cookie:', error);
         }
       },
     },
   });
 }
+
