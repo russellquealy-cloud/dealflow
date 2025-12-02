@@ -1,44 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { requireAdminServer } from "@/lib/admin";
-
-import { createSupabaseRouteClient } from "@/lib/auth/server";
-
+import { getProOrAdminContext } from "@/lib/adminAuth";
+import { createServerClient } from "@/supabase/server";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-async function ensureAdmin() {
-  const admin = await requireAdminServer();
-
-  if (!admin.ok) {
-    return {
-      ok: false as const,
-      response: NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: admin.reason,
-          status: admin.status,
-        },
-        { status: admin.status }
-      ),
-    };
-  }
-
-  return { ok: true as const, admin };
-}
-
 /**
  * GET /api/analytics/export
  *
- * Admin-only endpoint to export basic analytics data.
+ * Pro tier or admin-only endpoint to export analytics data.
  * Currently implemented as a safe stub that you can extend later.
  */
-export async function GET(_req: NextRequest) {
-  const guard = await ensureAdmin();
-  if (!guard.ok) return guard.response;
+export async function GET(request: NextRequest) {
+  const ctx = await getProOrAdminContext(request);
 
-  const supabase = createSupabaseRouteClient();
+  console.log('[api/analytics/export]', {
+    status: ctx.status,
+    email: ctx.session?.user.email,
+    tier: ctx.profile?.tier,
+    isAdmin: ctx.isAdmin,
+    isProOrAdmin: ctx.isProOrAdmin,
+    error: ctx.error,
+  });
+
+  if (ctx.status !== 200 || !ctx.isProOrAdmin) {
+    return NextResponse.json(
+      {
+        error: ctx.error || "Unauthorized",
+        reason: ctx.status === 401 ? "unauthorized" : "forbidden",
+        status: ctx.status,
+      },
+      { status: ctx.status }
+    );
+  }
+
+  const supabase = await createServerClient();
 
   try {
     // Example: load some basic aggregated usage data.

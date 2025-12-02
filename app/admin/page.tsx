@@ -8,6 +8,14 @@ import { checkIsAdminClient } from '@/lib/admin-client';
 export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [debugAuth, setDebugAuth] = useState<{
+    status?: number;
+    ok?: boolean;
+    sessionSummary?: { email?: string | null };
+    profileSummary?: { role?: string | null; segment?: string | null };
+    isAdmin?: boolean;
+    error?: string;
+  } | null>(null);
 
   console.log('Admin page: COMPONENT RENDERING - NO REDIRECTS');
 
@@ -73,6 +81,19 @@ export default function AdminDashboard() {
         });
         
         // NO REDIRECTS - just set the state and let the page render
+
+        // Fetch debug auth info if user is admin
+        if (userIsAdmin) {
+          try {
+            const debugResponse = await fetch('/api/admin/debug-auth', {
+              credentials: 'include',
+            });
+            const debugData = await debugResponse.json();
+            setDebugAuth(debugData);
+          } catch (debugError) {
+            console.error('Error fetching debug auth:', debugError);
+          }
+        }
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
@@ -255,6 +276,52 @@ export default function AdminDashboard() {
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '30px', color: '#1a1a1a' }}>Admin Dashboard - Feature Testing</h1>
+      
+      {/* TODO: When auth is confirmed stable in production, remove this debug panel */}
+      {isAdmin && debugAuth && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '12px 16px',
+          background: debugAuth.status === 200 ? '#d4edda' : '#f8d7da',
+          border: `1px solid ${debugAuth.status === 200 ? '#c3e6cb' : '#f5c6cb'}`,
+          borderRadius: '6px',
+          fontSize: '13px',
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: '6px', color: debugAuth.status === 200 ? '#155724' : '#721c24' }}>
+            Admin Auth Debug (Temporary)
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '12px' }}>
+            <div>
+              <strong>Status:</strong> <span style={{ color: debugAuth.status === 200 ? '#155724' : '#721c24' }}>{debugAuth.status}</span>
+            </div>
+            <div>
+              <strong>OK:</strong> {debugAuth.ok ? '✅' : '❌'}
+            </div>
+            <div>
+              <strong>Email:</strong> {debugAuth.sessionSummary?.email || 'N/A'}
+            </div>
+            <div>
+              <strong>Role:</strong> {debugAuth.profileSummary?.role || 'N/A'}
+            </div>
+            <div>
+              <strong>Segment:</strong> {debugAuth.profileSummary?.segment || 'N/A'}
+            </div>
+            <div>
+              <strong>Is Admin:</strong> {debugAuth.isAdmin ? '✅' : '❌'}
+            </div>
+          </div>
+          {debugAuth.error && (
+            <div style={{ marginTop: '8px', color: '#721c24', fontSize: '11px' }}>
+              <strong>Error:</strong> {debugAuth.error}
+            </div>
+          )}
+          {debugAuth.status !== 200 && (
+            <div style={{ marginTop: '8px', color: '#721c24', fontSize: '11px' }}>
+              Admin debug-auth failed (status {debugAuth.status}). Check server logs for [admin/debug-auth].
+            </div>
+          )}
+        </div>
+      )}
       
       <div style={{ 
         background: '#f8f9fa', 

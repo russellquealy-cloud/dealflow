@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { getProOrAdminContext } from "@/lib/adminAuth";
 import type { UserAnalytics } from "@/lib/analytics";
-import type { Database } from "@/types/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
@@ -10,89 +9,41 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/analytics
  *
- * Returns per-user analytics for any authenticated user (investor, wholesaler, admin).
+ * Returns per-user analytics for Pro tier users or admins.
  * Returns user-specific metrics like listings posted, views received, saved properties, etc.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Try to get user from cookies first (standard approach)
-    let supabase = await createServerClient();
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use shared auth helper - allows Pro tier or admin
+    const ctx = await getProOrAdminContext(request);
 
-    // If cookie-based auth fails, try Authorization header as fallback
-    if (userError || !user) {
-      const authHeader = request.headers.get('authorization');
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.replace('Bearer ', '');
-        try {
-          // Create a regular Supabase client with the token (not SSR client)
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-          if (supabaseUrl && supabaseAnonKey) {
-            const tokenClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-              global: {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              },
-            });
-            const { data: { user: headerUser }, error: headerError } = await tokenClient.auth.getUser(token);
-            if (headerUser && !headerError) {
-              user = headerUser;
-              userError = null;
-              // Use the token client for subsequent queries so RLS works correctly
-              supabase = tokenClient;
-            }
-          }
-        } catch (tokenError) {
-          console.error('[analytics] Failed to validate token from Authorization header:', tokenError);
-        }
-      }
-    }
+    console.log('[api/analytics]', {
+      status: ctx.status,
+      email: ctx.session?.user.email,
+      tier: ctx.profile?.tier,
+      isAdmin: ctx.isAdmin,
+      isProOrAdmin: ctx.isProOrAdmin,
+      error: ctx.error,
+    });
 
-    // Log auth status for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[analytics] Auth check:', {
-        hasUser: !!user,
-        userId: user?.id,
-        userEmail: user?.email,
-        error: userError?.message,
-        authMethod: user ? (request.headers.get('authorization') ? 'header' : 'cookie') : 'none',
-      });
-    }
-
-    if (userError || !user) {
-      // Log in both dev and prod for debugging (avoid logging sensitive data)
-      console.error('[analytics] Unauthorized - auth check failed:', {
-        hasError: !!userError,
-        errorMessage: userError?.message || 'No user found',
-        hasUser: !!user,
-        hasAuthHeader: !!request.headers.get('authorization'),
-      });
+    if (ctx.status !== 200 || !ctx.isProOrAdmin) {
       return NextResponse.json(
-        { error: "Unauthorized. Please sign in to view analytics." },
-        { status: 401 }
+        { 
+          error: ctx.error || "Pro tier or admin access required to view analytics.",
+          reason: ctx.status === 401 ? "unauthorized" : "forbidden",
+        },
+        { status: ctx.status }
       );
     }
 
-    // Get user profile to determine if they're pro tier
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('tier, membership_tier, is_pro_subscriber, segment, role')
-      .eq('id', user.id)
-      .maybeSingle();
+    // Get user and supabase client for queries
+    const user = ctx.session.user;
+    const supabase = await createServerClient();
 
-    type ProfileData = {
-      tier?: string | null;
-      membership_tier?: string | null;
-      is_pro_subscriber?: boolean | null;
-      segment?: string | null;
-      role?: string | null;
-    };
-
-    const profile = profileData as ProfileData | null;
+    // Use profile from context (already fetched)
+    const profile = ctx.profile;
     const tierValue = (profile?.tier || profile?.membership_tier || '').toLowerCase();
-    const isPro = tierValue.includes('pro') || tierValue.includes('enterprise') || profile?.is_pro_subscriber === true;
+    const isPro = tierValue.includes('pro') || tierValue.includes('enterprise') || ctx.isAdmin;
 
     // Query user-specific analytics in parallel
     const [listingsResult, viewsResult, watchlistsResult, messagesResult, savedSearchesResult, alertsResult] = await Promise.all([
