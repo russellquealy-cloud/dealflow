@@ -1,16 +1,15 @@
-import { getAuthUserServer, createSupabaseServerComponent } from '@/lib/auth/server';
+import { createServerClient } from '@/supabase/server';
 import type { AnyProfile } from "@/lib/profileCompleteness";
 
 export const dynamic = 'force-dynamic';
 
 export default async function LeadConversionPage() {
-  const { user, error: authError } = await getAuthUserServer();
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return null; // Layout will handle redirect
   }
-
-  const supabase = createSupabaseServerComponent();
 
   // Get user role
   const { data: profile } = await supabase
@@ -37,11 +36,12 @@ export default async function LeadConversionPage() {
         }[]
       >();
 
-    const totalListings = listings?.length || 0;
-    const soldListings = listings?.filter((l) => {
+    // Defensive calculations to prevent NaN/undefined
+    const totalListings = Number(listings?.length || 0);
+    const soldListings = Number(listings?.filter((l) => {
       const status = (l.status || '').toLowerCase();
       return status === 'sold' || status === 'closed';
-    }).length || 0;
+    }).length || 0);
 
     // Get contacts received (distinct investors who messaged about their listings)
     const listingIds = (listings || []).map((l) => l.id).filter(Boolean);
@@ -59,13 +59,28 @@ export default async function LeadConversionPage() {
           }[]
         >();
       
-      contactsReceived = new Set(
+      contactsReceived = Number(new Set(
         (messages || []).map((m) => m.from_id).filter(Boolean)
-      ).size;
+      ).size || 0);
     }
 
-    const conversionRate = totalListings > 0 ? ((soldListings / totalListings) * 100).toFixed(1) : '0.0';
-    const contactRate = totalListings > 0 ? ((contactsReceived / totalListings) * 100).toFixed(1) : '0.0';
+    // Calculate conversion rate with defensive checks
+    let conversionRate: string | null = null;
+    if (totalListings > 0 && soldListings >= 0) {
+      const rate = (soldListings / totalListings) * 100;
+      conversionRate = Number.isFinite(rate) ? rate.toFixed(1) : '0.0';
+    } else {
+      conversionRate = 'N/A';
+    }
+
+    // Calculate contact rate with defensive checks
+    let contactRate: string | null = null;
+    if (totalListings > 0 && contactsReceived >= 0) {
+      const rate = (contactsReceived / totalListings) * 100;
+      contactRate = Number.isFinite(rate) ? rate.toFixed(1) : '0.0';
+    } else {
+      contactRate = 'N/A';
+    }
 
     return (
       <div style={{ padding: '24px', background: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
@@ -85,8 +100,16 @@ export default async function LeadConversionPage() {
             <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Sold Listings</div>
           </div>
           <div style={{ padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
-            <div style={{ fontSize: '32px', fontWeight: 700, color: '#8b5cf6' }}>{conversionRate}%</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: '#8b5cf6' }}>
+              {conversionRate === 'N/A' ? 'N/A' : `${conversionRate}%`}
+            </div>
             <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Conversion Rate</div>
+          </div>
+          <div style={{ padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: '#f59e0b' }}>
+              {contactRate === 'N/A' ? 'N/A' : `${contactRate}%`}
+            </div>
+            <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Contact Rate</div>
           </div>
         </div>
 
@@ -105,7 +128,8 @@ export default async function LeadConversionPage() {
     .select('property_id')
     .eq('user_id', user.id);
 
-  const savedCount = watchlists?.length || 0;
+  // Defensive calculations to prevent NaN/undefined
+  const savedCount = Number(watchlists?.length || 0);
 
   const { data: messages } = await supabase
     .from('messages')
@@ -119,7 +143,16 @@ export default async function LeadConversionPage() {
       }[]
     >();
 
-  const contactedCount = new Set((messages || []).map((m) => m.listing_id).filter(Boolean)).size;
+  const contactedCount = Number(new Set((messages || []).map((m) => m.listing_id).filter(Boolean)).size || 0);
+  
+  // Calculate conversion rate (saved → contacted)
+  let savedToContactRate: string | null = null;
+  if (savedCount > 0 && contactedCount >= 0) {
+    const rate = (contactedCount / savedCount) * 100;
+    savedToContactRate = Number.isFinite(rate) ? rate.toFixed(1) : '0.0';
+  } else {
+    savedToContactRate = 'N/A';
+  }
 
   return (
     <div style={{ padding: '24px', background: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
@@ -141,6 +174,12 @@ export default async function LeadConversionPage() {
         <div style={{ padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
           <div style={{ fontSize: '32px', fontWeight: 700, color: '#8b5cf6' }}>—</div>
           <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Under Contract</div>
+        </div>
+        <div style={{ padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
+          <div style={{ fontSize: '32px', fontWeight: 700, color: '#f59e0b' }}>
+            {savedToContactRate === 'N/A' ? 'N/A' : `${savedToContactRate}%`}
+          </div>
+          <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Saved → Contact Rate</div>
         </div>
       </div>
 

@@ -1,13 +1,20 @@
 ID,Feature / Area,Page / Route,Description,Priority,Status,Owner,Environment,Last Updated,Test Instructions,Notes,,
-TASK-001,Listings,/post /api/listings,Enable multi-image upload - also fix 401 Unauthorized error when creating listings,High,Passed Testing,,Both,11/30/2025,"1) Login as wholesaler (test account like wholesaler.free@test.com).
-2) Navigate to Post a Deal page (/post).
+TASK-001,Listings,/my-listings/new /api/listings /listing/[id],Enable multi-image upload - also fix 401 Unauthorized error when creating listings. Add Year Built and Garage Spaces fields. Fix Spread and ROI calculations.,High,Passed Testing,,Both,2/12/2025,"1) Login as wholesaler.pro@test.com (Pro wholesaler test account).
+2) Navigate to Post a Deal page (/my-listings/new).
 3) Fill out listing form with required fields (address, city, state, zip, price).
-4) Upload multiple images (3-5 photos) - verify all images upload successfully.
-5) Submit listing form.
-6) Verify NO 401 Unauthorized error - listing should create successfully.
-7) Verify listing appears in my-listings page.
-8) View listing detail page and verify all images display in carousel.
-9) Check browser console for any auth errors.",CreateListingForm supports multiple images and uploads successfully. Fixed 401 error by adding Authorization header support in POST /api/listings route and frontend fetch call. Route now uses dual auth (cookies + Authorization header fallback). UX can be refined later.,,
+4) Set Year Built = 2005 and Garage Spaces = 3.
+5) Upload multiple images (3-5 photos) - verify all images upload successfully.
+6) Submit listing form.
+7) Verify NO 401 Unauthorized error - listing should create successfully.
+8) Verify listing appears in my-listings page.
+9) View listing detail page and verify:
+   - All images display in carousel
+   - Year Built shows '2005'
+   - Garage shows '3 spaces'
+   - Spread calculates correctly: ARV - Purchase Price
+   - ROI calculates correctly: (Net Profit / Total Investment) × 100
+   - No NaN or incorrect values displayed
+10) Check browser console for any auth errors.",✅ COMPLETE: CreateListingForm supports multiple images and uploads successfully. Fixed 401 error by adding Authorization header support in POST /api/listings route and frontend fetch call. Route now uses dual auth (cookies + Authorization header fallback). Added Year Built and Garage Spaces optional fields to form. Fixed Spread calculation (ARV - Purchase Price) and ROI calculation (accounts for repairs in total investment). All fields display on listing detail page with proper N/A fallbacks.,,
 TASK-002,Analytics,"/bugfix, /imports, /investor/wholesaler",Fix Lead Conversion Trends page,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Admin login.
 2) Open /admin/analytics.
 Expected: Dashboard loads with metrics; no NaN/undefined.

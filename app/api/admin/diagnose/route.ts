@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-
 import { requireAdminServer } from "@/lib/admin";
-
-import { createSupabaseRouteClient } from "@/lib/auth/server";
+import { createServerClient } from "@/supabase/server";
 
 export async function GET() {
   const admin = await requireAdminServer();
@@ -18,7 +16,7 @@ export async function GET() {
     );
   }
 
-  const supabase = createSupabaseRouteClient();
+  const supabase = await createServerClient();
 
   const {
     data: { user },

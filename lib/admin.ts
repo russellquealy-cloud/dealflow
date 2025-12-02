@@ -1,4 +1,4 @@
-import { createSupabaseRouteClient } from "@/lib/auth/server";
+import { createServerClient } from "@/supabase/server";
 
 export type AdminProfile = {
   id: string;
@@ -57,7 +57,7 @@ export function isAdmin(
 }
 
 export async function requireAdminServer() {
-  const supabase = createSupabaseRouteClient();
+  const supabase = await createServerClient();
 
   const {
     data: { user },

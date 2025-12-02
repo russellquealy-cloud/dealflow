@@ -397,6 +397,19 @@ export default function AdminAnalytics() {
 
           {/* Quick Actions */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+            <Link href="/analytics/lead-conversion" style={{
+              background: 'white',
+              border: '1px solid #e9ecef',
+              borderRadius: '8px',
+              padding: '20px',
+              textDecoration: 'none',
+              color: 'inherit',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              display: 'block'
+            }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>📈 Lead Conversion Trends</h3>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>View detailed conversion funnel and metrics</p>
+            </Link>
             <Link href="/admin/reports" style={{
               background: 'white',
               border: '1px solid #e9ecef',
