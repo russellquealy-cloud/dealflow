@@ -56,13 +56,33 @@ export function isAdmin(
   return false;
 }
 
-export async function requireAdminServer() {
+export async function requireAdminServer(request?: { headers: Headers }) {
   const supabase = await createServerClient();
 
-  const {
+  // Try getUser() first (preferred for Next.js 15)
+  let {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
+
+  // If getUser() fails, try getSession() as fallback (for RSC prefetch scenarios)
+  if (userError || !user) {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (session && !sessionError) {
+      user = session.user;
+      userError = null;
+    }
+  }
+
+  // If cookie-based auth still fails and request has Authorization header, try that
+  if ((userError || !user) && request) {
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      // For Authorization header fallback, we'd need to create a different client
+      // This is handled in the route handlers themselves for now
+      // Keeping this as a placeholder for potential future enhancement
+    }
+  }
 
   if (userError || !user) {
     return {

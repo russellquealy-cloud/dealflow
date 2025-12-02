@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminServer } from "@/lib/admin";
 import { createServerClient } from "@/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 
 /**
  * GET /api/admin/diagnose
- * Admin diagnostics endpoint with dual auth support (cookies + Authorization header)
+ * Admin diagnostics endpoint with robust auth support (cookies + session + Authorization header)
+ * 
+ * Uses requireAdminServer() helper which handles cookie-based auth with session fallback.
+ * Also supports Authorization header for RSC prefetch scenarios where cookies may not be available.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Try to get user from cookies first (standard approach)
-    let supabase = await createServerClient();
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Try standard admin auth check first (uses cookies with session fallback)
+    let admin = await requireAdminServer(request);
 
-    // If cookie-based auth fails, try Authorization header as fallback
-    if (userError || !user) {
+    // If cookie/session auth fails, try Authorization header as fallback
+    if (!admin.ok && admin.reason === "no-user") {
       const authHeader = request.headers.get('authorization');
       if (authHeader?.startsWith('Bearer ')) {
         const token = authHeader.replace('Bearer ', '');
@@ -30,10 +33,40 @@ export async function GET(request: NextRequest) {
               },
             });
             const { data: { user: headerUser }, error: headerError } = await tokenClient.auth.getUser(token);
+            
             if (headerUser && !headerError) {
-              user = headerUser;
-              userError = null;
-              supabase = tokenClient;
+              // Fetch profile to check admin status using token client
+              const { data: profile, error: profileError } = await tokenClient
+                .from("profiles")
+                .select("id,email,role,segment,tier,membership_tier")
+                .eq("id", headerUser.id)
+                .single<{
+                  id: string;
+                  email: string | null;
+                  role: string | null;
+                  segment: string | null;
+                  tier: string | null;
+                  membership_tier: string | null;
+                }>();
+
+              if (!profileError && profile) {
+                const isAdmin =
+                  profile.role === "admin" ||
+                  profile.segment === "admin" ||
+                  profile.tier === "enterprise" ||
+                  profile.membership_tier === "enterprise" ||
+                  profile.email === "admin@offaxisdeals.com";
+
+                if (isAdmin) {
+                  admin = {
+                    ok: true as const,
+                    status: 200 as const,
+                    reason: "ok",
+                    user: headerUser,
+                    profile,
+                  };
+                }
+              }
             }
           }
         } catch (tokenError) {
@@ -42,58 +75,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (userError || !user) {
+    if (!admin.ok) {
       return NextResponse.json(
         {
           error: "Unauthorized",
-          reason: "no-user",
-          status: 401,
+          reason: admin.reason,
+          status: admin.status,
         },
-        { status: 401 }
-      );
-    }
-
-    // Fetch profile to check admin status
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id,email,role,segment,tier,membership_tier")
-      .eq("id", user.id)
-      .single<{
-        id: string;
-        email: string | null;
-        role: string | null;
-        segment: string | null;
-        tier: string | null;
-        membership_tier: string | null;
-      }>();
-
-    if (profileError || !profile) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: "no-profile",
-          status: 403,
-        },
-        { status: 403 }
-      );
-    }
-
-    // Check if user is admin
-    const isAdmin =
-      profile.role === "admin" ||
-      profile.segment === "admin" ||
-      profile.tier === "enterprise" ||
-      profile.membership_tier === "enterprise" ||
-      profile.email === "admin@offaxisdeals.com";
-
-    if (!isAdmin) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: "not-admin",
-          status: 403,
-        },
-        { status: 403 }
+        { status: admin.status }
       );
     }
 
@@ -101,9 +90,10 @@ export async function GET(request: NextRequest) {
       {
         ok: true,
         admin: true,
-        adminProfile: profile,
-        authUser: user,
+        adminProfile: admin.profile,
+        authUser: admin.user,
         authError: null,
+        timestamp: new Date().toISOString(),
       },
       { status: 200 }
     );

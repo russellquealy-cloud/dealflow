@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/supabase/server";
+import { requireAdminServer } from "@/lib/admin";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 
 /**
- * Check if user is admin with dual auth support
+ * Check if user is admin with robust auth support
+ * Uses requireAdminServer() helper and falls back to Authorization header if needed
  */
 async function checkAdminAuth(request: NextRequest) {
-  // Try to get user from cookies first (standard approach)
-  let supabase = await createServerClient();
-  let { data: { user }, error: userError } = await supabase.auth.getUser();
+  // Try standard admin auth check first (uses cookies with session fallback)
+  let admin = await requireAdminServer(request);
 
-  // If cookie-based auth fails, try Authorization header as fallback
-  if (userError || !user) {
+  // If cookie/session auth fails, try Authorization header as fallback
+  if (!admin.ok && admin.reason === "no-user") {
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', '');
@@ -28,10 +28,40 @@ async function checkAdminAuth(request: NextRequest) {
             },
           });
           const { data: { user: headerUser }, error: headerError } = await tokenClient.auth.getUser(token);
+          
           if (headerUser && !headerError) {
-            user = headerUser;
-            userError = null;
-            supabase = tokenClient;
+            // Fetch profile to check admin status using token client
+            const { data: profile, error: profileError } = await tokenClient
+              .from("profiles")
+              .select("id,email,role,segment,tier,membership_tier")
+              .eq("id", headerUser.id)
+              .single<{
+                id: string;
+                email: string | null;
+                role: string | null;
+                segment: string | null;
+                tier: string | null;
+                membership_tier: string | null;
+              }>();
+
+            if (!profileError && profile) {
+              const isAdmin =
+                profile.role === "admin" ||
+                profile.segment === "admin" ||
+                profile.tier === "enterprise" ||
+                profile.membership_tier === "enterprise" ||
+                profile.email === "admin@offaxisdeals.com";
+
+              if (isAdmin) {
+                admin = {
+                  ok: true as const,
+                  status: 200 as const,
+                  reason: "ok",
+                  user: headerUser,
+                  profile,
+                };
+              }
+            }
           }
         }
       } catch (tokenError) {
@@ -40,41 +70,7 @@ async function checkAdminAuth(request: NextRequest) {
     }
   }
 
-  if (userError || !user) {
-    return { ok: false as const, status: 401 as const, reason: "no-user", user: null, profile: null };
-  }
-
-  // Fetch profile to check admin status
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id,email,role,segment,tier,membership_tier")
-    .eq("id", user.id)
-    .single<{
-      id: string;
-      email: string | null;
-      role: string | null;
-      segment: string | null;
-      tier: string | null;
-      membership_tier: string | null;
-    }>();
-
-  if (profileError || !profile) {
-    return { ok: false as const, status: 403 as const, reason: "no-profile", user, profile: null };
-  }
-
-  // Check if user is admin
-  const isAdmin =
-    profile.role === "admin" ||
-    profile.segment === "admin" ||
-    profile.tier === "enterprise" ||
-    profile.membership_tier === "enterprise" ||
-    profile.email === "admin@offaxisdeals.com";
-
-  if (!isAdmin) {
-    return { ok: false as const, status: 403 as const, reason: "not-admin", user, profile };
-  }
-
-  return { ok: true as const, status: 200 as const, reason: "ok", user, profile };
+  return admin;
 }
 
 /**
