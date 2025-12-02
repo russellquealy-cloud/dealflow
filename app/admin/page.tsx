@@ -267,15 +267,15 @@ export default function AdminDashboard() {
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '12px', height: '12px', background: '#28a745', borderRadius: '50%' }}></div>
-            <span>Exists & Functional</span>
+            <span>Ready</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '12px', height: '12px', background: '#ffc107', borderRadius: '50%' }}></div>
-            <span>Stub/Placeholder</span>
+            <span>Stub</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '12px', height: '12px', background: '#dc3545', borderRadius: '50%' }}></div>
-            <span>Missing</span>
+            <span>Needs Implementation</span>
           </div>
         </div>
       </div>
@@ -303,8 +303,8 @@ export default function AdminDashboard() {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '8px 12px',
-                    background: link.status === 'exists' ? '#d4edda' : '#fff3cd',
-                    border: `1px solid ${link.status === 'exists' ? '#c3e6cb' : '#ffeaa7'}`,
+                    background: link.status === 'exists' ? '#d4edda' : link.status === 'stub' ? '#fff3cd' : '#f8d7da',
+                    border: `1px solid ${link.status === 'exists' ? '#c3e6cb' : link.status === 'stub' ? '#ffeaa7' : '#f5c6cb'}`,
                     borderRadius: '4px',
                     textDecoration: 'none',
                     color: '#1a1a1a',
@@ -314,10 +314,10 @@ export default function AdminDashboard() {
                   <span>{link.name}</span>
                   <span style={{
                     fontSize: '12px',
-                    color: link.status === 'exists' ? '#155724' : '#856404',
+                    color: link.status === 'exists' ? '#155724' : link.status === 'stub' ? '#856404' : '#dc3545',
                     fontWeight: '500'
                   }}>
-                    {link.status === 'exists' ? 'Γ£ô Ready' : 'ΓÜá Stub'}
+                    {link.status === 'exists' ? 'Ready' : link.status === 'stub' ? 'Stub' : 'Needs Implementation'}
                   </span>
                 </Link>
               ))}

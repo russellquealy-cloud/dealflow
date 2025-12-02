@@ -25,8 +25,17 @@ export default async function AnalyticsLayout({
     .eq('id', user.id)
     .maybeSingle<AnyProfile>();
 
+  // Check if user is admin - admins always have access
+  const isAdmin =
+    profile?.role === 'admin' ||
+    profile?.segment === 'admin' ||
+    profile?.tier === 'enterprise' ||
+    profile?.membership_tier === 'enterprise' ||
+    profile?.email === 'admin@offaxisdeals.com';
+
   // All authenticated users can access analytics - no Pro gate
   // Analytics API route returns data for any authenticated user
+  // Admins always have full access regardless of segment or tier
 
   const role = (profile?.role || profile?.segment || 'investor').toLowerCase() as 'investor' | 'wholesaler';
   const isWholesaler = role === 'wholesaler';
