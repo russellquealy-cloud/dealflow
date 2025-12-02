@@ -6,13 +6,15 @@ import { getAdminContext } from "@/lib/adminAuth";
  * 
  * Debug endpoint to show exactly what the API sees for authentication.
  * Always returns JSON describing session, profile, and admin status.
+ * Uses getAdminContext() which logs detailed cookie/session info.
  * 
  * TODO: When auth is confirmed stable in production, remove this endpoint.
  */
 export async function GET() {
   const ctx = await getAdminContext();
 
-  console.log('[admin/debug-auth]', {
+  // Additional logging at endpoint level (getAdminContext already logs internally)
+  console.log('[admin/debug-auth] endpoint result', {
     status: ctx.status,
     hasSession: !!ctx.session,
     userId: ctx.session?.user.id ?? null,

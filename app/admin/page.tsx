@@ -16,6 +16,10 @@ export default function AdminDashboard() {
     isAdmin?: boolean;
     error?: string;
   } | null>(null);
+  const [debugCookies, setDebugCookies] = useState<{
+    count?: number;
+    cookies?: Array<{ name: string; hasValue: boolean }>;
+  } | null>(null);
 
   console.log('Admin page: COMPONENT RENDERING - NO REDIRECTS');
 
@@ -85,13 +89,17 @@ export default function AdminDashboard() {
         // Fetch debug auth info if user is admin
         if (userIsAdmin) {
           try {
-            const debugResponse = await fetch('/api/admin/debug-auth', {
-              credentials: 'include',
-            });
-            const debugData = await debugResponse.json();
-            setDebugAuth(debugData);
+            // Fetch both debug endpoints
+            const [debugAuthRes, debugCookiesRes] = await Promise.all([
+              fetch('/api/admin/debug-auth', { credentials: 'include' }),
+              fetch('/api/admin/debug-cookies', { credentials: 'include' }),
+            ]);
+            const debugAuthData = await debugAuthRes.json();
+            const debugCookiesData = await debugCookiesRes.json();
+            setDebugAuth(debugAuthData);
+            setDebugCookies(debugCookiesData);
           } catch (debugError) {
-            console.error('Error fetching debug auth:', debugError);
+            console.error('Error fetching debug info:', debugError);
           }
         }
       } catch (error) {
@@ -278,46 +286,61 @@ export default function AdminDashboard() {
       <h1 style={{ marginBottom: '30px', color: '#1a1a1a' }}>Admin Dashboard - Feature Testing</h1>
       
       {/* TODO: When auth is confirmed stable in production, remove this debug panel */}
-      {isAdmin && debugAuth && (
+      {isAdmin && (debugAuth || debugCookies) && (
         <div style={{
           marginBottom: '20px',
           padding: '12px 16px',
-          background: debugAuth.status === 200 ? '#d4edda' : '#f8d7da',
-          border: `1px solid ${debugAuth.status === 200 ? '#c3e6cb' : '#f5c6cb'}`,
+          background: debugAuth?.status === 200 ? '#d4edda' : '#f8d7da',
+          border: `1px solid ${debugAuth?.status === 200 ? '#c3e6cb' : '#f5c6cb'}`,
           borderRadius: '6px',
           fontSize: '13px',
         }}>
-          <div style={{ fontWeight: 600, marginBottom: '6px', color: debugAuth.status === 200 ? '#155724' : '#721c24' }}>
+          <div style={{ fontWeight: 600, marginBottom: '6px', color: debugAuth?.status === 200 ? '#155724' : '#721c24' }}>
             Admin Auth Debug (Temporary)
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '12px' }}>
-            <div>
-              <strong>Status:</strong> <span style={{ color: debugAuth.status === 200 ? '#155724' : '#721c24' }}>{debugAuth.status}</span>
+          
+          {debugCookies && (
+            <div style={{ marginBottom: '12px', padding: '8px', background: '#fff', borderRadius: '4px', fontSize: '11px' }}>
+              <strong>Cookies in Route Handler:</strong> {debugCookies.count || 0} cookies
+              {debugCookies.cookies && (
+                <div style={{ marginTop: '4px', color: '#666' }}>
+                  {debugCookies.cookies.map(c => c.name).join(', ') || 'None'}
+                </div>
+              )}
             </div>
-            <div>
-              <strong>OK:</strong> {debugAuth.ok ? '✅' : '❌'}
+          )}
+          
+          {debugAuth && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '12px' }}>
+              <div>
+                <strong>Status:</strong> <span style={{ color: debugAuth.status === 200 ? '#155724' : '#721c24' }}>{debugAuth.status}</span>
+              </div>
+              <div>
+                <strong>OK:</strong> {debugAuth.ok ? '✅' : '❌'}
+              </div>
+              <div>
+                <strong>Email:</strong> {debugAuth.sessionSummary?.email || 'N/A'}
+              </div>
+              <div>
+                <strong>Role:</strong> {debugAuth.profileSummary?.role || 'N/A'}
+              </div>
+              <div>
+                <strong>Segment:</strong> {debugAuth.profileSummary?.segment || 'N/A'}
+              </div>
+              <div>
+                <strong>Is Admin:</strong> {debugAuth.isAdmin ? '✅' : '❌'}
+              </div>
             </div>
-            <div>
-              <strong>Email:</strong> {debugAuth.sessionSummary?.email || 'N/A'}
-            </div>
-            <div>
-              <strong>Role:</strong> {debugAuth.profileSummary?.role || 'N/A'}
-            </div>
-            <div>
-              <strong>Segment:</strong> {debugAuth.profileSummary?.segment || 'N/A'}
-            </div>
-            <div>
-              <strong>Is Admin:</strong> {debugAuth.isAdmin ? '✅' : '❌'}
-            </div>
-          </div>
-          {debugAuth.error && (
+          )}
+          
+          {debugAuth?.error && (
             <div style={{ marginTop: '8px', color: '#721c24', fontSize: '11px' }}>
               <strong>Error:</strong> {debugAuth.error}
             </div>
           )}
-          {debugAuth.status !== 200 && (
+          {debugAuth && debugAuth.status !== 200 && (
             <div style={{ marginTop: '8px', color: '#721c24', fontSize: '11px' }}>
-              Admin debug-auth failed (status {debugAuth.status}). Check server logs for [admin/debug-auth].
+              Admin debug-auth failed (status {debugAuth.status}). Check server logs for [admin/debug-auth] and [adminAuth].
             </div>
           )}
         </div>

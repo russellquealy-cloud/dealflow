@@ -35,6 +35,15 @@ export type AdminContext =
  */
 export async function getAdminContext(request?: { headers: Headers }): Promise<AdminContext> {
   try {
+    // Log cookie names BEFORE creating Supabase client
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const cookieList = cookieStore.getAll().map((c) => c.name);
+    console.log('[adminAuth] cookies seen in route handler:', cookieList);
+    console.log('[adminAuth] has supabase cookies:', cookieList.some(name => 
+      name.includes('sb-') || name.includes('supabase') || name.includes('auth-token')
+    ));
+
     const supabase = await createServerClient();
 
     // Try getUser() first (preferred for Next.js 15)
@@ -43,17 +52,36 @@ export async function getAdminContext(request?: { headers: Headers }): Promise<A
     // If getUser() fails, try getSession() as fallback (for RSC prefetch scenarios)
     let session: { user: { id: string; email?: string | null }; access_token?: string } | null = null;
     if (userError || !user) {
+      console.log('[adminAuth] getUser() failed, trying getSession()', {
+        userError: userError?.message,
+        hasUser: !!user,
+      });
+      
       const { data: { session: sessionData }, error: sessionError } = await supabase.auth.getSession();
+      
       if (sessionData && !sessionError) {
+        console.log('[adminAuth] got session from getSession()', {
+          userId: sessionData.user.id,
+          email: sessionData.user.email,
+        });
         session = {
           user: sessionData.user,
           access_token: sessionData.access_token,
         };
         user = sessionData.user;
         userError = null;
+      } else {
+        console.log('[adminAuth] getSession() also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!sessionData,
+        });
       }
     } else {
       // If getUser() succeeded, construct session-like object
+      console.log('[adminAuth] got user from getUser()', {
+        userId: user.id,
+        email: user.email,
+      });
       session = {
         user: user,
         access_token: undefined, // getUser doesn't return token
@@ -61,12 +89,16 @@ export async function getAdminContext(request?: { headers: Headers }): Promise<A
     }
 
     if (userError || !user || !session) {
+      console.log('[adminAuth] no session from supabase.auth.getSession()', {
+        error: userError?.message,
+        hasSession: !!session,
+      });
       return {
         status: 401,
         session: null,
         profile: null,
         isAdmin: false,
-        error: userError?.message ?? "No session found",
+        error: userError?.message ?? "Auth session missing!",
       };
     }
 
@@ -89,6 +121,14 @@ export async function getAdminContext(request?: { headers: Headers }): Promise<A
 
     // Check if user is admin using the shared isAdmin() helper
     const adminCheck = isAdmin(profile);
+
+    console.log('[adminAuth] got session and profile', {
+      userId: session.user.id,
+      email: session.user.email,
+      profileRole: profile.role,
+      profileSegment: profile.segment,
+      isAdmin: adminCheck,
+    });
 
     if (!adminCheck) {
       return {
