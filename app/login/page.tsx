@@ -94,6 +94,12 @@ function LoginInner() {
       return;
     }
     
+    // Don't redirect if we're already on analytics routes (they have their own auth)
+    if (currentPath.startsWith('/analytics/')) {
+      console.log('🔐 Already on analytics page, skipping redirect', { currentPath, next });
+      return;
+    }
+    
     if (currentPath === next || currentPath.startsWith(next + '/')) {
       console.log('🔐 Already on target page, skipping redirect', { currentPath, next });
       return;
@@ -107,7 +113,12 @@ function LoginInner() {
     const timeoutId = setTimeout(() => {
       // Double-check we're not already on the target before redirecting
       const checkPath = window.location.pathname;
-      if (checkPath !== next && !checkPath.startsWith(next + '/') && !checkPath.startsWith('/admin')) {
+      if (
+        checkPath !== next && 
+        !checkPath.startsWith(next + '/') && 
+        !checkPath.startsWith('/admin') &&
+        !checkPath.startsWith('/analytics/')
+      ) {
         router.replace(next);
       } else {
         console.log('🔐 Skipping redirect - already on target path', { checkPath, next });

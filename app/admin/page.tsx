@@ -167,9 +167,9 @@ export default function AdminDashboard() {
       name: 'User Analytics (Pro Features)',
       description: 'Advanced analytics for Pro users - Lead conversion, heatmaps, and data export',
       links: [
-        { name: 'Lead Conversion Trends', href: '/analytics/lead-conversion', status: 'exists' },
-        { name: 'Geographic Heatmap', href: '/analytics/heatmap', status: 'exists' },
-        { name: 'CSV & API Export', href: '/analytics/export', status: 'exists' }
+        { name: 'Lead Conversion Trends', href: '/admin/analytics/lead-conversion', status: 'exists' },
+        { name: 'Geographic Heatmap', href: '/admin/analytics/heatmap', status: 'exists' },
+        { name: 'CSV & API Export', href: '/admin/analytics/export', status: 'exists' }
       ]
     },
     {
