@@ -21,6 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import type Stripe from 'stripe';
 import { createServerClient } from '@/supabase/server';
 import { STRIPE_PRICES, getStripe } from '@/lib/stripe';
@@ -62,6 +63,19 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[billing] create-checkout-session route hit');
 
+    // Log cookies for debugging (check if auth cookies are present)
+    const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    const cookieNames = allCookies.map(c => c.name);
+    
+    console.log('[billing] cookies in route', {
+      count: allCookies.length,
+      cookieNames,
+      hasAuthCookies: cookieNames.some(name => 
+        name.includes('auth') || name.includes('supabase') || name.includes('dealflow')
+      ),
+    });
+
     // Use the SAME helper as /api/alerts which successfully authenticates users
     const supabase = await createServerClient();
 
@@ -74,6 +88,7 @@ export async function POST(req: NextRequest) {
       userEmail: user?.email || null,
       error: userError?.message || null,
       errorStatus: userError?.status || null,
+      errorCode: userError?.code || null,
     });
 
     // No user found - return 401 (same pattern as /api/alerts)

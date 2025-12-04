@@ -432,6 +432,7 @@ function PricingPageInner() {
                       {feature.included && feature.link ? (
                         <Link 
                           href={feature.link}
+                          prefetch={false}
                           style={{ 
                             color: '#3b82f6', 
                             textDecoration: 'none',
@@ -534,6 +535,7 @@ function PricingPageInner() {
                 {feature.link ? (
                   <Link 
                     href={feature.link}
+                    prefetch={false}
                     style={{ 
                       color: '#3b82f6', 
                       textDecoration: 'none',
@@ -551,6 +553,7 @@ function PricingPageInner() {
 
           <Link 
             href="/contact-sales"
+            prefetch={false}
             style={{
               background: '#7c3aed',
               color: 'white',
@@ -671,7 +674,7 @@ function PricingPageInner() {
                 color: '#6b7280',
                 lineHeight: '1.5'
               }}>
-                Our team is here to help! <Link href="/contact-sales" style={{ color: '#3b82f6', textDecoration: 'none' }}>Contact sales</Link> for personalized recommendations.
+                Our team is here to help! <Link href="/contact-sales" prefetch={false} style={{ color: '#3b82f6', textDecoration: 'none' }}>Contact sales</Link> for personalized recommendations.
               </p>
             </div>
           </div>
