@@ -53,25 +53,26 @@ export async function getSupabaseRouteClient() {
     );
   }
 
-  // Use @supabase/ssr's createServerClient which automatically handles dealflow-auth-token
+  // Use @supabase/ssr's createServerClient which automatically handles PKCE cookies
   // The cookie adapter we provide tells it how to read/write from Next.js cookie store
-  // @supabase/ssr will automatically look for cookies based on the storageKey used by the client
-  // Since the browser client uses storageKey: 'dealflow-auth-token', the server reads from that cookie
+  // @supabase/ssr automatically reads cookies based on the Supabase project reference
+  // For PKCE flow, cookies are named like: sb-<project-ref>-auth-token
   // 
   // CRITICAL: The auth config must match the browser client:
   // - Browser uses: flowType: 'pkce', storageKey: 'dealflow-auth-token'
-  // - Server will automatically read cookies with names matching the storageKey pattern
+  // - Server must use flowType: 'pkce' and @supabase/ssr will automatically read the right cookies
+  // - storageKey is only used by browser client; server reads cookies based on project ref
   return createSupabaseSSRClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
       // Match browser client config for PKCE flow
       flowType: 'pkce',
-      // storageKey is used by browser client; server reads cookies automatically
+      // Note: storageKey is only for browser client. Server reads cookies automatically.
     },
     cookies: {
       get(name: string) {
         const value = cookieStore.get(name)?.value;
-        // Log cookie reads for dealflow-auth-token and related cookies
-        if (name.includes('dealflow') || name.includes('auth-token')) {
+        // Log cookie reads for ALL auth-related cookies (Supabase PKCE uses sb-<project-ref>-auth-token)
+        if (name.includes('auth') || name.includes('supabase') || name.includes('dealflow') || name.startsWith('sb-')) {
           console.log(`[supabaseRoute] reading cookie ${name}:`, {
             hasValue: !!value,
             valueLength: value?.length ?? 0,

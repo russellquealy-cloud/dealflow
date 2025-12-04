@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     
     // TEMPORARY DEBUG: Log all cookie details to diagnose auth issue
     const authCookieNames = cookieNames.filter(name => 
-      name.includes('auth') || name.includes('supabase') || name.includes('dealflow') || name.includes('sb-')
+      name.includes('auth') || name.includes('supabase') || name.includes('dealflow') || name.startsWith('sb-')
     );
     
     console.log('[billing] cookies in route - DETAILED DEBUG', {

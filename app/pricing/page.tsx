@@ -36,10 +36,24 @@ function PricingPageInner() {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error', message: 'Unknown error' }));
-        console.error('Checkout error:', { status: response.status, errorData });
+        
+        // TEMPORARY DEBUG: Log full error response to understand what's happening
+        console.error('Checkout error - FULL DEBUG:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          // Also log what cookies the browser sees
+          browserCookies: typeof document !== 'undefined' ? document.cookie.split(';').filter(c => 
+            c.includes('auth') || c.includes('supabase') || c.includes('dealflow') || c.includes('sb-')
+          ) : [],
+        });
 
         // Only redirect to login for true authentication errors (401 with NOT_AUTHENTICATED)
         if (response.status === 401 && errorData.error === 'NOT_AUTHENTICATED') {
+          // If debug info is available, log it
+          if (errorData.debug) {
+            console.error('Auth debug from server:', errorData.debug);
+          }
           alert('Please sign in to upgrade your plan.');
           router.push(`/login?next=${encodeURIComponent(`/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`)}`);
           return;
