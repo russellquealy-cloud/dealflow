@@ -18,6 +18,11 @@ export async function createSupabaseServer() {
   }
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      // Match browser client config for PKCE flow
+      // Browser uses flowType: 'pkce' (see app/supabase/client.ts)
+      flowType: 'pkce',
+    },
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;

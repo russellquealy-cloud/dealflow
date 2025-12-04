@@ -78,12 +78,26 @@ export async function POST(req: NextRequest) {
     const allCookies = cookieStore.getAll();
     const cookieNames = allCookies.map(c => c.name);
     
-    console.log('[billing] cookies in route', {
+    // TEMPORARY DEBUG: Log all cookie details to diagnose auth issue
+    const authCookieNames = cookieNames.filter(name => 
+      name.includes('auth') || name.includes('supabase') || name.includes('dealflow') || name.includes('sb-')
+    );
+    
+    console.log('[billing] cookies in route - DETAILED DEBUG', {
       count: allCookies.length,
       cookieNames,
-      hasAuthCookies: cookieNames.some(name => 
-        name.includes('auth') || name.includes('supabase') || name.includes('dealflow')
-      ),
+      authCookieNames,
+      hasAuthCookies: authCookieNames.length > 0,
+      // Log cookie values (mask sensitive parts)
+      authCookieDetails: authCookieNames.map(name => {
+        const cookie = allCookies.find(c => c.name === name);
+        return {
+          name,
+          hasValue: !!cookie?.value,
+          valueLength: cookie?.value?.length || 0,
+          valuePrefix: cookie?.value?.substring(0, 30) || null,
+        };
+      }),
     });
 
     // Use the SAME helper as /api/admin/debug-auth and /api/transactions which work in production
@@ -128,16 +142,33 @@ export async function POST(req: NextRequest) {
 
     // No user found - return 401 with specific error code
     if (userError || !user) {
-      console.error('[billing] User not authenticated', {
+      // TEMPORARY DEBUG: Log detailed cookie info to diagnose auth issue
+      console.error('[billing] User not authenticated - DEBUG INFO', {
         error: userError?.message || 'No error but no user',
         errorStatus: userError?.status,
+        errorCode: userError?.code || null,
         cookieNames,
+        cookieCount: allCookies.length,
+        // Log actual cookie values (mask sensitive parts)
+        cookieDetails: allCookies.map(c => ({
+          name: c.name,
+          hasValue: !!c.value,
+          valueLength: c.value?.length || 0,
+          valuePrefix: c.value?.substring(0, 20) || null,
+        })),
       });
 
       return NextResponse.json(
         { 
           error: 'NOT_AUTHENTICATED',
-          message: 'Not authenticated' 
+          message: 'Not authenticated',
+          // TEMPORARY DEBUG: Include cookie info in response for debugging
+          debug: {
+            cookieCount: allCookies.length,
+            cookieNames,
+            hasUserError: !!userError,
+            errorMessage: userError?.message || null,
+          }
         },
         { status: 401 }
       );
