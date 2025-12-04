@@ -6,18 +6,28 @@
  * WHAT WAS BROKEN:
  * - Route was not correctly reading Supabase auth session from cookies
  * - Using wrong Supabase server client helper
- * - Not returning checkoutUrl in the expected format
+ * - Missing getSession() fallback that /api/admin/debug-auth uses
+ * - Frontend was redirecting to login for all 401s, causing redirect loops
+ * - Not returning structured error codes to distinguish auth vs business errors
  * 
  * HOW AUTH IS NOW BEING READ:
- * - Uses createServerClient from @/supabase/server (same as /api/alerts which works)
- * - Calls supabase.auth.getUser() to get authenticated user from cookies
+ * - Uses createServerClient from @/supabase/server (same as /api/alerts)
+ * - Calls supabase.auth.getUser() first
+ * - Falls back to supabase.auth.getSession() if getUser() fails (same pattern as /api/admin/debug-auth)
  * - Cookie adapter ensures cookies are available to all routes with path: '/'
+ * - Returns NOT_AUTHENTICATED error code only when truly unauthenticated
  * 
  * RESPONSE FORMAT:
  * - Success (200): { checkoutUrl: string, url: string } - Stripe Checkout URL
- * - Unauthenticated (401): { error: "Not authenticated" }
- * - Invalid params (400): { error: "Missing or invalid segment, tier, or period" }
- * - Server error (500): { error: string }
+ * - Unauthenticated (401): { error: "NOT_AUTHENTICATED", message: string }
+ * - Invalid params (400): { error: "INVALID_PARAMETERS", message: string }
+ * - Forbidden (403): { error: "UPGRADE_NOT_ALLOWED", message: string }
+ * - Server error (500): { error: "STRIPE_ERROR" | "CONFIGURATION_ERROR" | "INTERNAL_ERROR", message: string }
+ * 
+ * FRONTEND BEHAVIOR:
+ * - Only redirects to /login when response.status === 401 AND error === "NOT_AUTHENTICATED"
+ * - For all other errors (403, 400, 500), shows alert message and stays on pricing page
+ * - This prevents redirect loops when user is authenticated but upgrade fails for business reasons
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -76,11 +86,12 @@ export async function POST(req: NextRequest) {
       ),
     });
 
-    // Use the SAME helper as /api/alerts which successfully authenticates users
+    // Use the SAME helper as /api/admin/debug-auth which has getSession fallback
+    // This ensures we can read auth cookies even if getUser() fails initially
     const supabase = await createServerClient();
 
-    // Get authenticated user (same pattern as /api/alerts)
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Try getUser first (same pattern as /api/admin/debug-auth)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
 
     console.log('[billing] supabase.auth.getUser result', {
       hasUser: !!user,
@@ -91,15 +102,43 @@ export async function POST(req: NextRequest) {
       errorCode: userError?.code || null,
     });
 
-    // No user found - return 401 (same pattern as /api/alerts)
+    // Fallback to getSession if getUser fails (same as /api/admin/debug-auth)
+    if (userError || !user) {
+      console.log('[billing] getUser failed, trying getSession fallback', {
+        error: userError?.message,
+        errorCode: userError?.status,
+      });
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[billing] got session from getSession fallback', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else {
+        console.log('[billing] getSession fallback also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
+    }
+
+    // No user found - return 401 with specific error code
     if (userError || !user) {
       console.error('[billing] User not authenticated', {
         error: userError?.message || 'No error but no user',
         errorStatus: userError?.status,
+        cookieNames,
       });
 
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { 
+          error: 'NOT_AUTHENTICATED',
+          message: 'Not authenticated' 
+        },
         { status: 401 }
       );
     }
@@ -130,7 +169,7 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: 'Missing or invalid segment, tier, or period' },
+        { error: 'INVALID_PARAMETERS', message: 'Missing or invalid segment, tier, or period' },
         { status: 400 }
       );
     }
@@ -158,7 +197,10 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: 'Price ID not configured for this plan' },
+        { 
+          error: 'CONFIGURATION_ERROR',
+          message: 'Price ID not configured for this plan' 
+        },
         { status: 500 }
       );
     }
@@ -172,7 +214,10 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: 'Missing email address' },
+        { 
+          error: 'INVALID_PARAMETERS',
+          message: 'Missing email address' 
+        },
         { status: 400 }
       );
     }
@@ -197,7 +242,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         {
-          error: `Role mismatch: You are registered as ${userRole}, but trying to purchase ${segment} plan. Please contact support if you need to change your account type.`,
+          error: 'UPGRADE_NOT_ALLOWED',
+          message: `Role mismatch: You are registered as ${userRole}, but trying to purchase ${segment} plan. Please contact support if you need to change your account type.`,
         },
         { status: 403 }
       );
@@ -211,7 +257,10 @@ export async function POST(req: NextRequest) {
       console.error('[billing] Missing NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL');
 
       return NextResponse.json(
-        { error: 'Configuration error' },
+        { 
+          error: 'CONFIGURATION_ERROR',
+          message: 'Configuration error: Missing NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL' 
+        },
         { status: 500 }
       );
     }
@@ -275,7 +324,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         {
-          error: 'Failed to create checkout session. Please try again or contact support.',
+          error: 'STRIPE_ERROR',
+          message: 'Failed to create checkout session. Please try again or contact support.',
         },
         { status: 500 }
       );
@@ -288,7 +338,10 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: 'Failed to create checkout session URL' },
+        { 
+          error: 'STRIPE_ERROR',
+          message: 'Failed to create checkout session URL' 
+        },
         { status: 500 }
       );
     }
@@ -309,7 +362,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Internal server error',
       },
       { status: 500 }
     );

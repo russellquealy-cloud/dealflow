@@ -35,14 +35,19 @@ function PricingPageInner() {
       });
       
       if (!response.ok) {
-        if (response.status === 401) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error', message: 'Unknown error' }));
+        console.error('Checkout error:', { status: response.status, errorData });
+
+        // Only redirect to login for true authentication errors (401 with NOT_AUTHENTICATED)
+        if (response.status === 401 && errorData.error === 'NOT_AUTHENTICATED') {
           alert('Please sign in to upgrade your plan.');
           router.push(`/login?next=${encodeURIComponent(`/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`)}`);
           return;
         }
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Checkout error:', errorData);
-        alert(`Error: ${errorData.error || 'Something went wrong upgrading your plan.'}`);
+
+        // For business errors (403, 400, 500), show error message but stay on pricing page
+        const errorMessage = errorData.message || errorData.error || 'Something went wrong upgrading your plan. Please try again or contact support.';
+        alert(`Error: ${errorMessage}`);
         return;
       }
       
