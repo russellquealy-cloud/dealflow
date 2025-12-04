@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { createServerClient } from "@/supabase/server";
+import { createSupabaseServer } from "@/lib/createSupabaseServer";
 import { STRIPE_PRICES, getStripe } from "@/lib/stripe";
 import { getOrCreateStripeCustomerId } from "@/lib/billing/stripeCustomer";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function resolvePriceId(
   segment: "investor" | "wholesaler",
@@ -34,38 +35,49 @@ function resolvePriceId(
 
 export async function POST(req: NextRequest) {
   try {
-    // Log request details for debugging
-    const authHeader = req.headers.get('authorization');
-    const cookieHeader = req.headers.get('cookie');
-    console.log('🔐 Checkout session request received', {
-      hasAuthHeader: !!authHeader,
-      hasCookieHeader: !!cookieHeader,
-      cookieLength: cookieHeader?.length || 0,
-      url: req.url,
-    });
+    // Use the same auth helper as admin layout and other working routes
+    const supabase = await createSupabaseServer();
 
-    // Use the same auth pattern as working routes (e.g., /api/alerts)
-    // This uses createServerClient which properly handles cookies in Next.js 15
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Try getUser first (same as admin layout)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    // Log authentication result
-    console.log('🔍 Authentication check result', {
-      hasUser: !!user,
-      userId: user?.id || 'none',
-      userEmail: user?.email || 'none',
-      userError: userError?.message || 'none',
-    });
-
+    // Fallback to getSession if getUser fails (same as admin layout)
     if (userError || !user) {
-      console.error('❌ Checkout session: User not authenticated', {
-        userError: userError?.message || 'No error but no user',
-        hasCookies: !!cookieHeader,
+      console.log('[create-checkout-session] getUser failed, trying getSession', {
+        error: userError?.message,
+        errorCode: userError?.status,
       });
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[create-checkout-session] got session from getSession', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else {
+        console.log('[create-checkout-session] getSession also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
     }
 
-    console.log('✅ Checkout session: User authenticated', {
+    // No user found - return 401
+    if (userError || !user) {
+      console.error('[create-checkout-session] User not authenticated', {
+        userError: userError?.message || 'No error but no user',
+        errorCode: userError?.status,
+      });
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    console.log('[create-checkout-session] User authenticated', {
       userId: user.id,
       userEmail: user.email,
     });
@@ -207,9 +219,22 @@ export async function POST(req: NextRequest) {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    return NextResponse.json({ url: session.url });
+    if (!session.url) {
+      console.error('[create-checkout-session] Stripe session created but no URL returned', {
+        sessionId: session.id,
+      });
+      return NextResponse.json(
+        { error: "Failed to create checkout session URL" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      id: session.id,
+      url: session.url 
+    }, { status: 200 });
   } catch (error) {
-    console.error("Error creating checkout session", error);
+    console.error('[create-checkout-session] Error creating checkout session', error);
     const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
       { error: message },
