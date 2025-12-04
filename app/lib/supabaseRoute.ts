@@ -57,13 +57,22 @@ export async function getSupabaseRouteClient() {
   // The cookie adapter we provide tells it how to read/write from Next.js cookie store
   // @supabase/ssr will automatically look for cookies based on the storageKey used by the client
   // Since the browser client uses storageKey: 'dealflow-auth-token', the server reads from that cookie
+  // 
+  // CRITICAL: The auth config must match the browser client:
+  // - Browser uses: flowType: 'pkce', storageKey: 'dealflow-auth-token'
+  // - Server will automatically read cookies with names matching the storageKey pattern
   return createSupabaseSSRClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      // Match browser client config for PKCE flow
+      flowType: 'pkce',
+      // storageKey is used by browser client; server reads cookies automatically
+    },
     cookies: {
       get(name: string) {
         const value = cookieStore.get(name)?.value;
-        // Log cookie reads for dealflow-auth-token (first few calls only)
-        if (name === 'dealflow-auth-token') {
-          console.log(`[supabaseRoute] reading dealflow-auth-token:`, {
+        // Log cookie reads for dealflow-auth-token and related cookies
+        if (name.includes('dealflow') || name.includes('auth-token')) {
+          console.log(`[supabaseRoute] reading cookie ${name}:`, {
             hasValue: !!value,
             valueLength: value?.length ?? 0,
             valuePreview: value ? value.substring(0, 50) + '...' : null,
@@ -75,8 +84,8 @@ export async function getSupabaseRouteClient() {
         try {
           cookieStore.set({ name, value, ...options });
           // Log cookie sets for dealflow-auth-token
-          if (name === 'dealflow-auth-token') {
-            console.log(`[supabaseRoute] setting dealflow-auth-token:`, {
+          if (name.includes('dealflow') || name.includes('auth-token')) {
+            console.log(`[supabaseRoute] setting cookie ${name}:`, {
               hasValue: !!value,
               valueLength: value?.length ?? 0,
             });

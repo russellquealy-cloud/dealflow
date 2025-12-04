@@ -34,6 +34,7 @@ export async function GET() {
     message: auth.ok ? null : auth.message,
   });
 
+  // Enhanced payload for debugging
   const payload = {
     ok: auth.ok,
     status: auth.status,
@@ -57,6 +58,13 @@ export async function GET() {
     cookieInfo: {
       count: cookieList.length,
       cookies: cookieList,
+      dealflowCookies: cookieList.filter(c => 
+        c.name.includes('dealflow') || c.name.includes('auth-token')
+      ).map(c => ({
+        name: c.name,
+        hasValue: c.hasValue,
+        valueLength: c.valueLength,
+      })),
     },
     timestamp: new Date().toISOString(),
   };

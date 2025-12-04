@@ -93,6 +93,28 @@ export type RequireAdminApiResult =
  */
 export async function requireAdminApi(): Promise<RequireAdminApiResult> {
   try {
+    // Log cookies before creating Supabase client (for debugging)
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll().map(c => ({
+      name: c.name,
+      hasValue: !!c.value && c.value.length > 0,
+      valueLength: c.value?.length ?? 0,
+    }));
+    
+    const dealflowCookies = allCookies.filter(c => 
+      c.name.includes('dealflow') || c.name.includes('auth-token')
+    );
+    
+    console.log('[requireAdminApi] cookies before auth:', {
+      totalCookies: allCookies.length,
+      dealflowCookies: dealflowCookies.map(c => c.name),
+      dealflowCookiesWithValues: dealflowCookies.filter(c => c.hasValue).map(c => ({
+        name: c.name,
+        length: c.valueLength,
+      })),
+    });
+
     // Use the centralized route client that reads from dealflow-auth-token
     const supabase = await getSupabaseRouteClient();
 
@@ -102,6 +124,14 @@ export async function requireAdminApi(): Promise<RequireAdminApiResult> {
       error: userError,
     } = await supabase.auth.getUser();
 
+    console.log('[requireAdminApi] getUser() result:', {
+      hasUser: !!user,
+      userId: user?.id,
+      email: user?.email,
+      error: userError?.message,
+      errorCode: userError?.status,
+    });
+
     // If getUser() fails, try getSession() as fallback
     if (userError || !user) {
       console.log('[requireAdminApi] getUser() failed, trying getSession()', {
@@ -110,6 +140,15 @@ export async function requireAdminApi(): Promise<RequireAdminApiResult> {
       });
       
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      console.log('[requireAdminApi] getSession() result:', {
+        hasSession: !!session,
+        sessionUserId: session?.user?.id,
+        sessionEmail: session?.user?.email,
+        hasAccessToken: !!session?.access_token,
+        error: sessionError?.message,
+        errorCode: sessionError?.status,
+      });
       
       if (session && !sessionError) {
         user = session.user;
