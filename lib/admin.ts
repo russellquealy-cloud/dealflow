@@ -84,14 +84,47 @@ export type RequireAdminApiResult =
  * Require Admin API
  * 
  * Single source of truth for admin authentication in API route handlers.
- * Uses the same Supabase SSR client (getSupabaseRouteClient) that reads from
- * dealflow-auth-token cookie, matching the browser client.
  * 
- * This ensures route handlers see the same session as the client-side admin checks.
+ * IMPORTANT: This function now uses PKCE-aware authentication that:
+ * 1. Reads the dealflow-auth-token cookie (base64-encoded JSON)
+ * 2. Extracts the access_token from the decoded JSON
+ * 3. Calls supabase.auth.getUser(accessToken) with the token
+ * 
+ * This is necessary because @supabase/ssr's cookie mechanism doesn't work
+ * with our custom PKCE cookie format in production.
  * 
  * @returns RequireAdminApiResult with either ok: true and user/profile/supabase, or ok: false with error details
  */
 export async function requireAdminApi(): Promise<RequireAdminApiResult> {
+  // Use the PKCE-aware helper from lib/pkceAuth
+  const { requireAdminApi: pkceRequireAdminApi } = await import('@/lib/pkceAuth');
+  const result = await pkceRequireAdminApi();
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      status: result.status,
+      message: result.message,
+      user: null,
+      profile: null,
+    };
+  }
+
+  // Convert to the expected return type
+  return {
+    ok: true,
+    status: 200,
+    user: result.user,
+    profile: result.profile as AdminProfile,
+    supabase: result.supabase,
+  };
+}
+
+/**
+ * Legacy requireAdminApi implementation (kept for reference)
+ * Now delegates to PKCE-aware implementation above
+ */
+async function _legacyRequireAdminApi(): Promise<RequireAdminApiResult> {
   try {
     // Log cookies before creating Supabase client (for debugging)
     const { cookies } = await import('next/headers');

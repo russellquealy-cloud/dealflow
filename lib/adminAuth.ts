@@ -216,44 +216,60 @@ export type ProOrAdminContext =
     };
 
 export async function getProOrAdminContext(request?: { headers: Headers }): Promise<ProOrAdminContext> {
-  const adminCtx = await getAdminContext(request);
+  // Use PKCE-aware authentication for analytics routes
+  const { requireAdminApi } = await import('@/lib/pkceAuth');
+  const pkceAuth = await requireAdminApi();
 
-  // If not authenticated, return auth error
-  if (adminCtx.status !== 200 || !adminCtx.profile) {
+  // If not authenticated via PKCE, return auth error
+  if (!pkceAuth.ok) {
     return {
-      status: adminCtx.status as 401 | 403,
-      session: adminCtx.session,
-      profile: adminCtx.profile,
+      status: pkceAuth.status as 401 | 403,
+      session: null,
+      profile: null,
       isAdmin: false,
       isProOrAdmin: false,
-      error: adminCtx.error || 'Authentication failed',
+      error: pkceAuth.message,
     };
   }
 
-  // At this point we know adminCtx.status === 200 and profile exists
-  const { profile, session, isAdmin: isAdminUser } = adminCtx;
+  // If admin, they always have access
+  const profile = pkceAuth.profile;
+  const role = profile.role ?? null;
+  const segment = profile.segment ?? null;
+  const email = profile.email ?? null;
+  const isAdminUser =
+    role === 'admin' ||
+    segment === 'admin' ||
+    (email && email.toLowerCase() === 'admin@offaxisdeals.com') ||
+    profile.tier === 'enterprise' ||
+    profile.membership_tier === 'enterprise';
 
-  // Check if admin (admins always have access)
   if (isAdminUser) {
     return {
       status: 200,
-      session: session,
-      profile: profile,
+      session: {
+        user: pkceAuth.user,
+        access_token: undefined, // Not needed for this context
+      },
+      profile: profile as AdminProfile,
       isAdmin: true,
       isProOrAdmin: true,
       error: null,
     };
   }
 
-  // Check if Pro tier
+  // Check if Pro tier (non-admin Pro users also have access)
   const tier = profile.tier || profile.membership_tier || 'free';
   const isProTier = tier === 'pro' || tier === 'enterprise' || tier === 'basic';
 
   if (isProTier) {
     return {
       status: 200,
-      session: session,
-      profile: profile,
+      session: {
+        user: pkceAuth.user,
+        access_token: undefined,
+      },
+      profile: profile as AdminProfile,
       isAdmin: false,
       isProOrAdmin: true,
       error: null,
@@ -262,8 +278,11 @@ export async function getProOrAdminContext(request?: { headers: Headers }): Prom
 
   return {
     status: 403,
-    session: session,
-    profile: profile,
+    session: {
+      user: pkceAuth.user,
+      access_token: undefined,
+    },
+    profile: profile as AdminProfile,
     isAdmin: false,
     isProOrAdmin: false,
     error: "Pro tier or admin access required",

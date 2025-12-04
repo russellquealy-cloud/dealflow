@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
 import { cookies } from "next/headers";
+import { getPkceAccessTokenFromCookies } from "@/lib/pkceAuth";
 
 /**
  * GET /api/admin/debug-auth
@@ -17,8 +18,11 @@ export async function GET() {
   const cookieList = cookieStore.getAll().map((c) => ({
     name: c.name,
     hasValue: !!c.value && c.value.length > 0,
-    valueLength: c.value?.length ?? 0,
+    length: c.value?.length ?? 0,
   }));
+
+  // Try to extract PKCE token for debugging
+  const pkceToken = await getPkceAccessTokenFromCookies();
 
   const auth = await requireAdminApi();
 
@@ -63,8 +67,11 @@ export async function GET() {
       ).map(c => ({
         name: c.name,
         hasValue: c.hasValue,
-        valueLength: c.valueLength,
+        length: c.length,
       })),
+      hasPkceCookie: !!cookieStore.get('dealflow-auth-token'),
+      hasPkceToken: !!pkceToken,
+      pkceTokenLength: pkceToken?.length ?? 0,
     },
     timestamp: new Date().toISOString(),
   };
