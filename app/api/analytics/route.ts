@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseRouteClient } from "../../lib/supabaseRoute";
+import { requireAdminApi } from "@/lib/admin";
 import { getProOrAdminContext } from "@/lib/adminAuth";
 import type { UserAnalytics } from "@/lib/analytics";
 
@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
 
     // Get user and supabase client for queries
     const user = ctx.session.user;
+    // Use the same route client - getProOrAdminContext uses getAdminContext which uses getSupabaseRouteClient
+    const { getSupabaseRouteClient } = await import("../../lib/supabaseRoute");
     const supabase = await getSupabaseRouteClient();
 
     // Use profile from context (already fetched)

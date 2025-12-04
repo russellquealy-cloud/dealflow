@@ -1,42 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAdminServer } from "@/lib/admin";
-
-import { createSupabaseRouteClient } from "@/lib/auth/server";
+import { requireAdminApi } from "@/lib/admin";
 
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
-
-async function ensureAdmin() {
-  const admin = await requireAdminServer();
-
-  if (!admin.ok) {
-    return {
-      ok: false as const,
-      response: NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: admin.reason,
-          status: admin.status,
-        },
-        { status: admin.status }
-      ),
-    };
-  }
-
-  return { ok: true as const, admin };
-}
 
 /**
  * GET /api/admin/support-tickets
  * Returns a list of support tickets (stub-safe).
  */
 export async function GET(_req: NextRequest) {
-  const guard = await ensureAdmin();
-  if (!guard.ok) return guard.response;
+  const auth = await requireAdminApi();
 
-  const supabase = createSupabaseRouteClient();
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        reason: auth.message,
+        status: auth.status,
+      },
+      { status: auth.status }
+    );
+  }
+
+  // Use the supabase client from requireAdminApi (already authenticated)
+  const supabase = auth.supabase;
 
   try {
     // If you have a "support_tickets" table, query it here.
@@ -83,8 +72,18 @@ export async function GET(_req: NextRequest) {
  * Stub implementation for now – logs payload but does not persist changes.
  */
 export async function POST(req: NextRequest) {
-  const guard = await ensureAdmin();
-  if (!guard.ok) return guard.response;
+  const auth = await requireAdminApi();
+  
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        reason: auth.message,
+        status: auth.status,
+      },
+      { status: auth.status }
+    );
+  }
 
   try {
     const body = await req.json().catch(() => ({}));

@@ -1,7 +1,6 @@
 // app/api/admin/fix-account/route.ts
 import { NextResponse } from "next/server";
-import { requireAdminServer } from "@/lib/admin";
-import { createSupabaseRouteClient } from "@/lib/auth/server";
+import { requireAdminApi } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -13,21 +12,20 @@ export async function GET() {
 }
 
 export async function POST() {
-  const admin = await requireAdminServer();
-  if (!admin.ok) {
+  const auth = await requireAdminApi();
+  
+  if (!auth.ok) {
     return NextResponse.json(
-      { error: "Unauthorized", reason: admin.reason, status: admin.status },
-      { status: admin.status },
+      { error: "Unauthorized", reason: auth.message, status: auth.status },
+      { status: auth.status },
     );
   }
 
-  const supabase = createSupabaseRouteClient();
+  // Use the supabase client from requireAdminApi (already authenticated)
+  const supabase = auth.supabase;
 
   // Optional: ensure the current admin profile is correctly flagged as admin
-  const { user } = admin;
-  if (!user) {
-    return NextResponse.json({ error: "No user" }, { status: 400 });
-  }
+  const { user } = auth;
 
   // Narrow local type issue: payload shape is valid, but Supabase typings infer `never` here.
   const { error } = await supabase

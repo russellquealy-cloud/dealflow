@@ -1,24 +1,23 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminServer } from "@/lib/admin";
-
-import { createSupabaseRouteClient } from "@/lib/auth/server";
+import { requireAdminApi } from "@/lib/admin";
 
 export async function GET() {
-  const admin = await requireAdminServer();
+  const auth = await requireAdminApi();
 
-  if (!admin.ok) {
+  if (!auth.ok) {
     return NextResponse.json(
       {
         error: "Unauthorized",
-        reason: admin.reason,
-        status: admin.status,
+        reason: auth.message,
+        status: auth.status,
       },
-      { status: admin.status }
+      { status: auth.status }
     );
   }
 
-  const supabase = createSupabaseRouteClient();
+  // Use the supabase client from requireAdminApi (already authenticated)
+  const supabase = auth.supabase;
 
   const { data, error } = await supabase
     .from("profiles")

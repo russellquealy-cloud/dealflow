@@ -1,32 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminContext } from "@/lib/adminAuth";
+import { requireAdminApi } from "@/lib/admin";
 
 /**
  * GET /api/admin/diagnose
  * Admin diagnostics endpoint using shared auth helper
  * 
- * Uses getAdminContext() as single source of truth for admin auth.
+ * Uses requireAdminApi() as single source of truth for admin auth.
  */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getAdminContext(request);
+    const auth = await requireAdminApi();
 
     console.log('[admin/diagnose]', {
-      status: ctx.status,
-      email: ctx.session?.user.email,
-      isAdmin: ctx.isAdmin,
-      error: ctx.error,
+      status: auth.status,
+      ok: auth.ok,
+      email: auth.user?.email,
+      isAdmin: auth.ok,
+      message: auth.ok ? null : auth.message,
     });
 
-    if (ctx.status !== 200) {
+    if (!auth.ok) {
       return NextResponse.json(
         {
           ok: false,
-          error: ctx.error,
-          reason: ctx.status === 401 ? "no-user" : "not-admin",
-          status: ctx.status,
+          error: auth.message,
+          reason: auth.status === 401 ? "no-user" : "not-admin",
+          status: auth.status,
         },
-        { status: ctx.status }
+        { status: auth.status }
       );
     }
 
@@ -34,8 +35,8 @@ export async function GET(request: NextRequest) {
       {
         ok: true,
         admin: true,
-        adminProfile: ctx.profile,
-        authUser: ctx.session.user,
+        adminProfile: auth.profile,
+        authUser: auth.user,
         authError: null,
         timestamp: new Date().toISOString(),
       },

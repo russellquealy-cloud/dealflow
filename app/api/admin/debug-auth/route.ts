@@ -1,53 +1,66 @@
 import { NextResponse } from "next/server";
-import { getAdminContext } from "@/lib/adminAuth";
+import { requireAdminApi } from "@/lib/admin";
+import { cookies } from "next/headers";
 
 /**
  * GET /api/admin/debug-auth
  * 
  * Debug endpoint to show exactly what the API sees for authentication.
  * Always returns JSON describing session, profile, and admin status.
- * Uses getAdminContext() which logs detailed cookie/session info.
+ * Uses requireAdminApi() which uses the same auth mechanism as all other admin routes.
  * 
  * TODO: When auth is confirmed stable in production, remove this endpoint.
  */
 export async function GET() {
-  const ctx = await getAdminContext();
+  // Get cookie info for debugging
+  const cookieStore = await cookies();
+  const cookieList = cookieStore.getAll().map((c) => ({
+    name: c.name,
+    hasValue: !!c.value && c.value.length > 0,
+    valueLength: c.value?.length ?? 0,
+  }));
 
-  // Additional logging at endpoint level (getAdminContext already logs internally)
+  const auth = await requireAdminApi();
+
   console.log('[admin/debug-auth] endpoint result', {
-    status: ctx.status,
-    hasSession: !!ctx.session,
-    userId: ctx.session?.user.id ?? null,
-    email: ctx.session?.user.email ?? null,
-    isAdmin: ctx.isAdmin,
-    profileRole: ctx.profile?.role ?? null,
-    profileSegment: ctx.profile?.segment ?? null,
-    profileTier: ctx.profile?.tier ?? null,
-    error: ctx.error,
+    status: auth.status,
+    ok: auth.ok,
+    hasUser: !!auth.user,
+    userId: auth.user?.id ?? null,
+    email: auth.user?.email ?? null,
+    profileRole: auth.profile?.role ?? null,
+    profileSegment: auth.profile?.segment ?? null,
+    profileTier: auth.profile?.tier ?? null,
+    message: auth.ok ? null : auth.message,
   });
 
   const payload = {
-    ok: ctx.status === 200,
-    status: ctx.status,
+    ok: auth.ok,
+    status: auth.status,
     sessionSummary: {
-      hasSession: !!ctx.session,
-      userId: ctx.session?.user.id ?? null,
-      email: ctx.session?.user.email ?? null,
+      hasSession: !!auth.user,
+      userId: auth.user?.id ?? null,
+      email: auth.user?.email ?? null,
     },
-    profileSummary: ctx.profile
+    profileSummary: auth.profile
       ? {
-          id: ctx.profile.id ?? null,
-          role: ctx.profile.role ?? null,
-          segment: ctx.profile.segment ?? null,
-          tier: ctx.profile.tier ?? null,
-          membership_tier: ctx.profile.membership_tier ?? null,
+          id: auth.profile.id ?? null,
+          role: auth.profile.role ?? null,
+          segment: auth.profile.segment ?? null,
+          tier: auth.profile.tier ?? null,
+          membership_tier: auth.profile.membership_tier ?? null,
         }
       : null,
-    isAdmin: ctx.isAdmin,
-    error: ctx.error,
+    isAdmin: auth.ok,
+    error: auth.ok ? null : auth.message,
+    // Include cookie info for debugging (names only, no values)
+    cookieInfo: {
+      count: cookieList.length,
+      cookies: cookieList,
+    },
     timestamp: new Date().toISOString(),
   };
 
-  return NextResponse.json(payload, { status: ctx.status });
+  return NextResponse.json(payload, { status: auth.status });
 }
 

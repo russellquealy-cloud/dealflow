@@ -1,28 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminContext } from "@/lib/adminAuth";
+import { requireAdminApi } from "@/lib/admin";
 
 /**
  * GET /api/email/test
  * Returns a simple status to prevent 405 errors from RSC prefetching
  */
 export async function GET(request: NextRequest) {
-  const ctx = await getAdminContext(request);
+  const auth = await requireAdminApi();
 
   console.log('[email/test] GET', {
-    status: ctx.status,
-    email: ctx.session?.user.email,
-    isAdmin: ctx.isAdmin,
-    error: ctx.error,
+    status: auth.status,
+    ok: auth.ok,
+    email: auth.user?.email,
+    isAdmin: auth.ok,
+    message: auth.ok ? null : auth.message,
   });
 
-  if (ctx.status !== 200) {
+  if (!auth.ok) {
     return NextResponse.json(
       {
         error: "Unauthorized",
-        reason: ctx.error,
-        status: ctx.status,
+        reason: auth.message,
+        status: auth.status,
       },
-      { status: ctx.status }
+      { status: auth.status }
     );
   }
 
@@ -40,23 +41,24 @@ export async function GET(request: NextRequest) {
  * Sends a test email (stub implementation)
  */
 export async function POST(request: NextRequest) {
-  const ctx = await getAdminContext(request);
+  const auth = await requireAdminApi();
 
   console.log('[email/test] POST', {
-    status: ctx.status,
-    email: ctx.session?.user.email,
-    isAdmin: ctx.isAdmin,
-    error: ctx.error,
+    status: auth.status,
+    ok: auth.ok,
+    email: auth.user?.email,
+    isAdmin: auth.ok,
+    message: auth.ok ? null : auth.message,
   });
 
-  if (ctx.status !== 200) {
+  if (!auth.ok) {
     return NextResponse.json(
       {
         error: "Unauthorized",
-        reason: ctx.error,
-        status: ctx.status,
+        reason: auth.message,
+        status: auth.status,
       },
-      { status: ctx.status }
+      { status: auth.status }
     );
   }
 

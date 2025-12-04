@@ -1,37 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAdminServer } from "@/lib/admin";
-
-import { createSupabaseRouteClient } from "@/lib/auth/server";
+import { requireAdminApi } from "@/lib/admin";
 
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-async function ensureAdmin() {
-  const admin = await requireAdminServer();
-
-  if (!admin.ok) {
-    return {
-      ok: false as const,
-      response: NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: admin.reason,
-          status: admin.status,
-        },
-        { status: admin.status }
-      ),
-    };
-  }
-
-  return { ok: true as const, admin };
-}
-
 // GET: return current feature flags / settings (stubbed for now)
 export async function GET(_req: NextRequest) {
-  const guard = await ensureAdmin();
-  if (!guard.ok) return guard.response;
+  const auth = await requireAdminApi();
+  
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        reason: auth.message,
+        status: auth.status,
+      },
+      { status: auth.status }
+    );
+  }
 
   // If you later store flags in a table, query them here.
   // For now, return a simple stub payload.
@@ -51,10 +39,21 @@ export async function GET(_req: NextRequest) {
 
 // POST: update feature flags (stubbed; logs payload only)
 export async function POST(req: NextRequest) {
-  const guard = await ensureAdmin();
-  if (!guard.ok) return guard.response;
+  const auth = await requireAdminApi();
+  
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        reason: auth.message,
+        status: auth.status,
+      },
+      { status: auth.status }
+    );
+  }
 
-  const supabase = createSupabaseRouteClient();
+  // Use the supabase client from requireAdminApi (already authenticated)
+  const supabase = auth.supabase;
 
   try {
     const body = await req.json().catch(() => ({}));
