@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
-import { createServerClient } from "@/supabase/server";
+import { getAuthUserServer } from "@/lib/auth/server";
 import { notifyLeadMessage } from "@/lib/notifications";
 
 // Generate deterministic UUID v5 from a string
@@ -20,14 +20,18 @@ function uuidFromString(str: string): string {
 }
 
 export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Use modern auth pattern - same as other working routes
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use PKCE-aware auth helper that correctly reads dealflow-auth-token cookies
+    const { user, supabase, error: userError } = await getAuthUserServer();
     
     if (userError || !user) {
+      console.log('[messages] Auth failed', {
+        hasUser: !!user,
+        error: userError?.message,
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -145,11 +149,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Use modern auth pattern - same as other working routes
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use PKCE-aware auth helper that correctly reads dealflow-auth-token cookies
+    const { user, supabase, error: userError } = await getAuthUserServer();
     
     if (userError || !user) {
+      console.log('[messages] Auth failed', {
+        hasUser: !!user,
+        error: userError?.message,
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

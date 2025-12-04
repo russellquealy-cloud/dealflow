@@ -40,8 +40,11 @@ export default function MessagesPage() {
     if (!session) {
       setConversations([]);
       setLoading(false);
-      if (!redirectRef.current) {
+      // Prevent redirect loops - only redirect if not already on login
+      const currentPath = window.location.pathname;
+      if (!redirectRef.current && !currentPath.startsWith('/login')) {
         redirectRef.current = true;
+        console.log('[Messages] No session, redirecting to login', { currentPath });
         router.push('/login?next=/messages');
       }
       return;
@@ -77,8 +80,11 @@ export default function MessagesPage() {
               logger.error('API error response:', errorText);
             }
             // Only redirect once - use redirectRef to prevent loops
-            if (!redirectRef.current) {
+            // Also check if we're already on login to prevent redirect loops
+            const currentPath = window.location.pathname;
+            if (!redirectRef.current && !currentPath.startsWith('/login')) {
               redirectRef.current = true;
+              console.log('[Messages] Auth error, redirecting to login', { currentPath });
               router.push('/login?next=/messages');
             }
             if (!cancelled) {

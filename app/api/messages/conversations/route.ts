@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServerClient } from "@/supabase/server";
+import { getAuthUserServer } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
 
 type RawMessage = {
   thread_id: string;
@@ -215,10 +216,13 @@ async function hydrateConversations(
 
 export async function GET(request: NextRequest) {
   try {
-    // Use the same auth pattern as working routes (e.g., /api/alerts, /api/billing/create-checkout-session)
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use PKCE-aware auth helper that correctly reads dealflow-auth-token cookies
+    const { user, supabase, error: userError } = await getAuthUserServer();
     if (userError || !user) {
+      console.log('[messages/conversations] Auth failed', {
+        hasUser: !!user,
+        error: userError?.message,
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
