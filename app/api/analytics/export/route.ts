@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProOrAdminContext } from "@/lib/adminAuth";
-import { createServerClient } from "@/supabase/server";
+import { getSupabaseRouteClient } from "../../../lib/supabaseRoute";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const supabase = await createServerClient();
+  const supabase = await getSupabaseRouteClient();
 
   try {
     // Example: load some basic aggregated usage data.

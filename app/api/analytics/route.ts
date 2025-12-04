@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/supabase/server";
+import { getSupabaseRouteClient } from "../../lib/supabaseRoute";
 import { getProOrAdminContext } from "@/lib/adminAuth";
 import type { UserAnalytics } from "@/lib/analytics";
 
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // Get user and supabase client for queries
     const user = ctx.session.user;
-    const supabase = await createServerClient();
+    const supabase = await getSupabaseRouteClient();
 
     // Use profile from context (already fetched)
     const profile = ctx.profile;
