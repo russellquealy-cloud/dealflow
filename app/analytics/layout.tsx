@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createServerClient } from '@/supabase/server';
+import { requireAuthServer } from '@/lib/auth/server';
 import type { AnyProfile } from "@/lib/profileCompleteness";
 
 export const dynamic = 'force-dynamic';
@@ -10,12 +10,12 @@ export default async function AnalyticsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Use modern auth pattern - same as analytics API route
-  const supabase = await createServerClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect('/login?next=/analytics/lead-conversion');
+  // Use consistent auth helper - prevents redirect loops
+  const { user, supabase } = await requireAuthServer('/analytics/lead-conversion');
+  
+  if (!user) {
+    // requireAuthServer already handles redirect, but TypeScript needs this check
+    return null;
   }
 
   // Fetch user profile

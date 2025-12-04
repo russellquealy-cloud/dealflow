@@ -1,20 +1,25 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import { logger } from '@/lib/logger';
 import { useAuth } from '@/providers/AuthProvider';
+import { getDefaultRedirectForUser, shouldRedirectFromLogin, normalizeRedirectPath } from '@/lib/auth/redirects';
 
 export const dynamic = 'force-dynamic';
 
 function LoginInner() {
   const router = useRouter();
+  const pathname = usePathname();
   const params = useSearchParams();
-  const next = params?.get('next') ?? '/listings';
+  const rawNext = params?.get('next');
   const error = params?.get('error');
+  // Normalize next path (will be used for redirect after login)
+  const next = normalizeRedirectPath(rawNext, '/listings');
   const { session, loading: authLoading, refreshSession } = useAuth();
   const [autoRedirected, setAutoRedirected] = useState(false);
+  const redirectAttemptedRef = useRef(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,58 +80,90 @@ function LoginInner() {
     handleMagicLinkCallback();
   }, [session, next, router, refreshSession]);
 
+  // Handle redirect for already-authenticated users
   useEffect(() => {
-    if (authLoading || !session || autoRedirected) {
+    // Wait for auth to finish loading
+    if (authLoading) {
       return;
     }
 
-    // Prevent redirect loops - if we're already on the target page or any admin page, don't redirect
-    const currentPath = window.location.pathname;
-    
-    // If next is /admin or we're trying to go to admin, and we have a session, 
-    // just let the admin page handle the auth check (don't redirect from login page)
-    if (next === '/admin' || next.startsWith('/admin') || currentPath.startsWith('/admin')) {
-      console.log('🔐 Session exists and target is admin page, letting admin page handle auth check', { 
-        currentPath, 
-        next 
-      });
-      // Don't redirect - let the admin page load and handle auth client-side
-      return;
-    }
-    
-    // Don't redirect if we're already on analytics routes (they have their own auth)
-    if (currentPath.startsWith('/analytics/')) {
-      console.log('🔐 Already on analytics page, skipping redirect', { currentPath, next });
-      return;
-    }
-    
-    if (currentPath === next || currentPath.startsWith(next + '/')) {
-      console.log('🔐 Already on target page, skipping redirect', { currentPath, next });
+    // If no session, stay on login page (let user log in)
+    if (!session) {
       return;
     }
 
-    // Prevent infinite redirects - only redirect once
-    setAutoRedirected(true);
-    console.log('🔐 Already signed in, redirecting to:', next);
+    // Prevent multiple redirect attempts
+    if (redirectAttemptedRef.current || autoRedirected) {
+      return;
+    }
+
+    const currentPath = pathname || window.location.pathname;
     
-    // Use a small delay to prevent rapid redirects and allow page to stabilize
-    const timeoutId = setTimeout(() => {
-      // Double-check we're not already on the target before redirecting
-      const checkPath = window.location.pathname;
-      if (
-        checkPath !== next && 
-        !checkPath.startsWith(next + '/') && 
-        !checkPath.startsWith('/admin') &&
-        !checkPath.startsWith('/analytics/')
-      ) {
-        router.replace(next);
-      } else {
-        console.log('🔐 Skipping redirect - already on target path', { checkPath, next });
+    // Get user profile to determine default redirect
+    const determineRedirect = async () => {
+      try {
+        // Get user profile to determine default redirect if no 'next' param
+        let targetPath = rawNext;
+        
+        if (!targetPath) {
+          // No 'next' param - determine default based on user profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('segment, role')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          
+          const segment = profile?.segment || profile?.role || null;
+          targetPath = getDefaultRedirectForUser(segment);
+        }
+        
+        // Normalize and validate the redirect path
+        targetPath = normalizeRedirectPath(targetPath, '/listings');
+        
+        // Check if we should redirect (prevents loops)
+        if (!shouldRedirectFromLogin(currentPath, targetPath)) {
+          console.log('🔐 [Login] Skipping redirect - loop prevention', {
+            currentPath,
+            targetPath,
+            reason: 'shouldRedirectFromLogin returned false',
+          });
+          return;
+        }
+        
+        // Check if we're already on the target (additional safety check)
+        if (currentPath === targetPath || currentPath.startsWith(targetPath + '/')) {
+          console.log('🔐 [Login] Already on target path, skipping redirect', {
+            currentPath,
+            targetPath,
+          });
+          return;
+        }
+        
+        // Mark redirect as attempted
+        redirectAttemptedRef.current = true;
+        setAutoRedirected(true);
+        
+        console.log('🔐 [Login] Already signed in, redirecting to:', {
+          from: currentPath,
+          to: targetPath,
+          hasNextParam: !!rawNext,
+          userId: session.user.id,
+          email: session.user.email,
+        });
+        
+        // Use replace to avoid adding to history
+        router.replace(targetPath);
+      } catch (error) {
+        console.error('🔐 [Login] Error determining redirect:', error);
+        // Fallback to safe default on error
+        if (!currentPath.startsWith('/listings')) {
+          router.replace('/listings');
+        }
       }
-    }, 200);
-    
-    return () => clearTimeout(timeoutId);
-  }, [authLoading, session, next, router, autoRedirected]);
+    };
+
+    determineRedirect();
+  }, [authLoading, session, rawNext, router, pathname, autoRedirected]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

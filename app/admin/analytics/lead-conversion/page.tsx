@@ -1,4 +1,4 @@
-import { createServerClient } from '@/supabase/server';
+import { requireAuthServer } from '@/lib/auth/server';
 import { redirect } from 'next/navigation';
 import type { AnyProfile } from "@/lib/profileCompleteness";
 
@@ -20,11 +20,12 @@ export const dynamic = 'force-dynamic';
  */
 export default async function AdminLeadConversionPage() {
   // Admin auth check - redirect if not admin
-  const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect('/login?next=/admin/analytics/lead-conversion');
+  // Use consistent auth helper that prevents redirect loops
+  const { user, supabase } = await requireAuthServer('/admin/analytics/lead-conversion');
+  
+  if (!user) {
+    // requireAuthServer already handles redirect, but TypeScript needs this check
+    return null;
   }
 
   // Get user profile and check admin status

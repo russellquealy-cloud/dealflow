@@ -31,7 +31,12 @@ export default function BillingPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          router.push('/login?next=/billing');
+          // Prevent redirect loops - only redirect if not already going to login
+          const currentPath = window.location.pathname;
+          if (!currentPath.startsWith('/login')) {
+            console.log('[Billing] No session, redirecting to login', { currentPath });
+            router.push('/login?next=/billing');
+          }
           return;
         }
         setAuthToken(session.access_token ?? null);
@@ -394,9 +399,6 @@ export default function BillingPage() {
                     </button>
                   ) : (
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{ fontSize: '14px', color: '#6b7280', marginRight: '8px' }}>
-                        Cancel:
-                      </span>
                       <button
                         onClick={() => handleCancelSubscription(false)}
                         disabled={isCanceling}

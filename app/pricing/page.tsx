@@ -17,7 +17,13 @@ function PricingPageInner() {
   const handleUpgrade = async (segment: 'investor' | 'wholesaler', tier: 'basic' | 'pro') => {
     // Check auth synchronously before redirecting
     if (!session) {
-      router.push(`/login?next=${encodeURIComponent(`/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`)}`);
+      // Prevent redirect loops - only redirect if not already on login
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/login')) {
+        const targetPath = `/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`;
+        console.log('[Pricing] No session, redirecting to login', { currentPath, targetPath });
+        router.push(`/login?next=${encodeURIComponent(targetPath)}`);
+      }
       return;
     }
 
@@ -73,7 +79,13 @@ function PricingPageInner() {
             console.error('Auth debug from server:', errorData.debug);
           }
           alert('Please sign in to upgrade your plan.');
-          router.push(`/login?next=${encodeURIComponent(`/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`)}`);
+          // Prevent redirect loops - only redirect if not already on login
+          const currentPath = window.location.pathname;
+          if (!currentPath.startsWith('/login')) {
+            const targetPath = `/pricing?segment=${segment}&tier=${tier}&period=${billingPeriod}`;
+            console.log('[Pricing] Auth error, redirecting to login', { currentPath, targetPath });
+            router.push(`/login?next=${encodeURIComponent(targetPath)}`);
+          }
           return;
         }
 
