@@ -9,21 +9,20 @@
  * - Not returning checkoutUrl in the expected format
  * 
  * HOW AUTH IS NOW BEING READ:
- * - Uses createSupabaseServer from @/lib/createSupabaseServer (same as /api/admin/debug-auth)
- * - Calls supabase.auth.getUser() with fallback to getSession()
+ * - Uses createServerClient from @/supabase/server (same as /api/alerts which works)
+ * - Calls supabase.auth.getUser() to get authenticated user from cookies
  * - Cookie adapter ensures cookies are available to all routes with path: '/'
  * 
  * RESPONSE FORMAT:
- * - Success (200): { url: string } - Stripe Checkout URL
+ * - Success (200): { checkoutUrl: string, url: string } - Stripe Checkout URL
  * - Unauthenticated (401): { error: "Not authenticated" }
  * - Invalid params (400): { error: "Missing or invalid segment, tier, or period" }
  * - Server error (500): { error: string }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import type Stripe from 'stripe';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { createServerClient } from '@/supabase/server';
 import { STRIPE_PRICES, getStripe } from '@/lib/stripe';
 import { getOrCreateStripeCustomerId } from '@/lib/billing/stripeCustomer';
 
@@ -63,37 +62,21 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[billing] create-checkout-session route hit');
 
-    // Use the SAME helper as /api/admin/debug-auth which works
-    const supabase = await createSupabaseServer();
+    // Use the SAME helper as /api/alerts which successfully authenticates users
+    const supabase = await createServerClient();
 
-    // Try getUser first (same pattern as debug-auth and admin layout)
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Get authenticated user (same pattern as /api/alerts)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    // Fallback to getSession if getUser fails (same as debug-auth)
-    if (userError || !user) {
-      console.log('[billing] getUser failed, trying getSession', {
-        error: userError?.message,
-        errorCode: userError?.status,
-      });
+    console.log('[billing] supabase.auth.getUser result', {
+      hasUser: !!user,
+      userId: user?.id || null,
+      userEmail: user?.email || null,
+      error: userError?.message || null,
+      errorStatus: userError?.status || null,
+    });
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (session && !sessionError) {
-        user = session.user;
-        userError = null;
-        console.log('[billing] got session from getSession', {
-          userId: user.id,
-          email: user.email,
-        });
-      } else {
-        console.log('[billing] getSession also failed', {
-          sessionError: sessionError?.message,
-          hasSession: !!session,
-        });
-      }
-    }
-
-    // No user found - return 401
+    // No user found - return 401 (same pattern as /api/alerts)
     if (userError || !user) {
       console.error('[billing] User not authenticated', {
         error: userError?.message || 'No error but no user',
@@ -295,9 +278,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Return checkout URL (frontend expects 'url' field)
+    // Return checkout URL (frontend will read 'checkoutUrl' field)
     return NextResponse.json(
-      { url: session.url },
+      { 
+        checkoutUrl: session.url,
+        url: session.url, // Backward compatibility
+      },
       { status: 200 }
     );
   } catch (error) {

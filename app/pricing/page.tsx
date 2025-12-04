@@ -42,13 +42,15 @@ function PricingPageInner() {
         }
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Checkout error:', errorData);
-        alert(`Error: ${errorData.error || 'Failed to create checkout session'}`);
+        alert(`Error: ${errorData.error || 'Something went wrong upgrading your plan.'}`);
         return;
       }
       
       const data = await response.json();
-      if (data.url) {
-        window.location.href = data.url;
+      // Support both 'checkoutUrl' (preferred) and 'url' (backward compatibility)
+      const checkoutUrl = data.checkoutUrl || data.url;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       } else {
         console.error('No checkout URL returned:', data);
         alert('Error: No checkout URL received. Please try again.');
