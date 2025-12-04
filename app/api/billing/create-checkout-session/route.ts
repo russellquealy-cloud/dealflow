@@ -175,6 +175,12 @@ export async function POST(req: NextRequest) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : null;
       const expectedCookieName = projectRef ? `sb-${projectRef}-auth-token` : null;
+      const expectedCodeVerifierName = projectRef ? `sb-${projectRef}-auth-token-code-verifier` : null;
+      
+      // Get all auth-related cookies to see what's actually present
+      const authCookies = allCookies.filter(c => 
+        c.name.includes('auth') || c.name.includes('supabase') || c.name.includes('dealflow') || c.name.startsWith('sb-')
+      );
       
       return NextResponse.json(
         { 
@@ -183,23 +189,27 @@ export async function POST(req: NextRequest) {
           // TEMPORARY DEBUG: Include cookie info in response for debugging
           debug: {
             cookieCount: allCookies.length,
-            cookieNames,
-            // Show auth-related cookie names specifically
-            authCookieNames: cookieNames.filter(name => 
-              name.includes('auth') || name.includes('supabase') || name.includes('dealflow') || name.startsWith('sb-')
-            ),
-            // Show cookie details (names and whether they have values, without exposing values)
-            cookieDetails: allCookies.map(c => ({
+            cookieNames, // Full list for debugging
+            // Show ALL auth-related cookies with details
+            authCookieDetails: authCookies.map(c => ({
               name: c.name,
               hasValue: !!c.value,
               valueLength: c.value?.length || 0,
+              matchesExpected: c.name === expectedCookieName || c.name === expectedCodeVerifierName,
             })),
+            // Expected cookie names based on project reference
             projectRef,
             expectedCookieName,
+            expectedCodeVerifierName,
             hasExpectedCookie: expectedCookieName ? !!cookieStore.get(expectedCookieName)?.value : false,
+            hasExpectedCodeVerifier: expectedCodeVerifierName ? !!cookieStore.get(expectedCodeVerifierName)?.value : false,
+            // Also check for dealflow-auth-token (browser client's storageKey)
+            hasDealflowToken: !!cookieStore.get('dealflow-auth-token')?.value,
             hasUserError: !!userError,
             errorMessage: userError?.message || null,
             errorCode: userError?.code || null,
+            // Show what Supabase SSR is looking for
+            supabaseUrl: supabaseUrl ? new URL(supabaseUrl).hostname : null,
           }
         },
         { status: 401 }
