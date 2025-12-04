@@ -78,22 +78,22 @@ TASK-012,Infrastructure,"/bugfix, /imports, /investor/wholesaler",Fix production
 3) Check that sensitive keys (API keys, secrets) are properly secured.
 4) Test application startup with all env vars configured.
 5) Verify no missing or undefined env var errors in production logs.",,,
-TASK-013,Listings,"/bugfix, /imports, /investor/wholesaler",Improve image carousel,Medium,Not Started,,Both,11/30/2025,"1) Navigate to a listing with multiple images.
+TASK-013,Listings,"/bugfix, /imports, /investor/wholesaler",Improve image carousel,High,Not Started,,Both,11/30/2025,"1) Navigate to a listing with multiple images.
 2) Verify carousel displays all images correctly.
 3) Test navigation (next/previous arrows, dots).
 4) Verify smooth transitions and animations.
 5) Test on mobile and desktop.",Carousel works at a basic level but still needs UX and polish; no focused work completed yet.,,
-TASK-014,Listings,"/bugfix, /imports, /investor/wholesaler",Add pagination or infinite scroll,Medium,Not Started,,Both,11/30/2025,"1) Navigate to listings page with many results.
+TASK-014,Listings,"/bugfix, /imports, /investor/wholesaler",Add pagination or infinite scroll,High,Not Started,,Both,11/30/2025,"1) Navigate to listings page with many results.
 2) Verify pagination or infinite scroll works correctly.
 3) Test page navigation (if pagination) or scroll loading (if infinite scroll).
 4) Verify URL parameters update correctly.
 5) Test with filters applied.",Listing pagination/scrolling not yet implemented.,,
-TASK-015,AI Tools,"/bugfix, /imports, /investor/wholesaler",Add downloadable PDF output,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-015,AI Tools,"/bugfix, /imports, /investor/wholesaler",Add downloadable PDF output,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Add downloadable PDF output.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",No PDF generation pipeline exists for AI reports yet.,,
-TASK-016,Analytics,"/bugfix, /imports, /investor/wholesaler",Add national trend scraping,Medium,Not Started,,Both,11/30/2025,"1) Admin login.
+TASK-016,Analytics,"/bugfix, /imports, /investor/wholesaler",Add national trend scraping,High,Not Started,,Both,11/30/2025,"1) Admin login.
 2) Open /admin/analytics.
 Expected: Dashboard loads with metrics; no NaN/undefined.
 
@@ -102,7 +102,7 @@ Expected: Charts and metrics update cleanly.
 
 1) Click “view more”.
 Expected: Routes correctly to detail pages.",No national trend scraping jobs implemented.,,
-TASK-017,Analytics,"/bugfix, /imports, /investor/wholesaler",Add RecData sold comps,Medium,Not Started,,Both,11/30/2025,"1) Admin login.
+TASK-017,Analytics,"/bugfix, /imports, /investor/wholesaler",Add RecData sold comps,High,Not Started,,Both,11/30/2025,"1) Admin login.
 2) Open /admin/analytics.
 Expected: Dashboard loads with metrics; no NaN/undefined.
 
@@ -111,7 +111,7 @@ Expected: Charts and metrics update cleanly.
 
 1) Click “view more”.
 Expected: Routes correctly to detail pages.",,,
-TASK-018,CRM,"/bugfix, /imports, /investor/wholesaler",Add lead notes section,Medium,Not Started,,Both,11/30/2025,"1) Navigate to CRM/leads section.
+TASK-018,CRM,"/bugfix, /imports, /investor/wholesaler",Add lead notes section,High,Not Started,,Both,11/30/2025,"1) Navigate to CRM/leads section.
 2) Select a lead.
 3) Verify notes field/section is available.
 4) Add, edit, and delete notes.
@@ -121,7 +121,7 @@ TASK-019,UX,"/bugfix, /imports, /investor/wholesaler",Improve homepage design,Me
 3) Test responsive design on mobile, tablet, desktop.
 4) Verify value proposition is clear and compelling.
 5) Test all CTAs and navigation elements.",Homepage functional but needs visual redesign and stronger value proposition.,,
-TASK-020,UX,"/bugfix, /imports, /investor/wholesaler",Add testimonials and trust badges,Medium,Not Started,,Both,11/30/2025,"1) Navigate to homepage.
+TASK-020,UX,"/bugfix, /imports, /investor/wholesaler",Add testimonials and trust badges,High,Not Started,,Both,11/30/2025,"1) Navigate to homepage.
 2) Verify testimonials section displays correctly.
 3) Verify trust badges/logos are visible.
 4) Test on mobile and desktop.
@@ -131,21 +131,21 @@ TASK-021,UX,"/bugfix, /imports, /investor/wholesaler",Add loading skeletons,Medi
 3) Verify skeleton loaders display during data fetch.
 4) Verify skeletons match final content layout.
 5) Test on multiple pages that load data.",Skeleton loaders not implemented for key views.,,
-TASK-022,Onboarding,"/bugfix, /imports, /investor",Add wholesaler/investor flows,Medium,Not Started,,Both,11/30/2025,"1) Test new user signup flow for wholesaler.
+TASK-022,Onboarding,"/bugfix, /imports, /investor",Add wholesaler/investor flows,High,Not Started,,Both,11/30/2025,"1) Test new user signup flow for wholesaler.
 2) Test new user signup flow for investor.
 3) Verify onboarding steps guide users appropriately.
 4) Test flow completion and profile setup.",,,
-TASK-023,Onboarding,"/bugfix, /imports, /investor/wholesaler",Add landing page lead capture,Medium,Not Started,,Both,11/30/2025,"1) Visit landing page as anonymous user.
+TASK-023,Onboarding,"/bugfix, /imports, /investor/wholesaler",Add landing page lead capture,High,Not Started,,Both,11/30/2025,"1) Visit landing page as anonymous user.
 2) Verify lead capture form is prominent and clear.
 3) Submit test lead information.
 4) Verify lead is saved to database.
 5) Test email notification is sent (if applicable).",,,
-TASK-024,Backend,"/bugfix, /imports, /investor/wholesaler",Add DB indexing,Medium,Not Started,,Both,11/30/2025,"1) Review database schema and identify slow queries.
+TASK-024,Backend,"/bugfix, /imports, /investor/wholesaler",Add DB indexing,High,Not Started,,Both,11/30/2025,"1) Review database schema and identify slow queries.
 2) Create indexes on frequently queried columns.
 3) Test query performance before and after indexing.
 4) Verify no negative impact on write performance.
 5) Monitor query execution times in production.",,,
-TASK-025,Backend,"/bugfix, /imports, /investor/wholesaler",Add rate limits to public APIs,Medium,Not Started,,Both,11/30/2025,"1) Identify public API endpoints.
+TASK-025,Backend,"/bugfix, /imports, /investor/wholesaler",Add rate limits to public APIs,High,Not Started,,Both,11/30/2025,"1) Identify public API endpoints.
 2) Implement rate limiting middleware.
 3) Test rate limit enforcement by making excessive requests.
 4) Verify appropriate error responses (429 Too Many Requests).
@@ -155,22 +155,22 @@ TASK-026,Marketing,"/bugfix, /imports, /investor/wholesaler",Add blog system,Low
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-027,Marketing,"/bugfix, /imports, /investor/wholesaler",SEO article templates,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-027,Marketing,"/bugfix, /imports, /investor/wholesaler",SEO article templates,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: SEO article templates.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-028,Marketing,"/bugfix, /imports, /investor/wholesaler",Add wholesaling document packs,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-028,Marketing,"/bugfix, /imports, /investor/wholesaler",Add wholesaling document packs,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Add wholesaling document packs.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-029,Marketing,"/bugfix, /imports, /investor/wholesaler",Add PDF lead magnets,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-029,Marketing,"/bugfix, /imports, /investor/wholesaler",Add PDF lead magnets,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Add PDF lead magnets.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-030,Education,"/bugfix, /imports, /investor/wholesaler",Wholesaling 101 module,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-030,Education,"/bugfix, /imports, /investor/wholesaler",Wholesaling 101 module,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Wholesaling 101 module.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
@@ -190,27 +190,27 @@ TASK-033,Education,"/bugfix, /imports, /investor/wholesaler",How-to videos,Low,N
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-034,Education,"/ARV/ROI, /bugfix, /imports",MAO/ARV/ROI calculators,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /ARV/ROI, /bugfix, /imports.
+TASK-034,Education,"/ARV/ROI, /bugfix, /imports",MAO/ARV/ROI calculators,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /ARV/ROI, /bugfix, /imports.
 2) Verify feature/functionality works as described: MAO/ARV/ROI calculators.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-035,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Distressed area heatmaps,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-035,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Distressed area heatmaps,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Distressed area heatmaps.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-036,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Rental yield analyzer,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-036,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Rental yield analyzer,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Rental yield analyzer.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-037,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Cashflow calculator,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-037,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Cashflow calculator,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Cashflow calculator.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-038,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Market comparison tool,Low,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-038,Investor Tools,"/bugfix, /imports, /investor/wholesaler",Market comparison tool,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Market comparison tool.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
@@ -230,17 +230,17 @@ TASK-041,Subscriptions,"/bugfix, /imports, /investor/wholesaler",Featured Listin
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-042,UX,"/bugfix, /imports, /investor/wholesaler",Dark mode,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-042,UX,"/bugfix, /imports, /investor/wholesaler",Dark mode,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Dark mode.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-043,UX,"/bugfix, /imports, /investor/wholesaler",Improved animations,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-043,UX,"/bugfix, /imports, /investor/wholesaler",Improved animations,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Improved animations.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",,,
-TASK-044,Mobile App,"/bugfix, /imports, /investor/wholesaler",Native app build,Medium,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-044,Mobile App,"/bugfix, /imports, /investor/wholesaler",Native app build,High,Not Started,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Native app build.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.

@@ -44,7 +44,13 @@ export async function createServerClient() {
       },
       set(name: string, value: string, options) {
         try {
-          cookieStore.set({ name, value, ...options });
+          // Ensure cookies are available to all paths (including /api/billing/*)
+          cookieStore.set({ 
+            name, 
+            value, 
+            ...options,
+            path: '/', // Critical: ensures cookies are available to all routes
+          });
         } catch (error) {
           // Handle cookie setting in route handlers
           console.error('Error setting cookie:', error);
@@ -52,7 +58,13 @@ export async function createServerClient() {
       },
       remove(name: string, options) {
         try {
-          cookieStore.set({ name, value: '', ...options });
+          // Ensure cookie removal works for all paths
+          cookieStore.set({ 
+            name, 
+            value: '', 
+            ...options,
+            path: '/', // Critical: ensures cookies can be removed from all routes
+          });
         } catch (error) {
           // Handle cookie removal in route handlers
           console.error('Error removing cookie:', error);

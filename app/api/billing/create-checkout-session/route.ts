@@ -1,96 +1,126 @@
 /**
- * DEBUG MODE: Pure auth debug endpoint
- * Temporarily removed Stripe logic to debug 401 authentication issues
+ * POST /api/billing/create-checkout-session
  * 
- * This endpoint uses the EXACT same auth pattern as /api/alerts which works.
- * Once this returns 200 with user data, we'll restore the Stripe checkout logic.
+ * Creates a Stripe Checkout Session for upgrading subscription plans.
+ * 
+ * This endpoint uses the SAME auth pattern as /api/admin/debug-auth which works:
+ * - Uses createSupabaseServer from @/lib/createSupabaseServer
+ * - Calls supabase.auth.getUser() with fallback to getSession()
+ * - Ensures cookies are properly read via @supabase/ssr cookie adapter
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createServerClient } from '@/supabase/server';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('[billing] create-checkout-session DEBUG route hit');
+    console.log('[billing] create-checkout-session route hit');
 
-    // Read cookies (same as working routes)
+    // Read cookies for debugging
     const cookieStore = await cookies();
-    
-    // Log cookie info for debugging
     const allCookies = cookieStore.getAll();
+    
     console.log('[billing] cookies in route', {
       count: allCookies.length,
       cookieNames: allCookies.map(c => c.name),
-      hasAuthCookies: allCookies.some(c => 
-        c.name.includes('auth') || c.name.includes('supabase') || c.name.includes('dealflow')
-      ),
     });
 
-    // Use the EXACT same pattern as /api/alerts which works
-    const supabase = await createServerClient();
-    
-    console.log('[billing] created supabase client');
+    // Use the SAME helper as /api/admin/debug-auth which works
+    const supabase = await createSupabaseServer();
 
-    // Call getUser (same pattern as /api/alerts)
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
+    // Try getUser first (same pattern as debug-auth and admin layout)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+
     console.log('[billing] supabase.getUser result', {
       hasUser: !!user,
       userId: user?.id || null,
       userEmail: user?.email || null,
-      error: error?.message || null,
-      errorStatus: error?.status || null,
+      error: userError?.message || null,
+      errorStatus: userError?.status || null,
     });
 
-    // If getUser fails, try getSession as fallback
-    let session = null;
-    if (error || !user) {
-      console.log('[billing] getUser failed, trying getSession');
-      const { data: { session: sessionData }, error: sessionError } = await supabase.auth.getSession();
-      
-      console.log('[billing] supabase.getSession result', {
-        hasSession: !!sessionData,
-        sessionUserId: sessionData?.user?.id || null,
-        sessionEmail: sessionData?.user?.email || null,
-        sessionError: sessionError?.message || null,
+    // Fallback to getSession if getUser fails (same as debug-auth)
+    if (userError || !user) {
+      console.log('[billing] getUser failed, trying getSession', {
+        error: userError?.message,
+        errorCode: userError?.status,
       });
-      
-      session = sessionData;
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[billing] got session from getSession', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else {
+        console.log('[billing] getSession also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
     }
 
-    // Return debug payload
+    // No user found - return 401 with debug info
+    if (userError || !user) {
+      console.error('[billing] no server user in create-checkout-session', {
+        user: null,
+        error: userError?.message || 'No error but no user',
+        errorStatus: userError?.status,
+        cookieNames: allCookies.map(c => c.name),
+      });
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Not authenticated on server',
+          user: null,
+          userError: userError ? {
+            message: userError.message,
+            status: userError.status,
+          } : null,
+          cookieNames: allCookies.map(c => c.name),
+        },
+        { status: 401 }
+      );
+    }
+
+    // User found - return success with debug info for now
+    console.log('[billing] User authenticated successfully', {
+      userId: user.id,
+      userEmail: user.email,
+    });
+
     return NextResponse.json(
       {
-        user: user ? {
+        ok: true,
+        user: {
           id: user.id,
           email: user.email,
-        } : null,
-        error: error ? {
-          message: error.message,
-          status: error.status,
-        } : null,
-        session: session ? {
-          user: {
-            id: session.user.id,
-            email: session.user.email,
-          },
-          expires_at: session.expires_at,
-        } : null,
-        cookies: {
-          count: allCookies.length,
-          names: allCookies.map(c => c.name),
         },
+        error: null,
+        cookieNames: allCookies.map(c => c.name),
       },
       { status: 200 }
     );
+
+    // TODO: Once auth is confirmed working, restore Stripe checkout logic here
+    // The Stripe logic should:
+    // 1. Parse segment/tier/period from request body
+    // 2. Map to Stripe Price ID using resolvePriceId()
+    // 3. Create Stripe Checkout Session
+    // 4. Return { checkoutUrl: session.url } or { url: session.url }
   } catch (error) {
-    console.error('[billing] Error in debug route', error);
+    console.error('[billing] Error in create-checkout-session', error);
     return NextResponse.json(
       {
+        ok: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
       },
