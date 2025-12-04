@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeProperty, type AIAnalysisInput } from '@/lib/ai-analyzer';
 import { canUserPerformAction, getUserSubscriptionTier } from '@/lib/subscription';
-import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 import { checkAndIncrementAiUsage } from '@/lib/ai/usage';
 
 export async function POST(request: NextRequest) {
@@ -13,8 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -102,8 +101,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from session
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

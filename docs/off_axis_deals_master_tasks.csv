@@ -48,7 +48,7 @@ TASK-006,Admin Panel,"/bugfix, /imports, /investor/wholesaler",Fix Analytics Das
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",Admin analytics dashboard implemented with basic metrics; data accuracy and performance tuning remain.,,
-TASK-007,Subscriptions,"/bugfix, /imports, /investor/wholesaler",Verify Stripe webhooks,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-007,Subscriptions,"/bugfix, /imports, /investor/wholesaler",Verify Stripe webhooks,High,Done,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Verify Stripe webhooks.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.

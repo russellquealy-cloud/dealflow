@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 
 // GET: Fetch user's saved searches
 export async function GET(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -40,8 +39,7 @@ export async function GET(request: NextRequest) {
 // POST: Create saved search
 export async function POST(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -103,8 +101,7 @@ export async function POST(request: NextRequest) {
 // PUT: Update saved search
 export async function PUT(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -156,8 +153,7 @@ export async function PUT(request: NextRequest) {
 // DELETE: Delete saved search
 export async function DELETE(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -1,6 +1,9 @@
 'use client';
 
 // Error pages cannot be prerendered, they are always dynamic
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function Error({
   error,
   reset,

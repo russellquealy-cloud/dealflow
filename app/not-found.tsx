@@ -1,6 +1,9 @@
 import Link from 'next/link';
 
 // Not-found pages are always dynamic and cannot be prerendered
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function NotFound() {
   return (
     <div style={{

@@ -2,6 +2,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabaseRouteClient } from "../../app/lib/supabaseRoute";
 import type { Database } from "@/types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
+import type { AuthError } from "@supabase/supabase-js";
 
 /**
  * Server-side auth utilities
@@ -10,10 +13,13 @@ import type { Database } from "@/types/supabase";
  * which correctly reads dealflow-auth-token cookies matching the browser client.
  */
 
-export async function createSupabaseRouteClient() {
+export async function createSupabaseRouteClient(): Promise<SupabaseClient<Database>> {
   // Use the PKCE-aware route client for consistency
   return await getSupabaseRouteClient();
 }
+
+// Alias for backward compatibility (some files may still import this)
+export const createSupabaseServerComponent = createSupabaseRouteClient;
 
 /**
  * Get the authenticated user from server-side session
@@ -23,7 +29,11 @@ export async function createSupabaseRouteClient() {
  * 
  * @returns { user: User | null, error: AuthError | null, supabase: SupabaseClient }
  */
-export async function getAuthUserServer() {
+export async function getAuthUserServer(): Promise<{
+  user: User | null;
+  error: AuthError | null;
+  supabase: SupabaseClient<Database>;
+}> {
   const supabase = await getSupabaseRouteClient();
   
   // Try getUser first (standard approach)
@@ -58,10 +68,16 @@ export async function getAuthUserServer() {
  * - If no session: redirect to /login?next=<currentPath>
  * - Never redirects if already on /login (prevents loops)
  */
-export async function requireAuthServer(currentPath: string = '/') {
+export async function requireAuthServer(currentPath: string = '/'): Promise<{
+  user: User;
+  supabase: SupabaseClient<Database>;
+}> {
   // Prevent redirect loops - don't redirect if we're already on login
+  // This case should rarely happen in practice, but we handle it to prevent loops
   if (currentPath.startsWith('/login')) {
-    return { user: null, error: new Error('Already on login page'), supabase: await getSupabaseRouteClient() };
+    const supabase = await getSupabaseRouteClient();
+    // This should not happen in normal flow, but TypeScript needs a return value
+    throw new Error('Cannot require auth on login page - this indicates a redirect loop');
   }
 
   const { user, error, supabase } = await getAuthUserServer();
@@ -79,5 +95,6 @@ export async function requireAuthServer(currentPath: string = '/') {
     redirect(`/login?next=${encodeURIComponent(currentPath + searchParams)}`);
   }
 
+  // TypeScript knows user is non-null here because of the redirect above
   return { user, supabase };
 }

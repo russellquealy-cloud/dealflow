@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeStructured, type UserRole, type InvestorQuestionInput, type WholesalerQuestionInput } from '@/lib/ai-analyzer-structured';
 import { getUserSubscriptionTier } from '@/lib/subscription';
-import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 import { checkAndIncrementAiUsage } from '@/lib/ai/usage';
 import type { SubscriptionTier } from '@/lib/stripe';
 import { notifyRepairEstimateReady } from '@/lib/notifications';
@@ -22,13 +22,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from session
-    const { user } = await getAuthUserServer();
+    const { user, supabase } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const supabase = createSupabaseRouteClient();
 
     // Verify user role matches
     const { data: profile } = await supabase

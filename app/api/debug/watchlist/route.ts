@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 
 /**
  * Debug endpoint to verify watchlist data and listings
@@ -7,8 +7,7 @@ import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

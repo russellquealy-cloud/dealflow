@@ -382,7 +382,7 @@ export async function analyzeStructured(
   supabaseClient?: SupabaseClient,
   options?: AnalyzeOptions
 ): Promise<AnalysisResult> {
-  const supabase = supabaseClient ?? createSupabaseRouteClient();
+  const supabase = supabaseClient ?? await createSupabaseRouteClient();
   const planTier: SubscriptionTier = options?.planTier ?? 'free';
   const isTestAccount = options?.isTestAccount ?? false;
   const bypassLimits = options?.bypassLimits === true;
@@ -712,7 +712,7 @@ async function getCachedAnalysis(
   supabaseClient?: SupabaseClient
 ): Promise<AnalysisResult | null> {
   try {
-    const supabase = supabaseClient ?? createSupabaseRouteClient();
+    const supabase = supabaseClient ?? await createSupabaseRouteClient();
     
     // Store cache key in question signature format
     const { data, error } = await supabase
@@ -745,7 +745,7 @@ async function cacheAnalysis(
   listingId?: string | null
 ): Promise<void> {
   try {
-    const supabase = supabaseClient ?? createSupabaseRouteClient();
+    const supabase = supabaseClient ?? await createSupabaseRouteClient();
     
     // ROOT CAUSE FIX: Always create a log entry so analytics can count it
     // For investors: log with user_id (counts in their analytics)

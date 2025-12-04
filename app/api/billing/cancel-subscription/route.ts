@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUserServer, createSupabaseRouteClient } from '@/lib/auth/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 import { cancelSubscription } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
@@ -19,8 +19,7 @@ export const runtime = 'nodejs';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await getAuthUserServer();
-    const supabase = createSupabaseRouteClient();
+    const { user, supabase } = await getAuthUserServer();
 
     if (!user) {
       return NextResponse.json(

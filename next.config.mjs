@@ -33,6 +33,14 @@ const nextConfig = {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 2,
   },
+  // Skip generating error pages during build (they'll be generated at runtime)
+  // This prevents the "Cannot read properties of null (reading 'useRef')" error
+  // during static export of error pages
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
+  // Ensure error pages are always dynamic
+  output: 'standalone',
 };
 
 export default nextConfig;
