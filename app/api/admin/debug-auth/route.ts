@@ -7,59 +7,159 @@
  * state for admin users. It's used by the admin dashboard to verify that server-side
  * route handlers can correctly identify authenticated admin users.
  * 
- * This endpoint relies on requireAdminServer() so all admin APIs share the same
- * authorization logic. The requireAdminServer helper:
- * - Uses createServerClient from @supabase/ssr which reads from cookies
- * - Calls supabase.auth.getUser() to get the current user
- * - Fetches the profile and checks admin status using the same logic as client-side
+ * This endpoint uses the same auth logic as the admin layout (app/admin/layout.tsx):
+ * - Uses createSupabaseServer from @/lib/createSupabaseServer
+ * - Calls supabase.auth.getUser() with fallback to getSession()
+ * - Fetches profile and checks admin status using isAdmin() helper (same as client-side)
+ * 
+ * Returns:
+ * - 200: { ok: true, email, role, segment, isAdmin: true, userId } if admin
+ * - 401: { ok: false, reason: "unauthenticated", email?, role?, segment?, isAdmin: false } if no user
+ * - 403: { ok: false, reason: "forbidden", email, role, segment, isAdmin: false } if user but not admin
  * 
  * TODO: When auth is confirmed stable in production, remove this endpoint.
  */
 
-import { NextResponse } from "next/server";
-import { requireAdminServer } from "@/lib/admin";
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { isAdmin } from '@/lib/admin';
 
-export async function GET() {
-  const result = await requireAdminServer();
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-  console.log("[debug-auth] result", {
-    status: result.status,
-    ok: result.ok,
-    userEmail: result.ok ? result.user.email : null,
-    userId: result.ok ? result.user.id : null,
-    profileRole: result.ok ? result.profile.role : result.profile?.role ?? null,
-    profileSegment: result.ok ? result.profile.segment : result.profile?.segment ?? null,
-    reason: !result.ok ? result.reason : null,
-  });
+export async function GET(request: NextRequest) {
+  try {
+    // Use the same Supabase server client as admin layout
+    const supabase = await createSupabaseServer();
 
-  if (!result.ok) {
+    // Try getUser first (same as admin layout)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    // Fallback to getSession if getUser fails (same as admin layout)
+    if (userError || !user) {
+      console.log('[debug-auth] getUser failed, trying getSession', {
+        error: userError?.message,
+        errorCode: userError?.status,
+      });
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[debug-auth] got session from getSession', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else {
+        console.log('[debug-auth] getSession also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
+    }
+
+    // No user found - return 401
+    if (userError || !user) {
+      console.log('[debug-auth] No user found', {
+        error: userError?.message,
+        errorCode: userError?.status,
+      });
+
+      return NextResponse.json(
+        {
+          ok: false,
+          reason: 'unauthenticated',
+          email: null,
+          role: null,
+          segment: null,
+          isAdmin: false,
+        },
+        { status: 401 }
+      );
+    }
+
+    // Fetch profile (same fields as client-side check)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id,email,role,segment,tier,membership_tier')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.log('[debug-auth] Profile not found', {
+        error: profileError?.message,
+        userId: user.id,
+      });
+
+      return NextResponse.json(
+        {
+          ok: false,
+          reason: 'unauthenticated',
+          email: user.email,
+          role: null,
+          segment: null,
+          isAdmin: false,
+        },
+        { status: 401 }
+      );
+    }
+
+    // Check admin status using same logic as client-side
+    const adminCheck = isAdmin(profile);
+
+    console.log('[debug-auth] result', {
+      status: adminCheck ? 200 : 403,
+      ok: adminCheck,
+      userEmail: user.email,
+      userId: user.id,
+      profileRole: profile.role,
+      profileSegment: profile.segment,
+      isAdmin: adminCheck,
+    });
+
+    // User found but not admin - return 403
+    if (!adminCheck) {
+      return NextResponse.json(
+        {
+          ok: false,
+          reason: 'forbidden',
+          email: user.email,
+          role: profile.role,
+          segment: profile.segment,
+          isAdmin: false,
+        },
+        { status: 403 }
+      );
+    }
+
+    // User is admin - return 200
+    return NextResponse.json(
+      {
+        ok: true,
+        email: user.email,
+        userId: user.id,
+        role: profile.role,
+        segment: profile.segment,
+        isAdmin: true,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('[debug-auth] Error:', error);
     return NextResponse.json(
       {
         ok: false,
-        reason: result.reason,
-        status: result.status,
+        reason: 'unauthenticated',
+        email: null,
+        role: null,
+        segment: null,
+        isAdmin: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: result.status }
+      { status: 401 }
     );
   }
-
-  const { user, profile } = result;
-
-  return NextResponse.json(
-    {
-      ok: true,
-      userEmail: user.email,
-      userId: user.id,
-      profile: {
-        id: profile.id,
-        email: profile.email,
-        role: profile.role,
-        segment: profile.segment,
-        tier: profile.tier,
-        membership_tier: profile.membership_tier,
-      },
-    },
-    { status: 200 }
-  );
 }
 

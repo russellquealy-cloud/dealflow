@@ -9,11 +9,13 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [debugAuth, setDebugAuth] = useState<{
-    status?: number;
     ok?: boolean;
-    sessionSummary?: { email?: string | null };
-    profileSummary?: { role?: string | null; segment?: string | null };
+    email?: string | null;
+    userId?: string;
+    role?: string | null;
+    segment?: string | null;
     isAdmin?: boolean;
+    reason?: string;
     error?: string;
   } | null>(null);
   const [debugCookies, setDebugCookies] = useState<{
@@ -96,6 +98,11 @@ export default function AdminDashboard() {
             ]);
             const debugAuthData = await debugAuthRes.json();
             const debugCookiesData = await debugCookiesRes.json();
+            
+            // Log full response for debugging
+            console.log('[admin/page] debug-auth response:', debugAuthData);
+            console.log('[admin/page] debug-cookies response:', debugCookiesData);
+            
             setDebugAuth(debugAuthData);
             setDebugCookies(debugCookiesData);
           } catch (debugError) {
@@ -290,12 +297,12 @@ export default function AdminDashboard() {
         <div style={{
           marginBottom: '20px',
           padding: '12px 16px',
-          background: debugAuth?.status === 200 ? '#d4edda' : '#f8d7da',
-          border: `1px solid ${debugAuth?.status === 200 ? '#c3e6cb' : '#f5c6cb'}`,
+          background: debugAuth?.ok === true ? '#d4edda' : '#f8d7da',
+          border: `1px solid ${debugAuth?.ok === true ? '#c3e6cb' : '#f5c6cb'}`,
           borderRadius: '6px',
           fontSize: '13px',
         }}>
-          <div style={{ fontWeight: 600, marginBottom: '6px', color: debugAuth?.status === 200 ? '#155724' : '#721c24' }}>
+          <div style={{ fontWeight: 600, marginBottom: '6px', color: debugAuth?.ok === true ? '#155724' : '#721c24' }}>
             Admin Auth Debug (Temporary)
           </div>
           
@@ -313,34 +320,39 @@ export default function AdminDashboard() {
           {debugAuth && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '12px' }}>
               <div>
-                <strong>Status:</strong> <span style={{ color: debugAuth.status === 200 ? '#155724' : '#721c24' }}>{debugAuth.status}</span>
+                <strong>OK:</strong> {debugAuth.ok === true ? '✅' : '❌'}
               </div>
               <div>
-                <strong>OK:</strong> {debugAuth.ok ? '✅' : '❌'}
+                <strong>Email:</strong> {debugAuth.email || 'N/A'}
               </div>
               <div>
-                <strong>Email:</strong> {debugAuth.sessionSummary?.email || 'N/A'}
+                <strong>User ID:</strong> {debugAuth.userId ? debugAuth.userId.substring(0, 8) + '...' : 'N/A'}
               </div>
               <div>
-                <strong>Role:</strong> {debugAuth.profileSummary?.role || 'N/A'}
+                <strong>Role:</strong> {debugAuth.role || 'N/A'}
               </div>
               <div>
-                <strong>Segment:</strong> {debugAuth.profileSummary?.segment || 'N/A'}
+                <strong>Segment:</strong> {debugAuth.segment || 'N/A'}
               </div>
               <div>
-                <strong>Is Admin:</strong> {debugAuth.isAdmin ? '✅' : '❌'}
+                <strong>Is Admin:</strong> {debugAuth.isAdmin === true ? '✅' : '❌'}
               </div>
             </div>
           )}
           
+          {debugAuth?.reason && !debugAuth.ok && (
+            <div style={{ marginTop: '8px', color: '#721c24', fontSize: '11px' }}>
+              <strong>Reason:</strong> {debugAuth.reason}
+            </div>
+          )}
           {debugAuth?.error && (
             <div style={{ marginTop: '8px', color: '#721c24', fontSize: '11px' }}>
               <strong>Error:</strong> {debugAuth.error}
             </div>
           )}
-          {debugAuth && debugAuth.status !== 200 && (
+          {debugAuth && !debugAuth.ok && (
             <div style={{ marginTop: '8px', color: '#721c24', fontSize: '11px' }}>
-              Admin debug-auth failed (status {debugAuth.status}). Check server logs for [admin/debug-auth] and [adminAuth].
+              Admin debug-auth failed. Check server logs for [debug-auth].
             </div>
           )}
         </div>
