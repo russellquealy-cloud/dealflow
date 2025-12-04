@@ -86,13 +86,76 @@ export async function getSupabaseRouteClient() {
     },
     cookies: {
       get(name: string) {
+        // CRITICAL FIX: The browser client stores the session in dealflow-auth-token (custom cookie),
+        // but @supabase/ssr expects sb-<project-ref>-auth-token. We need to map between them.
+        if (name.startsWith('sb-') && name.includes('-auth-token') && !name.includes('code-verifier')) {
+          // This is a Supabase standard auth token cookie request
+          // First check if the standard cookie exists
+          const standardValue = cookieStore.get(name)?.value;
+          if (standardValue) {
+            console.log(`[supabaseRoute] found standard cookie ${name}`);
+            return standardValue;
+          }
+          
+          // If not, check for dealflow-auth-token and parse it
+          const dealflowToken = cookieStore.get('dealflow-auth-token')?.value;
+          if (dealflowToken) {
+            try {
+              // Parse the base64-encoded JSON from dealflow-auth-token
+              const base64Part = dealflowToken.startsWith('base64-') 
+                ? dealflowToken.slice('base64-'.length) 
+                : dealflowToken;
+              const json = Buffer.from(base64Part, 'base64').toString('utf8');
+              const parsed = JSON.parse(json) as { access_token?: string; refresh_token?: string; user?: unknown };
+              
+              // @supabase/ssr expects the cookie value to be the access_token
+              // (it will handle session reconstruction internally)
+              if (parsed.access_token) {
+                console.log(`[supabaseRoute] mapped dealflow-auth-token access_token to ${name}`, {
+                  hasAccessToken: !!parsed.access_token,
+                  hasRefreshToken: !!parsed.refresh_token,
+                });
+                // Return the access token - Supabase SSR will use it to reconstruct the session
+                return parsed.access_token;
+              }
+            } catch (error) {
+              console.error(`[supabaseRoute] Failed to parse dealflow-auth-token for ${name}:`, error);
+            }
+          }
+        }
+        
+        // Handle code verifier mapping for PKCE flow
+        if (name.includes('-auth-token-code-verifier')) {
+          // First check if the standard code verifier cookie exists
+          const standardVerifier = cookieStore.get(name)?.value;
+          if (standardVerifier) {
+            return standardVerifier;
+          }
+          
+          // If not, check for dealflow-auth-token-code-verifier
+          const dealflowCodeVerifier = cookieStore.get('dealflow-auth-token-code-verifier')?.value;
+          if (dealflowCodeVerifier) {
+            try {
+              // Parse the base64-encoded code verifier
+              const base64Part = dealflowCodeVerifier.startsWith('base64-') 
+                ? dealflowCodeVerifier.slice('base64-'.length) 
+                : dealflowCodeVerifier;
+              const verifier = Buffer.from(base64Part, 'base64').toString('utf8');
+              console.log(`[supabaseRoute] mapped dealflow-auth-token-code-verifier to ${name}`);
+              return verifier;
+            } catch (error) {
+              console.error(`[supabaseRoute] Failed to parse dealflow-auth-token-code-verifier:`, error);
+            }
+          }
+        }
+        
+        // For all other cookies, return the standard value
         const value = cookieStore.get(name)?.value;
-        // Log cookie reads for ALL auth-related cookies (Supabase PKCE uses sb-<project-ref>-auth-token)
+        // Log cookie reads for ALL auth-related cookies
         if (name.includes('auth') || name.includes('supabase') || name.includes('dealflow') || name.startsWith('sb-')) {
           console.log(`[supabaseRoute] reading cookie ${name}:`, {
             hasValue: !!value,
             valueLength: value?.length ?? 0,
-            valuePreview: value ? value.substring(0, 50) + '...' : null,
           });
         }
         return value;

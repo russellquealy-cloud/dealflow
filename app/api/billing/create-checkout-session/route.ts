@@ -117,8 +117,32 @@ export async function POST(req: NextRequest) {
     
     const supabase = await getSupabaseRouteClient();
 
+    // Also check if Authorization header is present as a fallback
+    const authHeader = req.headers.get('authorization');
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    
+    console.log('[billing] Auth methods available', {
+      hasCookieSession: !!cookieStore.get('dealflow-auth-token')?.value,
+      hasBearerToken: !!bearerToken,
+      bearerTokenPreview: bearerToken ? bearerToken.substring(0, 20) + '...' : null,
+    });
+
     // Try getUser first (same pattern as /api/admin/debug-auth)
+    // This will use cookies (which we've mapped from dealflow-auth-token)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails but we have a bearer token, try using it directly
+    if ((userError || !user) && bearerToken) {
+      console.log('[billing] Cookie auth failed, trying bearer token');
+      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+      if (tokenUser && !tokenError) {
+        user = tokenUser;
+        userError = null;
+        console.log('[billing] Bearer token auth succeeded', { userId: user.id });
+      } else {
+        console.log('[billing] Bearer token auth also failed', { error: tokenError?.message });
+      }
+    }
 
     console.log('[billing] supabase.auth.getUser result', {
       hasUser: !!user,
