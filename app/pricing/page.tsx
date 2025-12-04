@@ -38,15 +38,33 @@ function PricingPageInner() {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error', message: 'Unknown error' }));
         
         // TEMPORARY DEBUG: Log full error response to understand what's happening
+        const allBrowserCookies = typeof document !== 'undefined' ? document.cookie.split(';') : [];
+        const authBrowserCookies = allBrowserCookies.filter(c => 
+          c.trim().includes('auth') || c.trim().includes('supabase') || c.trim().includes('dealflow') || c.trim().startsWith('sb-')
+        );
+        
         console.error('Checkout error - FULL DEBUG:', {
           status: response.status,
           statusText: response.statusText,
           errorData,
-          // Also log what cookies the browser sees
-          browserCookies: typeof document !== 'undefined' ? document.cookie.split(';').filter(c => 
-            c.includes('auth') || c.includes('supabase') || c.includes('dealflow') || c.includes('sb-')
-          ) : [],
+          // Log all browser cookies (names only, not values)
+          browserCookieNames: allBrowserCookies.map(c => c.split('=')[0]?.trim()).filter(Boolean),
+          authBrowserCookieNames: authBrowserCookies.map(c => c.split('=')[0]?.trim()).filter(Boolean),
+          // Log cookie count
+          browserCookieCount: allBrowserCookies.length,
         });
+        
+        // If debug info is available, log it prominently
+        if (errorData.debug) {
+          console.error('🔍 SERVER DEBUG INFO:', {
+            cookieCount: errorData.debug.cookieCount,
+            cookieNames: errorData.debug.cookieNames,
+            authCookieNames: errorData.debug.authCookieNames,
+            expectedCookieName: errorData.debug.expectedCookieName,
+            hasExpectedCookie: errorData.debug.hasExpectedCookie,
+            errorMessage: errorData.debug.errorMessage,
+          });
+        }
 
         // Only redirect to login for true authentication errors (401 with NOT_AUTHENTICATED)
         if (response.status === 401 && errorData.error === 'NOT_AUTHENTICATED') {

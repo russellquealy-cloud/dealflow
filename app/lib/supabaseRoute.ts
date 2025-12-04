@@ -27,15 +27,31 @@ export async function getSupabaseRouteClient() {
   // Log config on first call only (to avoid log spam)
   if (!configLogged) {
     // Check what cookies are available
-    const allCookies = cookieStore.getAll().map(c => c.name);
+    const allCookies = cookieStore.getAll();
+    const allCookieNames = allCookies.map(c => c.name);
     const hasDealflowToken = cookieStore.get('dealflow-auth-token')?.value;
+    
+    // Extract Supabase project ref from URL to check for expected cookie names
+    const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : null;
+    const expectedCookieName = projectRef ? `sb-${projectRef}-auth-token` : null;
+    const hasExpectedCookie = expectedCookieName ? !!cookieStore.get(expectedCookieName)?.value : false;
     
     console.log('[supabaseRoute] creating route client', {
       url: supabaseUrl,
       keyPrefix: supabaseAnonKey ? supabaseAnonKey.slice(0, 20) + '...' : null,
       hasUrl: !!supabaseUrl,
       hasKey: !!supabaseAnonKey,
-      cookieNames: allCookies,
+      projectRef,
+      expectedCookieName,
+      hasExpectedCookie,
+      cookieNames: allCookieNames,
+      cookieCount: allCookies.length,
+      // Show cookie details (names and whether they have values)
+      cookieDetails: allCookies.map(c => ({
+        name: c.name,
+        hasValue: !!c.value,
+        valueLength: c.value?.length || 0,
+      })),
       hasDealflowAuthToken: !!hasDealflowToken,
       dealflowTokenLength: hasDealflowToken?.length ?? 0,
       // Check for old env vars that might conflict
@@ -98,7 +114,13 @@ export async function getSupabaseRouteClient() {
       },
       remove(name: string, options) {
         try {
-          cookieStore.set({ name, value: '', ...options });
+          // Ensure cookie removal works for all paths
+          cookieStore.set({ 
+            name, 
+            value: '', 
+            ...options,
+            path: '/', // Critical: ensures cookies can be removed from all routes
+          });
         } catch (error) {
           // Handle cookie removal in route handlers
           console.error('[supabaseRoute] Error removing cookie:', error);

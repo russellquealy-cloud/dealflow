@@ -101,8 +101,20 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    // Use getSupabaseRouteClient which properly handles PKCE flow with dealflow-auth-token
+    // Use getSupabaseRouteClient which properly handles PKCE flow
     // This matches the browser client's PKCE configuration (app/supabase/client.ts)
+    // Extract project ref to understand expected cookie names
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : null;
+    const expectedCookieName = projectRef ? `sb-${projectRef}-auth-token` : null;
+    
+    console.log('[billing] Expected Supabase PKCE cookie name', {
+      projectRef,
+      expectedCookieName,
+      hasExpectedCookie: expectedCookieName ? !!cookieStore.get(expectedCookieName)?.value : false,
+      actualCookiesPresent: cookieNames,
+    });
+    
     const supabase = await getSupabaseRouteClient();
 
     // Try getUser first (same pattern as /api/admin/debug-auth)
@@ -159,6 +171,11 @@ export async function POST(req: NextRequest) {
         })),
       });
 
+      // Determine expected cookie name from project reference
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : null;
+      const expectedCookieName = projectRef ? `sb-${projectRef}-auth-token` : null;
+      
       return NextResponse.json(
         { 
           error: 'NOT_AUTHENTICATED',
@@ -167,8 +184,22 @@ export async function POST(req: NextRequest) {
           debug: {
             cookieCount: allCookies.length,
             cookieNames,
+            // Show auth-related cookie names specifically
+            authCookieNames: cookieNames.filter(name => 
+              name.includes('auth') || name.includes('supabase') || name.includes('dealflow') || name.startsWith('sb-')
+            ),
+            // Show cookie details (names and whether they have values, without exposing values)
+            cookieDetails: allCookies.map(c => ({
+              name: c.name,
+              hasValue: !!c.value,
+              valueLength: c.value?.length || 0,
+            })),
+            projectRef,
+            expectedCookieName,
+            hasExpectedCookie: expectedCookieName ? !!cookieStore.get(expectedCookieName)?.value : false,
             hasUserError: !!userError,
             errorMessage: userError?.message || null,
+            errorCode: userError?.code || null,
           }
         },
         { status: 401 }
