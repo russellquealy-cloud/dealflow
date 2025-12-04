@@ -233,11 +233,22 @@ export default function BillingPage() {
 
   const getPlanPrice = () => {
     if (profile.tier === 'free') return '$0/month';
-    if (profile.segment === 'investor') {
-      return profile.tier === 'basic' ? '$29/month' : '$59/month';
-    } else {
-      return profile.tier === 'basic' ? '$25/month' : '$59/month';
+    
+    // Determine if it's yearly or monthly based on active_price_id
+    // Check if the price ID contains "yearly" (Stripe price IDs often include this in metadata or ID)
+    const activePriceId = (profile.active_price_id || '').toLowerCase();
+    const isYearly = activePriceId.includes('yearly') || activePriceId.includes('_yearly') || activePriceId.includes('annual');
+    
+    // Correct prices: Basic = $35/month ($35/month = $420/year), Pro = $60/month ($60/month = $720/year)
+    // Unified pricing for both investor and wholesaler (same price regardless of segment)
+    if (profile.tier === 'basic') {
+      return isYearly ? '$420/year' : '$35/month';
+    } else if (profile.tier === 'pro') {
+      return isYearly ? '$720/year' : '$60/month';
     }
+    
+    // Fallback (default to monthly if we can't determine)
+    return profile.tier === 'basic' ? '$35/month' : '$60/month';
   };
 
   const getNextBillingDate = () => {

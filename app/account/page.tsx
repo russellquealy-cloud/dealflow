@@ -1428,6 +1428,22 @@ export default function AccountPage() {
           >
             Update Profile
           </Link>
+          <Link
+            href="/billing"
+            style={{ 
+              padding: '8px 16px', 
+              border: '1px solid #6b7280', 
+              borderRadius: 8, 
+              background: '#fff', 
+              color: '#374151', 
+              cursor: 'pointer',
+              fontWeight: 600,
+              textDecoration: 'none',
+              display: 'inline-block'
+            }}
+          >
+            Manage Billing
+          </Link>
           <button 
             onClick={handleSignOut}
             style={{ 
