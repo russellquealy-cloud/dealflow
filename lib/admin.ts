@@ -266,27 +266,125 @@ async function _legacyRequireAdminApi(): Promise<RequireAdminApiResult> {
 }
 
 /**
- * Legacy requireAdminServer - now uses the same route client
- * Kept for backward compatibility but wraps requireAdminApi internally
+ * Require Admin Server Result
+ * Return type for requireAdminServer helper
  */
-export async function requireAdminServer(request?: { headers: Headers }) {
-  const result = await requireAdminApi();
-  
-  if (!result.ok) {
+export type RequireAdminServerResult =
+  | {
+      ok: true;
+      status: 200;
+      user: User;
+      profile: AdminProfile;
+    }
+  | {
+      ok: false;
+      status: 401 | 403;
+      reason: "unauthenticated" | "forbidden";
+      user?: User | null;
+      profile?: AdminProfile | null;
+    };
+
+/**
+ * Require Admin Server
+ * 
+ * Server-side helper for admin authentication in API routes.
+ * Uses createServerClient from @supabase/ssr which automatically reads from cookies.
+ * 
+ * This function:
+ * 1. Gets the current user via supabase.auth.getUser() (reads from cookies automatically)
+ * 2. Fetches the user's profile from the profiles table
+ * 3. Checks admin status using the same logic as the client-side checkIsAdminClient()
+ * 
+ * Admin check logic (matching lib/admin-client.ts checkIsAdminClient):
+ * - role === "admin" OR
+ * - segment === "admin" OR
+ * - tier === "enterprise" OR
+ * - membership_tier === "enterprise" OR
+ * - email === "admin@offaxisdeals.com"
+ * 
+ * @returns RequireAdminServerResult with either ok: true and user/profile, or ok: false with error details
+ */
+export async function requireAdminServer(): Promise<RequireAdminServerResult> {
+  try {
+    // Use the standard Supabase SSR client that reads from cookies
+    const { createServerClient } = await import('@/supabase/server');
+    const supabase = await createServerClient();
+
+    // Get current user (reads from cookies automatically via @supabase/ssr)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.log('[requireAdminServer] No user found', {
+        error: userError?.message,
+        errorCode: userError?.status,
+      });
+      return {
+        ok: false,
+        status: 401,
+        reason: "unauthenticated",
+        user: null,
+        profile: null,
+      };
+    }
+
+    // Fetch profile with same fields as client-side check
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id,email,role,segment,tier,membership_tier')
+      .eq('id', user.id)
+      .single<AdminProfile>();
+
+    if (profileError || !profile) {
+      console.log('[requireAdminServer] Profile not found', {
+        error: profileError?.message,
+        userId: user.id,
+      });
+      return {
+        ok: false,
+        status: 401,
+        reason: "unauthenticated",
+        user,
+        profile: null,
+      };
+    }
+
+    // Use the same admin check logic as client-side (lib/admin-client.ts checkIsAdminClient)
+    const adminCheck = isAdmin(profile);
+
+    console.log('[requireAdminServer] Admin check result', {
+      userId: user.id,
+      email: user.email,
+      profileRole: profile.role,
+      profileSegment: profile.segment,
+      profileTier: profile.tier,
+      profileMembershipTier: profile.membership_tier,
+      isAdmin: adminCheck,
+    });
+
+    if (!adminCheck) {
+      return {
+        ok: false,
+        status: 403,
+        reason: "forbidden",
+        user,
+        profile,
+      };
+    }
+
     return {
-      ok: false as const,
-      status: result.status as 401 | 403,
-      reason: result.status === 401 ? "no-user" : "not-admin",
-      user: result.user ?? null,
-      profile: result.profile ?? null,
+      ok: true,
+      status: 200,
+      user,
+      profile,
+    };
+  } catch (error) {
+    console.error('[requireAdminServer] Error:', error);
+    return {
+      ok: false,
+      status: 401,
+      reason: "unauthenticated",
+      user: null,
+      profile: null,
     };
   }
-
-  return {
-    ok: true as const,
-    status: 200 as const,
-    reason: "ok" as const,
-    user: result.user,
-    profile: result.profile,
-  };
 }

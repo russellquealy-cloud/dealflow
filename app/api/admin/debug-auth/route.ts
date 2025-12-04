@@ -1,81 +1,65 @@
-import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/admin";
-import { cookies } from "next/headers";
-import { getPkceAccessTokenFromCookies } from "@/lib/pkceAuth";
-
 /**
  * GET /api/admin/debug-auth
  * 
- * Debug endpoint to show exactly what the API sees for authentication.
- * Always returns JSON describing session, profile, and admin status.
- * Uses requireAdminApi() which uses the same auth mechanism as all other admin routes.
+ * Admin debug endpoint for authentication sanity checks.
+ * 
+ * This endpoint provides diagnostic information about the current authentication
+ * state for admin users. It's used by the admin dashboard to verify that server-side
+ * route handlers can correctly identify authenticated admin users.
+ * 
+ * This endpoint relies on requireAdminServer() so all admin APIs share the same
+ * authorization logic. The requireAdminServer helper:
+ * - Uses createServerClient from @supabase/ssr which reads from cookies
+ * - Calls supabase.auth.getUser() to get the current user
+ * - Fetches the profile and checks admin status using the same logic as client-side
  * 
  * TODO: When auth is confirmed stable in production, remove this endpoint.
  */
+
+import { NextResponse } from "next/server";
+import { requireAdminServer } from "@/lib/admin";
+
 export async function GET() {
-  // Get cookie info for debugging
-  const cookieStore = await cookies();
-  const cookieList = cookieStore.getAll().map((c) => ({
-    name: c.name,
-    hasValue: !!c.value && c.value.length > 0,
-    length: c.value?.length ?? 0,
-  }));
+  const result = await requireAdminServer();
 
-  // Try to extract PKCE token for debugging
-  const pkceToken = await getPkceAccessTokenFromCookies();
-
-  const auth = await requireAdminApi();
-
-  console.log('[admin/debug-auth] endpoint result', {
-    status: auth.status,
-    ok: auth.ok,
-    hasUser: !!auth.user,
-    userId: auth.user?.id ?? null,
-    email: auth.user?.email ?? null,
-    profileRole: auth.profile?.role ?? null,
-    profileSegment: auth.profile?.segment ?? null,
-    profileTier: auth.profile?.tier ?? null,
-    message: auth.ok ? null : auth.message,
+  console.log("[debug-auth] result", {
+    status: result.status,
+    ok: result.ok,
+    userEmail: result.ok ? result.user.email : null,
+    userId: result.ok ? result.user.id : null,
+    profileRole: result.ok ? result.profile.role : result.profile?.role ?? null,
+    profileSegment: result.ok ? result.profile.segment : result.profile?.segment ?? null,
+    reason: !result.ok ? result.reason : null,
   });
 
-  // Enhanced payload for debugging
-  const payload = {
-    ok: auth.ok,
-    status: auth.status,
-    sessionSummary: {
-      hasSession: !!auth.user,
-      userId: auth.user?.id ?? null,
-      email: auth.user?.email ?? null,
-    },
-    profileSummary: auth.profile
-      ? {
-          id: auth.profile.id ?? null,
-          role: auth.profile.role ?? null,
-          segment: auth.profile.segment ?? null,
-          tier: auth.profile.tier ?? null,
-          membership_tier: auth.profile.membership_tier ?? null,
-        }
-      : null,
-    isAdmin: auth.ok,
-    error: auth.ok ? null : auth.message,
-    // Include cookie info for debugging (names only, no values)
-    cookieInfo: {
-      count: cookieList.length,
-      cookies: cookieList,
-      dealflowCookies: cookieList.filter(c => 
-        c.name.includes('dealflow') || c.name.includes('auth-token')
-      ).map(c => ({
-        name: c.name,
-        hasValue: c.hasValue,
-        length: c.length,
-      })),
-      hasPkceCookie: !!cookieStore.get('dealflow-auth-token'),
-      hasPkceToken: !!pkceToken,
-      pkceTokenLength: pkceToken?.length ?? 0,
-    },
-    timestamp: new Date().toISOString(),
-  };
+  if (!result.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        reason: result.reason,
+        status: result.status,
+      },
+      { status: result.status }
+    );
+  }
 
-  return NextResponse.json(payload, { status: auth.status });
+  const { user, profile } = result;
+
+  return NextResponse.json(
+    {
+      ok: true,
+      userEmail: user.email,
+      userId: user.id,
+      profile: {
+        id: profile.id,
+        email: profile.email,
+        role: profile.role,
+        segment: profile.segment,
+        tier: profile.tier,
+        membership_tier: profile.membership_tier,
+      },
+    },
+    { status: 200 }
+  );
 }
 
