@@ -11,7 +11,8 @@
  * - Not returning structured error codes to distinguish auth vs business errors
  * 
  * HOW AUTH IS NOW BEING READ:
- * - Uses createSupabaseServer from @/lib/createSupabaseServer (same as /api/admin/debug-auth and /api/transactions which work)
+ * - Uses getSupabaseRouteClient from @/app/lib/supabaseRoute (matches PKCE flow with dealflow-auth-token)
+ * - This helper properly configures flowType: 'pkce' to match browser client
  * - Calls supabase.auth.getUser() first
  * - Falls back to supabase.auth.getSession() if getUser() fails (same pattern as /api/admin/debug-auth)
  * - Cookie adapter ensures cookies are available to all routes with path: '/'
@@ -33,7 +34,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import type Stripe from 'stripe';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { getSupabaseRouteClient } from '@/app/lib/supabaseRoute';
 import { STRIPE_PRICES, getStripe } from '@/lib/stripe';
 import { getOrCreateStripeCustomerId } from '@/lib/billing/stripeCustomer';
 
@@ -100,9 +101,9 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    // Use the SAME helper as /api/admin/debug-auth and /api/transactions which work in production
-    // This ensures we can read auth cookies correctly
-    const supabase = await createSupabaseServer();
+    // Use getSupabaseRouteClient which properly handles PKCE flow with dealflow-auth-token
+    // This matches the browser client's PKCE configuration (app/supabase/client.ts)
+    const supabase = await getSupabaseRouteClient();
 
     // Try getUser first (same pattern as /api/admin/debug-auth)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
