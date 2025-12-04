@@ -12,6 +12,12 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Guard against SSR - only run in browser
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
     // Initialize mobile session management
     const initializeMobile = async () => {
       setIsMobile(mobileSessionManager.isMobileDevice());

@@ -34,7 +34,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import type Stripe from 'stripe';
-import { getSupabaseRouteClient } from '@/app/lib/supabaseRoute';
+import { getSupabaseRouteClient } from '../../../lib/supabaseRoute';
 import { STRIPE_PRICES, getStripe } from '@/lib/stripe';
 import { getOrCreateStripeCustomerId } from '@/lib/billing/stripeCustomer';
 

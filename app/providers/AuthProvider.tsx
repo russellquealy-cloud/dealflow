@@ -56,6 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [initialized]);
 
   React.useEffect(() => {
+    // Guard against SSR - only run in browser
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      setInitialized(true);
+      return;
+    }
+
     let isMounted = true;
 
     const init = async () => {

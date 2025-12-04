@@ -23,6 +23,10 @@ const nextConfig = {
   images: {
     remotePatterns,
   },
+  // Skip static generation for error pages to prevent prerendering issues
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
 };
 
 export default nextConfig;

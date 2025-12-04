@@ -98,6 +98,9 @@ export const viewport = {
   themeColor: "#3b82f6"
 };
 
+// Force dynamic rendering to prevent SSR issues with client components during error page prerendering
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: {
