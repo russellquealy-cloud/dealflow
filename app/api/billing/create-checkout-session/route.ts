@@ -1,243 +1,99 @@
-import { NextRequest, NextResponse } from "next/server";
-import type Stripe from "stripe";
-import { createSupabaseServer } from "@/lib/createSupabaseServer";
-import { STRIPE_PRICES, getStripe } from "@/lib/stripe";
-import { getOrCreateStripeCustomerId } from "@/lib/billing/stripeCustomer";
+/**
+ * DEBUG MODE: Pure auth debug endpoint
+ * Temporarily removed Stripe logic to debug 401 authentication issues
+ * 
+ * This endpoint uses the EXACT same auth pattern as /api/alerts which works.
+ * Once this returns 200 with user data, we'll restore the Stripe checkout logic.
+ */
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@/supabase/server';
 
-function resolvePriceId(
-  segment: "investor" | "wholesaler",
-  tier: "basic" | "pro",
-  period: "monthly" | "yearly"
-) {
-  if (segment === "investor") {
-    if (tier === "basic") {
-      return period === "yearly"
-        ? STRIPE_PRICES.INVESTOR_BASIC_YEARLY
-        : STRIPE_PRICES.INVESTOR_BASIC;
-    }
-    return period === "yearly"
-      ? STRIPE_PRICES.INVESTOR_PRO_YEARLY
-      : STRIPE_PRICES.INVESTOR_PRO;
-  }
-
-  if (tier === "basic") {
-    return period === "yearly"
-      ? STRIPE_PRICES.WHOLESALER_BASIC_YEARLY
-      : STRIPE_PRICES.WHOLESALER_BASIC;
-  }
-  return period === "yearly"
-    ? STRIPE_PRICES.WHOLESALER_PRO_YEARLY
-    : STRIPE_PRICES.WHOLESALER_PRO;
-}
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    // Use the same auth helper as admin layout and other working routes
-    const supabase = await createSupabaseServer();
+    console.log('[billing] create-checkout-session DEBUG route hit');
 
-    // Try getUser first (same as admin layout)
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    // Fallback to getSession if getUser fails (same as admin layout)
-    if (userError || !user) {
-      console.log('[create-checkout-session] getUser failed, trying getSession', {
-        error: userError?.message,
-        errorCode: userError?.status,
-      });
-
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (session && !sessionError) {
-        user = session.user;
-        userError = null;
-        console.log('[create-checkout-session] got session from getSession', {
-          userId: user.id,
-          email: user.email,
-        });
-      } else {
-        console.log('[create-checkout-session] getSession also failed', {
-          sessionError: sessionError?.message,
-          hasSession: !!session,
-        });
-      }
-    }
-
-    // No user found - return 401
-    if (userError || !user) {
-      console.error('[create-checkout-session] User not authenticated', {
-        userError: userError?.message || 'No error but no user',
-        errorCode: userError?.status,
-      });
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
-    }
-
-    console.log('[create-checkout-session] User authenticated', {
-      userId: user.id,
-      userEmail: user.email,
+    // Read cookies (same as working routes)
+    const cookieStore = await cookies();
+    
+    // Log cookie info for debugging
+    const allCookies = cookieStore.getAll();
+    console.log('[billing] cookies in route', {
+      count: allCookies.length,
+      cookieNames: allCookies.map(c => c.name),
+      hasAuthCookies: allCookies.some(c => 
+        c.name.includes('auth') || c.name.includes('supabase') || c.name.includes('dealflow')
+      ),
     });
 
-    const body = await req.json();
-    const rawSegment = body?.segment as string | undefined;
-    const rawTier = body?.tier as string | undefined;
-    const rawPeriod = (body?.period as string | undefined) ?? "monthly";
-
-    if (
-      !rawSegment ||
-      !rawTier ||
-      !["investor", "wholesaler"].includes(rawSegment) ||
-      !["basic", "pro"].includes(rawTier) ||
-      !["monthly", "yearly"].includes(rawPeriod)
-    ) {
-      return NextResponse.json(
-        { error: "Missing or invalid segment, tier, or period" },
-        { status: 400 }
-      );
-    }
-
-    const segment = rawSegment as "investor" | "wholesaler";
-    const tier = rawTier as "basic" | "pro";
-    const period = rawPeriod as "monthly" | "yearly";
-
-    const priceId = resolvePriceId(segment, tier, period);
-
-    if (!priceId) {
-      return NextResponse.json(
-        { error: "Price ID not configured" },
-        { status: 500 }
-      );
-    }
-
-    // Get or create Stripe customer ID
-    const stripeCustomerId = await getOrCreateStripeCustomerId({ user, supabase });
-
-    if (!stripeCustomerId && !user.email) {
-      return NextResponse.json(
-        { error: "Missing email address" },
-        { status: 400 }
-      );
-    }
-
-    // Get profile for metadata and role validation
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, segment, tier")
-      .eq("id", user.id)
-      .single<{ role: string | null; segment: string | null; tier: string | null }>();
-
-    // CRITICAL: Validate that user's role matches the requested segment
-    // Prevent mismatches (e.g., investor trying to buy wholesaler plan)
-    const userRole = profile?.segment || profile?.role;
-    const isAdmin = userRole === 'admin';
+    // Use the EXACT same pattern as /api/alerts which works
+    const supabase = await createServerClient();
     
-    if (!isAdmin && userRole !== segment) {
-      return NextResponse.json(
-        { 
-          error: `Role mismatch: You are registered as ${userRole}, but trying to purchase ${segment} plan. Please contact support if you need to change your account type.` 
-        },
-        { status: 403 }
-      );
-    }
+    console.log('[billing] created supabase client');
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
+    // Call getUser (same pattern as /api/alerts)
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    console.log('[billing] supabase.getUser result', {
+      hasUser: !!user,
+      userId: user?.id || null,
+      userEmail: user?.email || null,
+      error: error?.message || null,
+      errorStatus: error?.status || null,
+    });
 
-    if (!baseUrl) {
-      console.error("Missing NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL");
-      return NextResponse.json(
-        { error: "Configuration error" },
-        { status: 500 }
-      );
-    }
-
-    // Get product name and description based on segment and tier
-    // Reserved for future use:
-    // const getProductInfo = () => {
-    //   const segmentName = segment === 'investor' ? 'Investor' : 'Wholesaler';
-    //   const tierName = tier === 'basic' ? 'Basic' : 'Pro';
-    //   const periodName = period === 'monthly' ? 'Monthly' : 'Yearly';
-    //   
-    //   return {
-    //     name: `Off Axis Deals - ${segmentName} ${tierName} (${periodName})`,
-    //     description: segment === 'investor'
-    //       ? tier === 'basic'
-    //         ? 'Access to property listings, basic search filters, and direct messaging with wholesalers.'
-    //         : 'Advanced analytics, lead conversion tracking, geographic heatmaps, and CSV/API export capabilities.'
-    //       : tier === 'basic'
-    //         ? 'List your properties, receive buyer inquiries, and manage your deals efficiently.'
-    //         : 'Advanced analytics, lead tracking, performance insights, and priority listing placement.',
-    //   };
-    // };
-
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: "subscription",
-      line_items: [{ 
-        price: priceId, 
-        quantity: 1,
-      }],
-      metadata: {
-        supabase_user_id: user.id,
-        requested_segment: segment,
-        requested_tier: tier,
-        profile_role: profile?.role ?? "",
-        profile_segment: profile?.segment ?? "",
-        profile_tier: profile?.tier ?? "",
-        // Ensure role and tier are consistently linked
-        user_role: userRole ?? "",
-        subscription_role: segment,
-        subscription_tier: tier,
-      },
-      success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/pricing`,
-      payment_method_types: ['card'],
-      // Enable promo codes in Stripe checkout
-      // Users can enter promo codes during checkout in the Stripe-hosted page
-      // Promo codes must be created in Stripe Dashboard → Products → Coupons
-      allow_promotion_codes: true,
-      // Note: invoice_creation can only be enabled for 'payment' mode, not 'subscription' mode
-      // Invoices are automatically created for subscriptions, so we don't need to set this
-    };
-
-    // CRITICAL: Never set both customer and customer_email
-    // If we have a Stripe customer ID, use it; otherwise use email
-    if (stripeCustomerId) {
-      sessionParams.customer = stripeCustomerId;
-      // Explicitly do NOT set customer_email when customer is set
-      delete sessionParams.customer_email; // Ensure it's not set
-    } else {
-      // Only set customer_email if we don't have a customer ID
-      if (user.email) {
-        sessionParams.customer_email = user.email;
-      }
-    }
-
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create(sessionParams);
-
-    if (!session.url) {
-      console.error('[create-checkout-session] Stripe session created but no URL returned', {
-        sessionId: session.id,
+    // If getUser fails, try getSession as fallback
+    let session = null;
+    if (error || !user) {
+      console.log('[billing] getUser failed, trying getSession');
+      const { data: { session: sessionData }, error: sessionError } = await supabase.auth.getSession();
+      
+      console.log('[billing] supabase.getSession result', {
+        hasSession: !!sessionData,
+        sessionUserId: sessionData?.user?.id || null,
+        sessionEmail: sessionData?.user?.email || null,
+        sessionError: sessionError?.message || null,
       });
-      return NextResponse.json(
-        { error: "Failed to create checkout session URL" },
-        { status: 500 }
-      );
+      
+      session = sessionData;
     }
 
-    return NextResponse.json({ 
-      id: session.id,
-      url: session.url 
-    }, { status: 200 });
-  } catch (error) {
-    console.error('[create-checkout-session] Error creating checkout session', error);
-    const message = error instanceof Error ? error.message : "Internal server error";
+    // Return debug payload
     return NextResponse.json(
-      { error: message },
+      {
+        user: user ? {
+          id: user.id,
+          email: user.email,
+        } : null,
+        error: error ? {
+          message: error.message,
+          status: error.status,
+        } : null,
+        session: session ? {
+          user: {
+            id: session.user.id,
+            email: session.user.email,
+          },
+          expires_at: session.expires_at,
+        } : null,
+        cookies: {
+          count: allCookies.length,
+          names: allCookies.map(c => c.name),
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('[billing] Error in debug route', error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      },
       { status: 500 }
     );
   }
