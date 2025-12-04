@@ -245,10 +245,13 @@ export default function BillingPage() {
       return isYearly ? '$420/year' : '$35/month';
     } else if (profile.tier === 'pro') {
       return isYearly ? '$720/year' : '$60/month';
+    } else if (profile.tier === 'enterprise') {
+      // Enterprise pricing (custom/contact for pricing)
+      return 'Contact for pricing';
     }
     
-    // Fallback (default to monthly if we can't determine)
-    return profile.tier === 'basic' ? '$35/month' : '$60/month';
+    // Fallback for any other tier (shouldn't happen, but TypeScript needs this)
+    return '$35/month';
   };
 
   const getNextBillingDate = () => {

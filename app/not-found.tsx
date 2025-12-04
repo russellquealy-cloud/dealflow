@@ -1,10 +1,6 @@
-'use client';
-
 import Link from 'next/link';
 
-// Force dynamic rendering to prevent prerendering issues
-export const dynamic = 'force-dynamic';
-
+// Not-found pages are always dynamic and cannot be prerendered
 export default function NotFound() {
   return (
     <div style={{

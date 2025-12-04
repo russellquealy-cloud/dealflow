@@ -100,6 +100,7 @@ export const viewport = {
 
 // Force dynamic rendering to prevent SSR issues with client components during error page prerendering
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default function RootLayout({
   children,

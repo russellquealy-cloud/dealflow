@@ -1,10 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-
-// Force dynamic rendering to prevent prerendering issues
-export const dynamic = 'force-dynamic';
-
+// Error pages cannot be prerendered, they are always dynamic
 export default function Error({
   error,
   reset,
@@ -12,12 +8,10 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    // Log the error to an error reporting service
-    if (error) {
-      console.error('Application error:', error);
-    }
-  }, [error]);
+  // Only log on client side to avoid build-time issues
+  if (typeof window !== 'undefined' && error) {
+    console.error('Application error:', error);
+  }
 
   return (
     <div style={{

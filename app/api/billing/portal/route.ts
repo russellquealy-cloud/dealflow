@@ -1,8 +1,7 @@
 // app/api/billing/portal/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createPortalSession } from '@/lib/stripe';
-import { getSupabaseRouteClient } from '@/app/lib/supabaseRoute';
-import { cookies } from 'next/headers';
+import { getSupabaseRouteClient } from '../../../lib/supabaseRoute';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

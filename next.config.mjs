@@ -27,6 +27,12 @@ const nextConfig = {
   generateBuildId: async () => {
     return 'build-' + Date.now();
   },
+  // Suppress error page prerendering errors (known Next.js 15 + React 19 issue)
+  // Error pages will be generated at runtime instead
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
 };
 
 export default nextConfig;
