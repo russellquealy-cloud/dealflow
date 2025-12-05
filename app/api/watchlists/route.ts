@@ -98,24 +98,51 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
   try {
     // Get authenticated user using standard auth helper with bearer token fallback
-    // This matches the pattern used in /api/notifications and /api/messages routes
-    const supabase = await getSupabaseRouteClient();
+    // This matches the pattern used in POST handler - must use bearer client for RLS
+    let supabase = await getSupabaseRouteClient();
     
     // Try getUser first (standard approach - reads from cookies)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
     
     // If getUser fails, try Authorization header bearer token (fallback for cases where cookies aren't sent)
+    // CRITICAL: When using bearer token, we need to create a new Supabase client that uses the token
+    // so that RLS policies can access auth.uid() via the Authorization header
     if (userError || !user) {
       const authHeader = request.headers.get('authorization');
       const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
       
       if (bearerToken) {
         console.log('[watchlists GET] Cookie auth failed, trying bearer token');
-        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
-        if (tokenUser && !tokenError) {
-          user = tokenUser;
-          userError = null;
-          console.log('[watchlists GET] Bearer token auth succeeded', { userId: user.id });
+        
+        // Create a new Supabase client that uses the bearer token for all requests
+        // This ensures RLS policies can access auth.uid() via the Authorization header
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        
+        if (supabaseUrl && supabaseAnonKey) {
+          const bearerClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+            global: {
+              headers: {
+                Authorization: `Bearer ${bearerToken}`,
+              },
+            },
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+          });
+          
+          // Validate the token by getting the user
+          const { data: { user: tokenUser }, error: tokenError } = await bearerClient.auth.getUser();
+          
+          if (tokenUser && !tokenError) {
+            user = tokenUser;
+            userError = null;
+            supabase = bearerClient; // Use the bearer token client for subsequent queries
+            console.log('[watchlists GET] Bearer token auth succeeded, using bearer client for RLS', { userId: user.id });
+          } else {
+            console.warn('[watchlists GET] Bearer token validation failed', { error: tokenError?.message });
+          }
         }
       }
     }
@@ -138,6 +165,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // CRITICAL: Ignore any userId query parameter - we always use the authenticated user
+    // The server must trust auth.uid()/user.id, not the query string
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get('listingId');
 
