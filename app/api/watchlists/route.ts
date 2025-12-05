@@ -3,6 +3,9 @@ import { getSupabaseRouteClient } from '../../lib/supabaseRoute';
 import { getSupabaseServiceRole } from '@/lib/supabase/service';
 import { logger } from '@/lib/logger';
 import { notifyBuyerInterest } from '@/lib/notifications';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Watchlist API Route
 // Handles GET (fetch watchlist), POST (add to watchlist), DELETE (remove from watchlist)
@@ -336,23 +339,50 @@ export async function POST(request: NextRequest) {
   try {
     // Get authenticated user using standard auth helper with bearer token fallback
     // This matches the pattern used in /api/notifications and /api/messages routes
-    const supabase = await getSupabaseRouteClient();
+    let supabase = await getSupabaseRouteClient();
     
     // Try getUser first (standard approach - reads from cookies)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
     
     // If getUser fails, try Authorization header bearer token (fallback for cases where cookies aren't sent)
+    // CRITICAL: When using bearer token, we need to create a new Supabase client that uses the token
+    // so that RLS policies can access auth.uid() via the Authorization header
     if (userError || !user) {
       const authHeader = request.headers.get('authorization');
       const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
       
       if (bearerToken) {
         console.log('[watchlists POST] Cookie auth failed, trying bearer token');
-        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
-        if (tokenUser && !tokenError) {
-          user = tokenUser;
-          userError = null;
-          console.log('[watchlists POST] Bearer token auth succeeded', { userId: user.id });
+        
+        // Create a new Supabase client that uses the bearer token for all requests
+        // This ensures RLS policies can access auth.uid() via the Authorization header
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        
+        if (supabaseUrl && supabaseAnonKey) {
+          const bearerClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+            global: {
+              headers: {
+                Authorization: `Bearer ${bearerToken}`,
+              },
+            },
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+          });
+          
+          // Validate the token by getting the user
+          const { data: { user: tokenUser }, error: tokenError } = await bearerClient.auth.getUser();
+          
+          if (tokenUser && !tokenError) {
+            user = tokenUser;
+            userError = null;
+            supabase = bearerClient; // Use the bearer token client for subsequent queries
+            console.log('[watchlists POST] Bearer token auth succeeded, using bearer client for RLS', { userId: user.id });
+          } else {
+            console.warn('[watchlists POST] Bearer token validation failed', { error: tokenError?.message });
+          }
         }
       }
     }
@@ -563,23 +593,50 @@ export async function DELETE(request: NextRequest) {
   try {
     // Get authenticated user using standard auth helper with bearer token fallback
     // This matches the pattern used in /api/notifications and /api/messages routes
-    const supabase = await getSupabaseRouteClient();
+    let supabase = await getSupabaseRouteClient();
     
     // Try getUser first (standard approach - reads from cookies)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
     
     // If getUser fails, try Authorization header bearer token (fallback for cases where cookies aren't sent)
+    // CRITICAL: When using bearer token, we need to create a new Supabase client that uses the token
+    // so that RLS policies can access auth.uid() via the Authorization header
     if (userError || !user) {
       const authHeader = request.headers.get('authorization');
       const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
       
       if (bearerToken) {
         console.log('[watchlists DELETE] Cookie auth failed, trying bearer token');
-        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
-        if (tokenUser && !tokenError) {
-          user = tokenUser;
-          userError = null;
-          console.log('[watchlists DELETE] Bearer token auth succeeded', { userId: user.id });
+        
+        // Create a new Supabase client that uses the bearer token for all requests
+        // This ensures RLS policies can access auth.uid() via the Authorization header
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        
+        if (supabaseUrl && supabaseAnonKey) {
+          const bearerClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+            global: {
+              headers: {
+                Authorization: `Bearer ${bearerToken}`,
+              },
+            },
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+          });
+          
+          // Validate the token by getting the user
+          const { data: { user: tokenUser }, error: tokenError } = await bearerClient.auth.getUser();
+          
+          if (tokenUser && !tokenError) {
+            user = tokenUser;
+            userError = null;
+            supabase = bearerClient; // Use the bearer token client for subsequent queries
+            console.log('[watchlists DELETE] Bearer token auth succeeded, using bearer client for RLS', { userId: user.id });
+          } else {
+            console.warn('[watchlists DELETE] Bearer token validation failed', { error: tokenError?.message });
+          }
         }
       }
     }
