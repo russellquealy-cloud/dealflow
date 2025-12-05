@@ -1,26 +1,51 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/supabase/client';
 
 export default function ExportPage() {
+  const router = useRouter();
   const [dateRange, setDateRange] = useState<'30' | '90' | 'all'>('30');
   const [exporting, setExporting] = useState<string | null>(null);
   const [role, setRole] = useState<'investor' | 'wholesaler' | null>(null);
 
   useEffect(() => {
-    // Fetch user role
-    fetch('/api/analytics')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.stats && data.stats.role) {
-          setRole(data.stats.role);
+    // Check auth first - layout should have already checked, but verify client-side
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // If no session, layout should have redirected, but double-check
+      // Don't redirect here - let layout handle it to avoid loops
+      if (!session) {
+        console.log('[analytics/export] No session found, but layout should handle redirect');
+        return;
+      }
+
+      // Fetch user role
+      try {
+        const response = await fetch('/api/analytics', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.stats && data.stats.role) {
+            setRole(data.stats.role);
+          }
         }
-      })
-      .catch(() => {
+      } catch (error) {
+        console.error('Error fetching analytics:', error);
         // Default to investor if fetch fails
         setRole('investor');
-      });
-  }, []);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleExport = async (type: 'deals' | 'analytics') => {
     setExporting(type);

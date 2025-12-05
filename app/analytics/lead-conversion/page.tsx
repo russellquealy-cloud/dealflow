@@ -1,14 +1,16 @@
-import { createServerClient } from '@/supabase/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 import type { AnyProfile } from "@/lib/profileCompleteness";
 
 export const dynamic = 'force-dynamic';
 
 export default async function LeadConversionPage() {
-  const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  // Use consistent auth helper - layout already checked auth, but we need supabase client
+  // If auth fails here, it's likely a race condition - layout will handle redirect
+  const { user, supabase, error: authError } = await getAuthUserServer();
 
+  // If no user, return null - layout already handles redirect
   if (authError || !user) {
-    return null; // Layout will handle redirect
+    return null;
   }
 
   // Get user role

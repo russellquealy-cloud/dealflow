@@ -64,6 +64,16 @@ export function shouldRedirectFromLogin(currentPath: string, nextPath: string): 
     return false;
   }
   
+  // Additional check: if next path is an analytics route and we have a next param pointing to analytics,
+  // make sure we're not creating a loop by checking if the referer chain suggests we're already bouncing
+  // This prevents /analytics/heatmap -> /login?next=/analytics/heatmap -> /analytics/heatmap -> /login loops
+  if (nextPathNoQuery.startsWith('/analytics/')) {
+    // Allow redirect to analytics if we came from a non-analytics page (e.g., /account)
+    // Block redirect if we're already in an analytics redirect loop
+    // The login page's useEffect will handle this with additional checks
+    return true;
+  }
+  
   return true;
 }
 

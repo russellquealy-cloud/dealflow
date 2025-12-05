@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import Link from 'next/link';
-import { requireAuthServer } from '@/lib/auth/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 import type { AnyProfile } from "@/lib/profileCompleteness";
 
 export const dynamic = 'force-dynamic';
@@ -10,13 +11,30 @@ export default async function AnalyticsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Use consistent auth helper - prevents redirect loops
-  const { user, supabase } = await requireAuthServer('/analytics/lead-conversion');
+  // Use getAuthUserServer to check auth without auto-redirect
+  // This prevents redirect loops - we only redirect if user is actually not authenticated
+  const { user, supabase, error: authError } = await getAuthUserServer();
   
-  if (!user) {
-    // requireAuthServer already handles redirect, but TypeScript needs this check
-    return null;
+  // Only redirect to login if user is truly not authenticated
+  // CRITICAL: Do NOT redirect if user exists - this prevents loops
+  // The login page will handle redirecting authenticated users back to analytics
+  if (!user || authError) {
+    console.log('[analytics/layout] No authenticated user, redirecting to login', {
+      hasUser: !!user,
+      error: authError?.message,
+    });
+    
+    // Get the actual pathname from middleware-injected header
+    // This ensures we redirect to login with the correct path (e.g., /analytics/heatmap, not /analytics/lead-conversion)
+    const headersList = await headers();
+    const currentPathname = headersList.get('x-pathname') || '/analytics/lead-conversion';
+    
+    // Use the actual pathname from the request for accurate redirect
+    // This prevents redirect loops by preserving where the user was trying to go
+    redirect(`/login?next=${encodeURIComponent(currentPathname)}`);
   }
+  
+  // User is authenticated - continue rendering
 
   // Fetch user profile
   const { data: profile } = await supabase

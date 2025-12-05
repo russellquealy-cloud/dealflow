@@ -1,8 +1,16 @@
+import { getAuthUserServer } from '@/lib/auth/server';
 import HeatmapClient from './HeatmapClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HeatmapPage() {
+  // Layout already checks auth, but verify user here for consistency
+  // If auth fails, layout will handle redirect
+  const { user, error: authError } = await getAuthUserServer();
+  
+  if (!user || authError) {
+    return null; // Layout will handle redirect
+  }
 
   // Fetch heatmap data from API (client-side will handle the fetch)
   return (

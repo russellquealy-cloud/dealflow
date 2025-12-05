@@ -140,7 +140,12 @@ function LoginInner() {
         
         // Prevent redirect loops - don't redirect if we just came from the target
         // This prevents /profile -> /login?next=/profile -> /profile -> /login loops
-        if (rawNext && (rawNext === currentPath || currentPath.startsWith(rawNext + '/'))) {
+        // Also check for analytics routes to prevent loops
+        if (rawNext && (
+          rawNext === currentPath || 
+          currentPath.startsWith(rawNext + '/') ||
+          (rawNext.startsWith('/analytics/') && currentPath.startsWith('/analytics/'))
+        )) {
           console.log('🔐 [Login] Skipping redirect - would create loop', {
             currentPath,
             targetPath,

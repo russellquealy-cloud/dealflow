@@ -4,19 +4,24 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const response = NextResponse.next();
 
-  // Skip middleware for static files and API routes
+  // Inject pathname header for server components to access current path
+  // This helps prevent redirect loops by allowing layouts to redirect with the correct path
+  response.headers.set('x-pathname', pathname);
+
+  // Skip middleware logic for static files and API routes
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/static') ||
     pathname.includes('.')
   ) {
-    return NextResponse.next();
+    return response;
   }
 
   if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
-    return NextResponse.next();
+    return response;
   }
 
   // Add paywall headers for protected routes
@@ -28,13 +33,11 @@ export function middleware(request: NextRequest) {
       pathname.startsWith('/data-feed') ||
       pathname.startsWith('/orgs') ||
       pathname.startsWith('/integrations')) {
-    
-    const response = NextResponse.next();
     response.headers.set('x-paywall-required', 'true');
     return response;
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
