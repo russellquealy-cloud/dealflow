@@ -18,6 +18,7 @@
     "stripe:bootstrap": "tsx scripts/stripe-bootstrap.ts",
     "grant-admin": "tsx scripts/grant-admin.ts",
     "import-market-trends": "tsx scripts/import-market-trends.ts",
+    "import-market-snapshots": "tsx scripts/import_market_snapshots.ts",
     "prelaunch-check": "tsx scripts/prelaunch-check.ts",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",

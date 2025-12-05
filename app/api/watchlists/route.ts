@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseRouteClient } from '../../lib/supabaseRoute';
+import { getAuthUserServer } from '@/lib/auth/server';
 import { getSupabaseServiceRole } from '@/lib/supabase/service';
 import { logger } from '@/lib/logger';
 import { notifyBuyerInterest } from '@/lib/notifications';
@@ -357,70 +358,16 @@ export async function GET(request: NextRequest) {
 // POST: Add listing to watchlist
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await getSupabaseRouteClient();
+    // Use getAuthUserServer which properly establishes session context for RLS
+    const { user, supabase, error: authError } = await getAuthUserServer();
 
-    // CRITICAL FIX: Use same auth logic as GET - check Authorization header, then getSession, then getUser
-    let user = null;
-    let userError = null;
-
-    // Check for Authorization header from client
-    const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      console.log('Watchlist POST: Using Authorization header token', {
-        tokenLength: token.length,
-      });
-      const { data: userData, error: getUserError } = await supabase.auth.getUser(token);
-      if (userData?.user) {
-        user = userData.user;
-        console.log('Watchlist POST: Got user from Authorization header', {
-          userId: user.id,
-          email: user.email,
-        });
-      } else {
-        userError = getUserError;
-      }
-    }
-
-    // If no user from header, try getSession (reads from cookies)
-    if (!user) {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionData?.session?.user) {
-        user = sessionData.session.user;
-        console.log('Watchlist POST: Got user from session', {
-          userId: user.id,
-          email: user.email,
-        });
-      } else if (sessionError) {
-        console.warn('Watchlist POST: Session error, trying getUser', {
-          error: sessionError.message,
-        });
-        // Fallback to getUser (reads from cookies)
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-        if (userData?.user) {
-          user = userData.user;
-        } else {
-          userError = getUserError;
-        }
-      } else {
-        // No session, try getUser
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-        if (userData?.user) {
-          user = userData.user;
-        } else {
-          userError = getUserError;
-        }
-      }
-    }
-
-    if (userError || !user) {
+    if (!user || authError) {
       console.error('Watchlist POST: Unauthorized', {
-        getUserError: userError?.message,
-        hasAuthHeader: !!authHeader,
+        error: authError?.message,
+        hasAuthHeader: request.headers.has('authorization'),
       });
       logger.warn('Watchlist POST: Unauthorized request', {
-        hasAuthHeader: !!authHeader,
-        error: userError?.message,
+        error: authError?.message,
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
