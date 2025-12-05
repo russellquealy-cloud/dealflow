@@ -311,24 +311,30 @@ export async function GET(request: NextRequest) {
         user_id: item.user_id,
         property_id: item.property_id,
         created_at: item.created_at,
-        // Return listing data in 'listings' property for backward compatibility with frontend
+        // Primary field: 'property' contains the listing/property data (or null if not found)
+        property: listingLike,
+        // Backward compatibility: 'listings' field (same as property)
         listings: listingLike,
-        // Also include 'active_listing' and 'property' for clearer separation
-        property: listingLike, // Same data - listings IS the property
-        active_listing: listingLike ? { id: listingLike.id, status: listingLike.status ?? null } : null,
       };
     });
 
     logger.log('Watchlist GET: Fetched watchlist rows with listings', {
       count: watchlists.length,
-      withListings: watchlists.filter((w) => w.listings).length,
-      withoutListings: watchlists.filter((w) => !w.listings).length,
+      withProperty: watchlists.filter((w) => w.property).length,
+      withoutProperty: watchlists.filter((w) => !w.property).length,
     });
 
-    return NextResponse.json({
+    const responseData = {
       count: watchlists.length,
       watchlists: watchlists,
-    });
+    };
+
+    // Debug logging in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[api/watchlists] response', JSON.stringify(responseData, null, 2));
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     logger.error('Watchlist GET: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',

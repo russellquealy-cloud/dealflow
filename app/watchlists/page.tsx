@@ -11,11 +11,10 @@ interface WatchlistItem {
   id: string;
   property_id: string;
   created_at: string;
-  // Backward compatibility: 'listings' field contains the listing data (or null)
-  listings: ListingLike | null;
-  // New fields for clearer separation
+  // Primary field: 'property' contains the listing/property data (or null if not found)
   property: ListingLike | null;
-  active_listing: { id: string; status: string | null } | null;
+  // Backward compatibility: 'listings' field (same as property)
+  listings: ListingLike | null;
 }
 
 export default function WatchlistsPage() {
@@ -37,11 +36,13 @@ export default function WatchlistsPage() {
       headers['Authorization'] = `Bearer ${session.access_token}`;
     }
 
-    // Only log once per load attempt, not in a loop
-    console.log('📋 Watchlist: Loading watchlists...', {
-      userId: session.user.id,
-      hasToken: !!session.access_token,
-    });
+    // Log only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📋 Watchlist: Loading watchlists...', {
+        userId: session.user.id,
+        hasToken: !!session.access_token,
+      });
+    }
 
     setLoading(true);
     setError(null);
@@ -82,13 +83,17 @@ export default function WatchlistsPage() {
       }
 
       const data = await response.json();
-      console.log('✅ Watchlist: Watchlists loaded', {
-        count: data.watchlists?.length || 0,
-      });
       
-      // Ensure we're mapping 'listings' (plural) from API response
-      // The API returns { watchlists: [{ id, property_id, listings: {...} }] }
+      // Extract watchlist array from API response
+      // The API returns { watchlists: [{ id, property_id, property: {...}, ... }] }
       const watchlistArray = Array.isArray(data.watchlists) ? data.watchlists : [];
+      
+      // Minimal logging in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Watchlist: Watchlists loaded', {
+          count: watchlistArray.length,
+        });
+      }
       
       setWatchlists(watchlistArray);
       setError(null);
@@ -172,42 +177,37 @@ export default function WatchlistsPage() {
     }
   };
 
-  // Split items into available (with active listing) and unavailable (without active listing)
-  // An item is "available" if it has both a property and an active_listing
-  // Treating "no listing attached" as a normal case, not an error
+  // Helper to check if item has a valid property
+  const hasProperty = (item: WatchlistItem): boolean => !!item.property;
+
+  // Split items into available (with property) and unavailable (without property)
+  // Simple logic: if property exists, it's available; otherwise it's unavailable
   const { itemsWithListings, itemsWithoutListings } = useMemo(() => {
-    const available: (WatchlistItem & { listings: ListingLike })[] = [];
-    const unavailable: WatchlistItem[] = [];
+    const activeItems: (WatchlistItem & { property: ListingLike })[] = [];
+    const unavailableItems: WatchlistItem[] = [];
     
     watchlists.forEach((item) => {
-      // Check if item has an active listing and property data
-      const hasActiveListing = !!(item.active_listing && item.property);
-      
-      if (hasActiveListing && item.listings) {
-        available.push(item as WatchlistItem & { listings: ListingLike });
+      if (hasProperty(item) && item.property) {
+        // Item has a valid property - render in main list
+        activeItems.push(item as WatchlistItem & { property: ListingLike });
       } else {
-        // Item without active listing - this is normal (listing may have been deleted or is draft/archived)
-        // Only log in development mode for debugging
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('[Watchlist] Item without active listing, treating as unavailable', {
-            id: item.id,
-            property_id: item.property_id,
-            hasProperty: !!item.property,
-            hasActiveListing: !!item.active_listing,
-          });
-        }
-        unavailable.push(item);
+        // Item without property - show in unavailable section
+        unavailableItems.push(item);
       }
     });
     
     // Log summary in development
-    if (process.env.NODE_ENV === 'development' && unavailable.length > 0) {
-      console.debug(`[Watchlist] Found ${unavailable.length} unavailable item(s) (normal case)`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📋 Watchlist: Loaded items', {
+        count: watchlists.length,
+        activeCount: activeItems.length,
+        unavailableCount: unavailableItems.length,
+      });
     }
     
     return {
-      itemsWithListings: available,
-      itemsWithoutListings: unavailable,
+      itemsWithListings: activeItems,
+      itemsWithoutListings: unavailableItems,
     };
   }, [watchlists]);
 
@@ -351,8 +351,8 @@ export default function WatchlistsPage() {
             }}>
               {itemsWithListings.map((item) => (
                 <div key={item.id} style={{ position: 'relative' }}>
-                  {/* ROOT CAUSE FIX: Use item.listings (plural) to match API response */}
-                  <ListingCard listing={item.listings} />
+                  {/* Use item.property for listing data (backward compatible with item.listings) */}
+                  <ListingCard listing={item.property || item.listings || undefined} />
                   <button
                     onClick={() => handleRemove(item.id, item.property_id)}
                     style={{
