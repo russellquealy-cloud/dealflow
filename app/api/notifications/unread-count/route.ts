@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/supabase/server';
+import { getSupabaseRouteClient } from '../../../lib/supabaseRoute';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/notifications/unread-count
@@ -12,8 +13,32 @@ export const runtime = 'nodejs';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use PKCE-aware auth helper with bearer token fallback
+    const supabase = await getSupabaseRouteClient();
+    
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // Fallback to bearer token if available
+    if ((userError || !user)) {
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (bearerToken) {
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+        if (tokenUser && !tokenError) {
+          user = tokenUser;
+          userError = null;
+        }
+      }
+    }
+    
+    // Fallback to getSession
+    if (userError || !user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+      }
+    }
 
     // If user is not authenticated, return count 0 (not an error)
     // This is expected behavior - no need to log

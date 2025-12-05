@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createServerClient } from '@/supabase/server';
+import { getSupabaseRouteClient } from '../../../lib/supabaseRoute';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const PREFERENCE_FIELDS = [
   'buyer_interest',
@@ -70,9 +71,32 @@ async function fetchOrCreatePreferences(
 
 export async function GET(request: NextRequest) {
   try {
-    // Use modern auth pattern - same as other working routes
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use PKCE-aware auth helper with bearer token fallback
+    const supabase = await getSupabaseRouteClient();
+    
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // Fallback to bearer token if available
+    if ((userError || !user)) {
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (bearerToken) {
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+        if (tokenUser && !tokenError) {
+          user = tokenUser;
+          userError = null;
+        }
+      }
+    }
+    
+    // Fallback to getSession
+    if (userError || !user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+      }
+    }
 
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -94,9 +118,32 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Use modern auth pattern - same as other working routes
-    const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use PKCE-aware auth helper with bearer token fallback
+    const supabase = await getSupabaseRouteClient();
+    
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // Fallback to bearer token if available
+    if ((userError || !user)) {
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (bearerToken) {
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+        if (tokenUser && !tokenError) {
+          user = tokenUser;
+          userError = null;
+        }
+      }
+    }
+    
+    // Fallback to getSession
+    if (userError || !user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+      }
+    }
 
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
