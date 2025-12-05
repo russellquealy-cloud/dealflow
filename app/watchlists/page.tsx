@@ -7,32 +7,27 @@ import { useRouter } from 'next/navigation';
 import type { ListingLike } from '@/components/ListingCard';
 import { useAuth } from '@/providers/AuthProvider';
 
-interface WatchlistItem {
+// Type matching the new API response shape
+type WatchlistItem = {
   id: string;
-  property_id: string;
-  created_at: string;
-  // Primary field: 'property' contains the listing/property data (or null if not found)
-  property: ListingLike | null;
-  // Backward compatibility: 'listings' field (same as property)
-  listings: ListingLike | null;
-}
-
-// Type for raw API response items (for debugging)
-type WatchlistApiItem = {
-  id: string;
-  created_at: string;
+  user_id: string;
   property_id: string | null;
-  listing_id?: string | null;
-  property?: Record<string, unknown> | null;
-  listing?: Record<string, unknown> | null;
-  listings?: Record<string, unknown> | null;
+  created_at: string;
+  listing: {
+    id: string;
+    title: string | null;
+    city: string | null;
+    state: string | null;
+    price: number | null;
+    featured_image_url: string | null;
+  } | null;
 };
 
 export default function WatchlistsPage() {
   const router = useRouter();
   const { session, loading: authLoading } = useAuth();
   const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
-  const [rawItems, setRawItems] = useState<WatchlistApiItem[]>([]);
+  const [rawItems, setRawItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState<boolean>(true);
@@ -102,7 +97,7 @@ export default function WatchlistsPage() {
       const watchlistArray = Array.isArray(data.watchlists) ? data.watchlists : [];
       
       // Store raw items for debugging
-      const rawApiItems = watchlistArray as WatchlistApiItem[];
+      const rawApiItems = watchlistArray as WatchlistItem[];
       setRawItems(rawApiItems);
       
       // Log raw items in development
@@ -196,21 +191,21 @@ export default function WatchlistsPage() {
     }
   };
 
-  // Helper to check if item has a valid property
-  const hasProperty = (item: WatchlistItem): boolean => !!item.property;
+  // Helper to check if item has a valid listing
+  const hasListing = (item: WatchlistItem): boolean => !!item.listing;
 
-  // Split items into available (with property) and unavailable (without property)
-  // Simple logic: if property exists, it's available; otherwise it's unavailable
+  // Split items into available (with listing) and unavailable (without listing)
+  // Simple logic: if listing exists, it's available; otherwise it's unavailable
   const { itemsWithListings, itemsWithoutListings } = useMemo(() => {
-    const activeItems: (WatchlistItem & { property: ListingLike })[] = [];
+    const activeItems: WatchlistItem[] = [];
     const unavailableItems: WatchlistItem[] = [];
     
     watchlists.forEach((item) => {
-      if (hasProperty(item) && item.property) {
-        // Item has a valid property - render in main list
-        activeItems.push(item as WatchlistItem & { property: ListingLike });
+      if (hasListing(item)) {
+        // Item has a valid listing - render in main list
+        activeItems.push(item);
       } else {
-        // Item without property - show in unavailable section
+        // Item without listing - show in unavailable section
         unavailableItems.push(item);
       }
     });
@@ -350,19 +345,14 @@ export default function WatchlistsPage() {
               <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
                 property_id: {String(item.property_id ?? 'null')}
                 {' · '}
-                listing_id: {String(item.listing_id ?? 'null')}
+                listing?.id: {String(item.listing?.id ?? 'null')}
               </div>
               <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
-                property:{' '}
-                {item.property ? JSON.stringify(item.property, null, 2) : 'null'}
+                listing?.title: {item.listing?.title ?? 'null'}
               </div>
               <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
                 listing:{' '}
                 {item.listing ? JSON.stringify(item.listing, null, 2) : 'null'}
-              </div>
-              <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
-                listings:{' '}
-                {item.listings ? JSON.stringify(item.listings, null, 2) : 'null'}
               </div>
             </li>
           ))}
