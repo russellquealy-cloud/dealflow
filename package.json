@@ -19,6 +19,7 @@
     "grant-admin": "tsx scripts/grant-admin.ts",
     "import-market-trends": "tsx scripts/import-market-trends.ts",
     "import-market-snapshots": "tsx scripts/import_market_snapshots.ts",
+    "test-market-snapshot-api": "tsx scripts/test-market-snapshot-api.ts",
     "prelaunch-check": "tsx scripts/prelaunch-check.ts",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
