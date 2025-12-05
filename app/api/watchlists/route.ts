@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseRouteClient } from '../../lib/supabaseRoute';
-import { getSupabaseServiceRole } from '@/lib/supabase/service';
 import { logger } from '@/lib/logger';
 import { notifyBuyerInterest } from '@/lib/notifications';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Watchlist API Route
 // Handles GET (fetch watchlist), POST (add to watchlist), DELETE (remove from watchlist)
@@ -273,7 +271,7 @@ export async function GET(request: NextRequest) {
 
     logger.log('Watchlist GET: Fetched watchlist data', {
       count: watchlistData?.length || 0,
-      propertyIds: watchlistData?.map((w: any) => w.property_id) || [],
+      propertyIds: watchlistData?.map((w: { property_id: string }) => w.property_id) || [],
     });
 
     if (!watchlistData || watchlistData.length === 0) {
@@ -286,12 +284,20 @@ export async function GET(request: NextRequest) {
     // Transform the data to match frontend expectations
     // Supabase returns listings as an array for each watchlist item (even though FK is 1:1)
     // We need to extract the first (and only) listing and sanitize it
-    const enriched = watchlistData.map((item: any) => {
+    type WatchlistRowWithListing = {
+      id: string;
+      user_id: string;
+      property_id: string;
+      created_at: string;
+      listings: ListingSummary | ListingSummary[] | null;
+    };
+    
+    const enriched = watchlistData.map((item: WatchlistRowWithListing) => {
       // Supabase join returns listings as an array, but it's actually a 1:1 relationship
       // So we take the first element if it exists
       const listingArray = Array.isArray(item.listings) ? item.listings : (item.listings ? [item.listings] : []);
       const listingData = listingArray.length > 0 ? listingArray[0] : null;
-      const listing = listingData ? sanitizeListing(listingData as ListingSummary) : null;
+      const listing = listingData ? sanitizeListing(listingData) : null;
       
       if (!listing && item.property_id) {
         logger.warn('Watchlist GET: Watchlist item has no listing data', {
