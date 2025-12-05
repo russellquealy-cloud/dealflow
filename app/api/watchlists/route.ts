@@ -203,130 +203,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    // Fetch watchlist items for the user with joined listing data
-    // Use Supabase's relationship syntax to join listings via property_id FK
-    // The FK is: watchlists.property_id -> listings.id
-    logger.log('Watchlist GET: Fetching watchlist rows with listings', {
+    // Fetch watchlist items for the user (simple query without joins for now)
+    // We'll re-introduce the listing join later once this base is stable
+    logger.log('Watchlist GET: Fetching watchlist rows', {
       userId: user.id,
     });
 
-    const { data: watchlistData, error: watchlistError } = await supabase
+    const { data, error } = await supabase
       .from('watchlists')
-      .select(`
-        id,
-        user_id,
-        property_id,
-        created_at,
-        listings:listings (
-          id,
-          owner_id,
-          title,
-          address,
-          city,
-          state,
-          zip,
-          price,
-          beds,
-          bedrooms,
-          baths,
-          bathrooms,
-          sqft,
-          home_sqft,
-          arv,
-          repairs,
-          spread,
-          roi,
-          images,
-          cover_image_url,
-          featured,
-          featured_until,
-          status,
-          latitude,
-          longitude,
-          created_at
-        )
-      `)
+      .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (watchlistError) {
+    if (error) {
+      console.error('[API /watchlists] error fetching watchlists', error);
       logger.error('Watchlist GET: Error fetching watchlist rows', {
-        error_code: watchlistError.code,
-        error_message: watchlistError.message,
-        error_details: watchlistError.details,
-        error_hint: watchlistError.hint,
+        error_code: error.code,
+        error_message: error.message,
+        error_details: error.details,
         user_id: user.id,
       });
-      console.error('Watchlist GET: Error fetching watchlist rows', {
-        error: watchlistError.message,
-        code: watchlistError.code,
-        details: watchlistError.details,
-        hint: watchlistError.hint,
-      });
-      if (watchlistError.code === '42501') {
+      if (error.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    logger.log('Watchlist GET: Fetched watchlist data', {
-      count: watchlistData?.length || 0,
-      propertyIds: watchlistData?.map((w: { property_id: string }) => w.property_id) || [],
+    logger.log('Watchlist GET: Fetched watchlist rows', {
+      count: data?.length || 0,
     });
 
-    if (!watchlistData || watchlistData.length === 0) {
-      logger.log('Watchlist GET: No watchlist items found', {
-        userId: user.id,
-      });
-      return NextResponse.json({ watchlists: [] });
-    }
+    // Transform to match frontend expectations
+    // Frontend expects items with 'listings' property (null for now, will be populated when we add join back)
+    const watchlistRows = (data || []) as WatchlistRow[];
+    const watchlists = watchlistRows.map((item) => ({
+      id: item.id,
+      user_id: item.user_id,
+      property_id: item.property_id,
+      created_at: item.created_at,
+      listings: null, // Will be populated when we re-introduce the join
+    }));
 
-    // Transform the data to match frontend expectations
-    // Supabase returns listings as an array for each watchlist item (even though FK is 1:1)
-    // We need to extract the first (and only) listing and sanitize it
-    type WatchlistRowWithListing = {
-      id: string;
-      user_id: string;
-      property_id: string;
-      created_at: string;
-      listings: ListingSummary | ListingSummary[] | null;
-    };
-    
-    const enriched = watchlistData.map((item: WatchlistRowWithListing) => {
-      // Supabase join returns listings as an array, but it's actually a 1:1 relationship
-      // So we take the first element if it exists
-      const listingArray = Array.isArray(item.listings) ? item.listings : (item.listings ? [item.listings] : []);
-      const listingData = listingArray.length > 0 ? listingArray[0] : null;
-      const listing = listingData ? sanitizeListing(listingData) : null;
-      
-      if (!listing && item.property_id) {
-        logger.warn('Watchlist GET: Watchlist item has no listing data', {
-          watchlistId: item.id,
-          propertyId: item.property_id,
-          possibleReasons: [
-            'Listing was deleted from database',
-            'Listing ID mismatch',
-            'RLS policy on listings table blocking access',
-          ],
-        });
-      }
-      
-      return {
-        id: item.id,
-        user_id: item.user_id,
-        property_id: item.property_id,
-        created_at: item.created_at,
-        listings: listing, // Frontend expects 'listings' (singular object, not array)
-      };
+    return NextResponse.json({
+      count: watchlists.length,
+      watchlists: watchlists,
     });
-
-    logger.log('Watchlist GET: Returning enriched watchlists', {
-      totalItems: enriched.length,
-      itemsWithListings: enriched.filter(e => e.listings).length,
-      itemsWithoutListings: enriched.filter(e => !e.listings).length,
-    });
-
-    return NextResponse.json({ watchlists: enriched });
   } catch (error) {
     logger.error('Watchlist GET: Unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
