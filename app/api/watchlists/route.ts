@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseRouteClient } from '../../lib/supabaseRoute';
-import { getAuthUserServer } from '@/lib/auth/server';
 import { getSupabaseServiceRole } from '@/lib/supabase/service';
 import { logger } from '@/lib/logger';
 import { notifyBuyerInterest } from '@/lib/notifications';
@@ -95,12 +94,43 @@ export const runtime = 'nodejs';
 // GET: Fetch user's watchlist
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated user using standard auth helper
-    const { user, supabase, error: authError } = await getAuthUserServer();
+    // Get authenticated user using standard auth helper with bearer token fallback
+    // This matches the pattern used in /api/notifications and /api/messages routes
+    const supabase = await getSupabaseRouteClient();
+    
+    // Try getUser first (standard approach - reads from cookies)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails, try Authorization header bearer token (fallback for cases where cookies aren't sent)
+    if (userError || !user) {
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      
+      if (bearerToken) {
+        console.log('[watchlists GET] Cookie auth failed, trying bearer token');
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+        if (tokenUser && !tokenError) {
+          user = tokenUser;
+          userError = null;
+          console.log('[watchlists GET] Bearer token auth succeeded', { userId: user.id });
+        }
+      }
+    }
+    
+    // Fallback to getSession if getUser fails
+    if (userError || !user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[watchlists GET] Using session user from getSession fallback');
+      }
+    }
 
-    if (!user || authError) {
+    if (!user || userError) {
       logger.warn('[watchlist GET] Unauthorized - no authenticated user', {
-        error: authError?.message,
+        error: userError?.message,
+        hasAuthHeader: !!request.headers.get('authorization'),
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -304,13 +334,43 @@ export async function GET(request: NextRequest) {
 // POST: Add listing to watchlist
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user using standard auth helper
-    // This ensures the Supabase client has the correct session context for RLS
-    const { user, supabase, error: authError } = await getAuthUserServer();
+    // Get authenticated user using standard auth helper with bearer token fallback
+    // This matches the pattern used in /api/notifications and /api/messages routes
+    const supabase = await getSupabaseRouteClient();
+    
+    // Try getUser first (standard approach - reads from cookies)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails, try Authorization header bearer token (fallback for cases where cookies aren't sent)
+    if (userError || !user) {
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      
+      if (bearerToken) {
+        console.log('[watchlists POST] Cookie auth failed, trying bearer token');
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+        if (tokenUser && !tokenError) {
+          user = tokenUser;
+          userError = null;
+          console.log('[watchlists POST] Bearer token auth succeeded', { userId: user.id });
+        }
+      }
+    }
+    
+    // Fallback to getSession if getUser fails
+    if (userError || !user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[watchlists POST] Using session user from getSession fallback');
+      }
+    }
 
-    if (!user || authError) {
+    if (!user || userError) {
       logger.warn('[watchlist POST] Unauthorized - no authenticated user', {
-        error: authError?.message,
+        error: userError?.message,
+        hasAuthHeader: !!request.headers.get('authorization'),
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -501,12 +561,43 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove listing from watchlist
 export async function DELETE(request: NextRequest) {
   try {
-    // Get authenticated user using standard auth helper
-    const { user, supabase, error: authError } = await getAuthUserServer();
+    // Get authenticated user using standard auth helper with bearer token fallback
+    // This matches the pattern used in /api/notifications and /api/messages routes
+    const supabase = await getSupabaseRouteClient();
+    
+    // Try getUser first (standard approach - reads from cookies)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails, try Authorization header bearer token (fallback for cases where cookies aren't sent)
+    if (userError || !user) {
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      
+      if (bearerToken) {
+        console.log('[watchlists DELETE] Cookie auth failed, trying bearer token');
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+        if (tokenUser && !tokenError) {
+          user = tokenUser;
+          userError = null;
+          console.log('[watchlists DELETE] Bearer token auth succeeded', { userId: user.id });
+        }
+      }
+    }
+    
+    // Fallback to getSession if getUser fails
+    if (userError || !user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[watchlists DELETE] Using session user from getSession fallback');
+      }
+    }
 
-    if (!user || authError) {
+    if (!user || userError) {
       logger.warn('[watchlist DELETE] Unauthorized - no authenticated user', {
-        error: authError?.message,
+        error: userError?.message,
+        hasAuthHeader: !!request.headers.get('authorization'),
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

@@ -33,6 +33,7 @@ export default function WatchlistsPage() {
       headers['Authorization'] = `Bearer ${session.access_token}`;
     }
 
+    // Only log once per load attempt, not in a loop
     console.log('📋 Watchlist: Loading watchlists...', {
       userId: session.user.id,
       hasToken: !!session.access_token,
@@ -48,6 +49,22 @@ export default function WatchlistsPage() {
       });
 
       if (!response.ok) {
+        // Handle 401 gracefully - stop retrying to prevent loops
+        if (response.status === 401) {
+          const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
+          console.error('❌ Watchlist: Unauthorized (401)', {
+            error: errorData.error,
+          });
+          setError('Please sign in to view your watchlist.');
+          setWatchlists([]);
+          setLoading(false);
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            router.push('/login?next=/watchlists');
+          }, 2000);
+          return;
+        }
+        
         const errorText = await response.text().catch(() => '');
         const errorMessage = `Failed to load watchlists: ${response.status} ${errorText}`;
         console.error('❌ Watchlist: Error loading watchlists', {
@@ -93,7 +110,7 @@ export default function WatchlistsPage() {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, router]);
 
   useEffect(() => {
     if (authLoading) {
@@ -105,8 +122,11 @@ export default function WatchlistsPage() {
       return;
     }
 
+    // Only load once when session becomes available
+    // The loadWatchlists callback handles its own state, so we can call it safely
     loadWatchlists();
-  }, [authLoading, session, router, loadWatchlists]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, session, router]); // Only reload when auth state changes, not when loadWatchlists changes
 
   // Listen for watchlist updates from other pages
   useEffect(() => {
