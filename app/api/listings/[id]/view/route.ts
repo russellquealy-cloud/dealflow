@@ -50,26 +50,42 @@ export async function POST(
       return NextResponse.json({ error: 'Listing is not live' }, { status: 400 });
     }
 
-    // Increment views by 1 (handle null as 0)
-    const currentViews = listingData.views ?? 0;
-    const newViewsCount = currentViews + 1;
-    
-    // Update with WHERE clause checking status to prevent race conditions
-    const { data: updatedListing, error: updateError } = await supabase
-      .from('listings')
-      .update({ views: newViewsCount } as never)
-      .eq('id', id)
-      .eq('status', 'live') // Double-check status in update to prevent race conditions
-      .select('views')
-      .single();
+    // Use Postgres function to safely increment views (bypasses RLS but enforces constraints)
+    const { data: functionResult, error: functionError } = await (supabase.rpc as any)(
+      'increment_listing_view',
+      { listing_uuid: id }
+    );
 
-    if (updateError || !updatedListing) {
-      console.error('Error incrementing view count:', updateError);
-      return NextResponse.json({ error: 'Failed to increment view count' }, { status: 500 });
+    if (functionError || functionResult === null || functionResult === undefined) {
+      console.error('Error incrementing view count via function:', functionError);
+      
+      // Fallback to direct update if function doesn't exist (for backwards compatibility)
+      // This should not happen after migration is applied
+      const currentViews = listingData.views ?? 0;
+      const newViewsCount = currentViews + 1;
+      
+      const { data: updatedListing, error: updateError } = await supabase
+        .from('listings')
+        .update({ views: newViewsCount } as never)
+        .eq('id', id)
+        .eq('status', 'live')
+        .select('views')
+        .single();
+
+      if (updateError || !updatedListing) {
+        console.error('Error incrementing view count (fallback):', updateError);
+        return NextResponse.json({ error: 'Failed to increment view count' }, { status: 500 });
+      }
+
+      const updatedViews = (updatedListing as { views: number | null }).views ?? 0;
+      return NextResponse.json({ 
+        views: updatedViews,
+        listingId: id
+      }, { status: 200 });
     }
 
-    // Type assertion for the returned views field
-    const updatedViews = (updatedListing as { views: number | null }).views ?? 0;
+    // Function returns the new view count directly
+    const updatedViews = typeof functionResult === 'number' ? functionResult : listingData.views ?? 0;
 
     return NextResponse.json({ 
       views: updatedViews,
