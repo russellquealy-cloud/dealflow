@@ -80,23 +80,11 @@ export default function WatchlistsPage() {
       const data = await response.json();
       console.log('✅ Watchlist: Watchlists loaded', {
         count: data.watchlists?.length || 0,
-        watchlists: data.watchlists,
       });
       
-      // ROOT CAUSE FIX: Ensure we're mapping 'listings' (plural) from API response
+      // Ensure we're mapping 'listings' (plural) from API response
       // The API returns { watchlists: [{ id, property_id, listings: {...} }] }
       const watchlistArray = Array.isArray(data.watchlists) ? data.watchlists : [];
-      
-      // Log each item to verify structure
-      watchlistArray.forEach((item: WatchlistItem, index: number) => {
-        console.log(`📋 Watchlist item ${index}:`, {
-          id: item.id,
-          property_id: item.property_id,
-          hasListings: !!item.listings, // Use 'listings' (plural)
-          listingId: item.listings?.id,
-          listingTitle: item.listings?.title,
-        });
-      });
       
       setWatchlists(watchlistArray);
       setError(null);
@@ -180,23 +168,37 @@ export default function WatchlistsPage() {
     }
   };
 
-  // ROOT CAUSE FIX: Filter items that have valid listings using 'listings' (plural)
-  const itemsWithListings = useMemo(() => {
-    return watchlists.filter((item): item is WatchlistItem & { listings: ListingLike } => {
-      const hasListing = Boolean(item.listings); // Use 'listings' (plural)
-      if (!hasListing) {
-        console.warn('⚠️ Watchlist: Item without listing filtered out', {
-          id: item.id,
-          property_id: item.property_id,
-        });
+  // Split items into available (with listings) and unavailable (without listings)
+  // Treating "no listing attached" as a normal case, not an error
+  const { itemsWithListings, itemsWithoutListings } = useMemo(() => {
+    const available: (WatchlistItem & { listings: ListingLike })[] = [];
+    const unavailable: WatchlistItem[] = [];
+    
+    watchlists.forEach((item) => {
+      if (item.listings) {
+        available.push(item as WatchlistItem & { listings: ListingLike });
+      } else {
+        // Item without listing - this is normal (listing may have been deleted)
+        // Only log in development mode for debugging
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('[Watchlist] Item without listing, treating as unavailable', {
+            id: item.id,
+            property_id: item.property_id,
+          });
+        }
+        unavailable.push(item);
       }
-      return hasListing;
     });
-  }, [watchlists]);
-  
-  // Items without listings (for showing "unavailable" message)
-  const itemsWithoutListings = useMemo(() => {
-    return watchlists.filter(item => !item.listings); // Use 'listings' (plural)
+    
+    // Log summary in development
+    if (process.env.NODE_ENV === 'development' && unavailable.length > 0) {
+      console.debug(`[Watchlist] Found ${unavailable.length} unavailable item(s) (normal case)`);
+    }
+    
+    return {
+      itemsWithListings: available,
+      itemsWithoutListings: unavailable,
+    };
   }, [watchlists]);
 
   if (loading || authLoading) {
