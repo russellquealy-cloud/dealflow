@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import ListingCard from '@/components/ListingCard';
+// import Link from 'next/link'; // Temporarily unused in debug mode
+// import ListingCard from '@/components/ListingCard'; // Temporarily unused in debug mode
 import type { ListingLike } from '@/components/ListingCard';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -17,12 +17,25 @@ interface WatchlistItem {
   listings: ListingLike | null;
 }
 
+// Type for raw API response items (for debugging)
+type WatchlistApiItem = {
+  id: string;
+  created_at: string;
+  property_id: string | null;
+  listing_id?: string | null;
+  property?: Record<string, unknown> | null;
+  listing?: Record<string, unknown> | null;
+  listings?: Record<string, unknown> | null;
+};
+
 export default function WatchlistsPage() {
   const router = useRouter();
   const { session, loading: authLoading } = useAuth();
   const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
+  const [rawItems, setRawItems] = useState<WatchlistApiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState<boolean>(true);
   const authToken = useMemo(() => session?.access_token ?? null, [session]);
 
   const loadWatchlists = React.useCallback(async () => {
@@ -88,13 +101,19 @@ export default function WatchlistsPage() {
       // The API returns { watchlists: [{ id, property_id, property: {...}, ... }] }
       const watchlistArray = Array.isArray(data.watchlists) ? data.watchlists : [];
       
-      // Minimal logging in development
+      // Store raw items for debugging
+      const rawApiItems = watchlistArray as WatchlistApiItem[];
+      setRawItems(rawApiItems);
+      
+      // Log raw items in development
       if (process.env.NODE_ENV === 'development') {
+        console.log('📋 Watchlist RAW items', rawApiItems);
         console.log('✅ Watchlist: Watchlists loaded', {
-          count: watchlistArray.length,
+          count: rawApiItems.length,
         });
       }
       
+      // Still set watchlists for backward compatibility (but we'll use rawItems for debug view)
       setWatchlists(watchlistArray);
       setError(null);
     } catch (error) {
@@ -268,6 +287,10 @@ export default function WatchlistsPage() {
     );
   }
 
+  // Simplified debug view - use raw items directly
+  const items = rawItems ?? [];
+  const hasAnyItems = items.length > 0;
+
   return (
     <main style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
@@ -277,108 +300,78 @@ export default function WatchlistsPage() {
         </p>
       </div>
 
-      {itemsWithListings.length === 0 && itemsWithoutListings.length === 0 ? (
-        <div style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: 48,
-          textAlign: 'center',
-          background: '#fff'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</div>
-          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>No Saved Properties</h2>
-          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-            Start saving properties you&apos;re interested in to track them here.
-          </p>
-          <Link href="/listings" style={{
-            display: 'inline-block',
-            padding: '12px 24px',
-            background: '#3b82f6',
-            color: 'white',
+      {/* Debug toggle */}
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={debugMode}
+            onChange={(e) => setDebugMode(e.target.checked)}
+          />
+          Debug: show raw watchlist items
+        </label>
+      </div>
+
+      {/* Debug JSON block */}
+      {debugMode && (
+        <pre
+          style={{
+            background: '#111827',
+            color: '#e5e7eb',
+            padding: '12px',
             borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: '600'
-          }}>
-            Browse Listings
-          </Link>
-        </div>
-      ) : (
-        <>
-          {itemsWithoutListings.length > 0 && (
-            <div style={{
-              marginBottom: 16,
-              padding: 16,
-              background: '#fef3c7',
-              border: '1px solid #fbbf24',
-              borderRadius: 8,
-              fontSize: 14,
-              color: '#92400e'
-            }}>
-              <strong>⚠️ Unavailable Properties:</strong> {itemsWithoutListings.length} saved {itemsWithoutListings.length === 1 ? 'property' : 'properties'} {itemsWithoutListings.length === 1 ? 'is' : 'are'} no longer available. This may be because the listing was deleted or is no longer accessible.
-              <div style={{ marginTop: 12, fontSize: 12, color: '#78350f' }}>
-                {itemsWithoutListings.map((item) => (
-                  <div key={item.id} style={{ marginBottom: 8, padding: 8, background: '#fde68a', borderRadius: 4 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Property ID: {item.property_id}</div>
-                    <div style={{ fontSize: 11, color: '#92400e' }}>
-                      Saved on: {new Date(item.created_at).toLocaleDateString()}
-                    </div>
-                    <button
-                      onClick={() => handleRemove(item.id, item.property_id)}
-                      style={{
-                        marginTop: 8,
-                        padding: '4px 12px',
-                        background: '#fff',
-                        border: '1px solid #dc2626',
-                        borderRadius: 4,
-                        color: '#dc2626',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Remove from Watchlist
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {itemsWithListings.length > 0 && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-              gap: 20
-            }}>
-              {itemsWithListings.map((item) => (
-                <div key={item.id} style={{ position: 'relative' }}>
-                  {/* Use item.property for listing data (backward compatible with item.listings) */}
-                  <ListingCard listing={item.property || item.listings || undefined} />
-                  <button
-                    onClick={() => handleRemove(item.id, item.property_id)}
-                    style={{
-                      position: 'absolute',
-                      top: 12,
-                      right: 12,
-                      padding: '6px 12px',
-                      background: '#fff',
-                      border: '1px solid #dc2626',
-                      borderRadius: 6,
-                      color: '#dc2626',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      zIndex: 10,
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
+            maxHeight: '260px',
+            overflow: 'auto',
+            fontSize: '12px',
+            marginBottom: '16px',
+            border: '1px solid #374151',
+          }}
+        >
+          {JSON.stringify(rawItems, null, 2)}
+        </pre>
       )}
+
+      {/* Simplified raw items view */}
+      {hasAnyItems ? (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {items.map((item) => (
+            <li
+              key={item.id}
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 8,
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                Watchlist ID: {item.id}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
+                property_id: {String(item.property_id ?? 'null')}
+                {' · '}
+                listing_id: {String(item.listing_id ?? 'null')}
+              </div>
+              <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
+                property:{' '}
+                {item.property ? JSON.stringify(item.property, null, 2) : 'null'}
+              </div>
+              <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
+                listing:{' '}
+                {item.listing ? JSON.stringify(item.listing, null, 2) : 'null'}
+              </div>
+              <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
+                listings:{' '}
+                {item.listings ? JSON.stringify(item.listings, null, 2) : 'null'}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No raw watchlist items.</p>
+      )}
+
+      {/* TEMPORARILY COMMENTED OUT - Original rendering logic will be restored after debugging */}
     </main>
   );
 }
