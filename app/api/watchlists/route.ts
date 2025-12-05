@@ -86,78 +86,72 @@ function sanitizeListing(listing: ListingSummary | null | undefined) {
 }
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // GET: Fetch user's watchlist
 export async function GET(request: NextRequest) {
   try {
+    // Use same auth pattern as billing route: getSupabaseRouteClient + getUser + bearer token + getSession fallback
     const supabase = await getSupabaseRouteClient();
-
-    // CRITICAL FIX: Try getSession first (reads from cookies), then getUser as fallback
-    // Also check Authorization header if provided
-    let user = null;
-    let userError = null;
-
-    // Check for Authorization header from client
+    
+    // Check for Authorization header (bearer token)
     const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      console.log('Watchlist GET: Using Authorization header token', {
-        tokenLength: token.length,
-      });
-      const { data: userData, error: getUserError } = await supabase.auth.getUser(token);
-      if (userData?.user) {
-        user = userData.user;
-        console.log('Watchlist GET: Got user from Authorization header', {
-          userId: user.id,
-          email: user.email,
-        });
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    
+    // Try getUser first (reads from cookies via getSupabaseRouteClient)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails but we have a bearer token, try using it directly
+    if ((userError || !user) && bearerToken) {
+      console.log('[watchlist GET] Cookie auth failed, trying bearer token');
+      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+      if (tokenUser && !tokenError) {
+        user = tokenUser;
+        userError = null;
+        console.log('[watchlist GET] Bearer token auth succeeded', { userId: user.id });
       } else {
-        userError = getUserError;
+        console.log('[watchlist GET] Bearer token auth also failed', { error: tokenError?.message });
       }
     }
-
-    // If no user from header, try getSession (reads from cookies)
-    if (!user) {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionData?.session?.user) {
-        user = sessionData.session.user;
-        console.log('Watchlist GET: Got user from session', {
-          userId: user.id,
-          email: user.email,
-        });
-      } else if (sessionError) {
-        console.warn('Watchlist GET: Session error, trying getUser', {
-          error: sessionError.message,
-        });
-        // Fallback to getUser (reads from cookies)
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-        if (userData?.user) {
-          user = userData.user;
-        } else {
-          userError = getUserError;
-        }
-      } else {
-        // No session, try getUser
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-        if (userData?.user) {
-          user = userData.user;
-        } else {
-          userError = getUserError;
-        }
-      }
-    }
-
+    
+    // Fallback to getSession if getUser fails (same pattern as billing)
     if (userError || !user) {
-      console.error('Watchlist GET: Unauthorized', {
-        getUserError: userError?.message,
-        hasAuthHeader: !!authHeader,
+      console.log('[watchlist GET] getUser failed, trying getSession fallback', {
+        error: userError?.message,
       });
-      logger.warn('Watchlist GET: Unauthorized request', {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[watchlist GET] Got session from getSession fallback', {
+          userId: user.id,
+        });
+      } else {
+        console.log('[watchlist GET] getSession fallback also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
+    }
+
+    // No user found - return 401
+    if (!user || userError) {
+      console.error('[watchlist GET] Unauthorized - no user found', {
+        error: userError?.message,
+        hasAuthHeader: !!authHeader,
+        hasBearerToken: !!bearerToken,
+      });
+      logger.warn('[watchlist GET] Unauthorized request', {
         hasAuthHeader: !!authHeader,
         error: userError?.message,
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[watchlist GET] User authenticated successfully', {
+      userId: user.id,
+      userEmail: user.email,
+    });
 
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get('listingId');
@@ -358,19 +352,67 @@ export async function GET(request: NextRequest) {
 // POST: Add listing to watchlist
 export async function POST(request: NextRequest) {
   try {
-    // Use getAuthUserServer which properly establishes session context for RLS
-    const { user, supabase, error: authError } = await getAuthUserServer();
-
-    if (!user || authError) {
-      console.error('Watchlist POST: Unauthorized', {
-        error: authError?.message,
-        hasAuthHeader: request.headers.has('authorization'),
+    // Use same auth pattern as billing route: getSupabaseRouteClient + getUser + bearer token + getSession fallback
+    const supabase = await getSupabaseRouteClient();
+    
+    // Check for Authorization header (bearer token)
+    const authHeader = request.headers.get('authorization');
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    
+    // Try getUser first (reads from cookies via getSupabaseRouteClient)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails but we have a bearer token, try using it directly
+    if ((userError || !user) && bearerToken) {
+      console.log('[watchlist POST] Cookie auth failed, trying bearer token');
+      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+      if (tokenUser && !tokenError) {
+        user = tokenUser;
+        userError = null;
+        console.log('[watchlist POST] Bearer token auth succeeded', { userId: user.id });
+      } else {
+        console.log('[watchlist POST] Bearer token auth also failed', { error: tokenError?.message });
+      }
+    }
+    
+    // Fallback to getSession if getUser fails (same pattern as billing)
+    if (userError || !user) {
+      console.log('[watchlist POST] getUser failed, trying getSession fallback', {
+        error: userError?.message,
       });
-      logger.warn('Watchlist POST: Unauthorized request', {
-        error: authError?.message,
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[watchlist POST] Got session from getSession fallback', {
+          userId: user.id,
+        });
+      } else {
+        console.log('[watchlist POST] getSession fallback also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
+    }
+
+    // No user found - return 401
+    if (!user || userError) {
+      console.error('[watchlist POST] Unauthorized - no user found', {
+        error: userError?.message,
+        hasAuthHeader: !!authHeader,
+        hasBearerToken: !!bearerToken,
+      });
+      logger.warn('[watchlist POST] Unauthorized request', {
+        error: userError?.message,
+        hasAuthHeader: !!authHeader,
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[watchlist POST] User authenticated successfully', {
+      userId: user.id,
+      userEmail: user.email,
+    });
 
     const { listingId } = await request.json();
 
@@ -563,55 +605,67 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove listing from watchlist
 export async function DELETE(request: NextRequest) {
   try {
+    // Use same auth pattern as billing route: getSupabaseRouteClient + getUser + bearer token + getSession fallback
     const supabase = await getSupabaseRouteClient();
-
-    // CRITICAL FIX: Use same auth logic as GET - check Authorization header, then getSession, then getUser
-    let user = null;
-    let userError = null;
-
-    // Check for Authorization header from client
+    
+    // Check for Authorization header (bearer token)
     const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data: userData, error: getUserError } = await supabase.auth.getUser(token);
-      if (userData?.user) {
-        user = userData.user;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    
+    // Try getUser first (reads from cookies via getSupabaseRouteClient)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails but we have a bearer token, try using it directly
+    if ((userError || !user) && bearerToken) {
+      console.log('[watchlist DELETE] Cookie auth failed, trying bearer token');
+      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+      if (tokenUser && !tokenError) {
+        user = tokenUser;
+        userError = null;
+        console.log('[watchlist DELETE] Bearer token auth succeeded', { userId: user.id });
       } else {
-        userError = getUserError;
+        console.log('[watchlist DELETE] Bearer token auth also failed', { error: tokenError?.message });
       }
     }
-
-    // If no user from header, try getSession (reads from cookies)
-    if (!user) {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionData?.session?.user) {
-        user = sessionData.session.user;
-      } else if (sessionError) {
-        // Fallback to getUser (reads from cookies)
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-        if (userData?.user) {
-          user = userData.user;
-        } else {
-          userError = getUserError;
-        }
-      } else {
-        // No session, try getUser
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-        if (userData?.user) {
-          user = userData.user;
-        } else {
-          userError = getUserError;
-        }
-      }
-    }
-
+    
+    // Fallback to getSession if getUser fails (same pattern as billing)
     if (userError || !user) {
-      console.error('Watchlist DELETE: Unauthorized', {
-        getUserError: userError?.message,
+      console.log('[watchlist DELETE] getUser failed, trying getSession fallback', {
+        error: userError?.message,
+      });
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[watchlist DELETE] Got session from getSession fallback', {
+          userId: user.id,
+        });
+      } else {
+        console.log('[watchlist DELETE] getSession fallback also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
+    }
+
+    // No user found - return 401
+    if (!user || userError) {
+      console.error('[watchlist DELETE] Unauthorized - no user found', {
+        error: userError?.message,
+        hasAuthHeader: !!authHeader,
+        hasBearerToken: !!bearerToken,
+      });
+      logger.warn('[watchlist DELETE] Unauthorized request', {
+        error: userError?.message,
         hasAuthHeader: !!authHeader,
       });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[watchlist DELETE] User authenticated successfully', {
+      userId: user.id,
+      userEmail: user.email,
+    });
 
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get('listingId');

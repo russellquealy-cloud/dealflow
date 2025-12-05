@@ -79,6 +79,20 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
         } else {
           const errorText = await response.text().catch(() => '');
           console.error('❌ Failed to remove from watchlist:', { listingId, status: response.status, error: errorText });
+          let errorMessage = 'Failed to remove listing from watchlist. Please try again.';
+          if (response.status === 401) {
+            errorMessage = 'Please sign in to manage your watchlist.';
+          } else {
+            try {
+              const errorData = JSON.parse(errorText);
+              if (errorData.error) {
+                errorMessage = `Failed to remove from watchlist: ${errorData.error}`;
+              }
+            } catch {
+              // Use default message if parsing fails
+            }
+          }
+          alert(errorMessage);
         }
       } else {
         // Add to watchlist
@@ -101,6 +115,20 @@ export default function WatchlistButton({ listingId, size = 'medium' }: Props) {
         } else {
           const errorText = await response.text().catch(() => '');
           console.error('❌ Failed to add to watchlist:', { listingId, status: response.status, error: errorText });
+          let errorMessage = 'Failed to add listing to watchlist. Please try again.';
+          if (response.status === 401) {
+            errorMessage = 'Please sign in to save listings to your watchlist.';
+          } else {
+            try {
+              const errorData = JSON.parse(errorText);
+              if (errorData.error) {
+                errorMessage = `Failed to add to watchlist: ${errorData.error}`;
+              }
+            } catch {
+              // Use default message if parsing fails
+            }
+          }
+          alert(errorMessage);
         }
       }
     } catch (error) {
