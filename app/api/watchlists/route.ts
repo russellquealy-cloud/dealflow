@@ -203,46 +203,127 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    // Fetch watchlist items for the user (simple query without joins for now)
-    // We'll re-introduce the listing join later once this base is stable
-    logger.log('Watchlist GET: Fetching watchlist rows', {
+    // Fetch watchlist items for the user with joined listing data
+    logger.log('Watchlist GET: Fetching watchlist rows with listings', {
       userId: user.id,
     });
 
-    const { data, error } = await supabase
+    // First, fetch watchlist rows
+    const { data: watchlistRows, error: watchlistError } = await supabase
       .from('watchlists')
-      .select('*')
+      .select('id, user_id, property_id, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[API /watchlists] error fetching watchlists', error);
+    if (watchlistError) {
+      console.error('[API /watchlists] error fetching watchlists', watchlistError);
       logger.error('Watchlist GET: Error fetching watchlist rows', {
-        error_code: error.code,
-        error_message: error.message,
-        error_details: error.details,
+        error_code: watchlistError.code,
+        error_message: watchlistError.message,
+        error_details: watchlistError.details,
         user_id: user.id,
       });
-      if (error.code === '42501') {
+      if (watchlistError.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    logger.log('Watchlist GET: Fetched watchlist rows', {
-      count: data?.length || 0,
+    if (!watchlistRows || watchlistRows.length === 0) {
+      return NextResponse.json({
+        count: 0,
+        watchlists: [],
+      });
+    }
+
+    // Type assertion for watchlist rows
+    const typedWatchlistRows = watchlistRows as WatchlistRow[];
+
+    // Extract listing IDs
+    const listingIds = typedWatchlistRows
+      .map((row) => row.property_id)
+      .filter((id): id is string => Boolean(id));
+
+    // Fetch listings for these IDs
+    // Use same status filter as main listings search: exclude 'draft' and 'archived'
+    const { data: listings, error: listingsError } = await supabase
+      .from('listings')
+      .select(
+        'id, title, address, city, state, zip, price, beds, baths, sqft, lot_sqft, images, arv, repairs, status, featured, created_at, bedrooms, bathrooms'
+      )
+      .in('id', listingIds)
+      .or('status.is.null,status.neq.draft,status.neq.archived'); // Active listings only
+
+    if (listingsError) {
+      console.error('[API /watchlists] error fetching listings', listingsError);
+      logger.error('Watchlist GET: Error fetching listings', {
+        error_code: listingsError.code,
+        error_message: listingsError.message,
+        user_id: user.id,
+      });
+      // Continue anyway - we'll mark listings as unavailable
+    }
+
+    // Type for listing row from Supabase
+    type ListingRow = {
+      id: string;
+      title?: string | null;
+      address?: string | null;
+      city?: string | null;
+      state?: string | null;
+      zip?: string | null;
+      price?: number | null;
+      beds?: number | null;
+      baths?: number | null;
+      sqft?: number | null;
+      lot_sqft?: number | null;
+      images?: unknown;
+      arv?: number | null;
+      repairs?: number | null;
+      status?: string | null;
+      featured?: boolean | null;
+      created_at?: string | null;
+      bedrooms?: number | null;
+      bathrooms?: number | null;
+    };
+
+    // Create a map of listing ID -> listing data for quick lookup
+    const listingsMap = new Map<string, ListingRow>();
+    if (listings && Array.isArray(listings)) {
+      listings.forEach((listing: unknown) => {
+        const row = listing as ListingRow;
+        if (row && row.id) {
+          listingsMap.set(row.id, row);
+        }
+      });
+    }
+
+    // Transform watchlist items to include listing data
+    // Match the ListingLike type expected by ListingCard
+    const watchlists = typedWatchlistRows.map((item) => {
+      const listing = listingsMap.get(item.property_id);
+      
+      // Use sanitizeListing helper to transform to ListingSummary format
+      const listingLike = sanitizeListing(listing as ListingSummary | null);
+
+      return {
+        id: item.id,
+        user_id: item.user_id,
+        property_id: item.property_id,
+        created_at: item.created_at,
+        // Return listing data in 'listings' property for backward compatibility with frontend
+        listings: listingLike,
+        // Also include 'active_listing' and 'property' for clearer separation
+        property: listingLike, // Same data - listings IS the property
+        active_listing: listingLike ? { id: listingLike.id, status: listingLike.status ?? null } : null,
+      };
     });
 
-    // Transform to match frontend expectations
-    // Frontend expects items with 'listings' property (null for now, will be populated when we add join back)
-    const watchlistRows = (data || []) as WatchlistRow[];
-    const watchlists = watchlistRows.map((item) => ({
-      id: item.id,
-      user_id: item.user_id,
-      property_id: item.property_id,
-      created_at: item.created_at,
-      listings: null, // Will be populated when we re-introduce the join
-    }));
+    logger.log('Watchlist GET: Fetched watchlist rows with listings', {
+      count: watchlists.length,
+      withListings: watchlists.filter((w) => w.listings).length,
+      withoutListings: watchlists.filter((w) => !w.listings).length,
+    });
 
     return NextResponse.json({
       count: watchlists.length,

@@ -11,7 +11,11 @@ interface WatchlistItem {
   id: string;
   property_id: string;
   created_at: string;
-  listings: ListingLike | null; // ROOT CAUSE FIX: Use 'listings' (plural) to match API response
+  // Backward compatibility: 'listings' field contains the listing data (or null)
+  listings: ListingLike | null;
+  // New fields for clearer separation
+  property: ListingLike | null;
+  active_listing: { id: string; status: string | null } | null;
 }
 
 export default function WatchlistsPage() {
@@ -168,22 +172,28 @@ export default function WatchlistsPage() {
     }
   };
 
-  // Split items into available (with listings) and unavailable (without listings)
+  // Split items into available (with active listing) and unavailable (without active listing)
+  // An item is "available" if it has both a property and an active_listing
   // Treating "no listing attached" as a normal case, not an error
   const { itemsWithListings, itemsWithoutListings } = useMemo(() => {
     const available: (WatchlistItem & { listings: ListingLike })[] = [];
     const unavailable: WatchlistItem[] = [];
     
     watchlists.forEach((item) => {
-      if (item.listings) {
+      // Check if item has an active listing and property data
+      const hasActiveListing = !!(item.active_listing && item.property);
+      
+      if (hasActiveListing && item.listings) {
         available.push(item as WatchlistItem & { listings: ListingLike });
       } else {
-        // Item without listing - this is normal (listing may have been deleted)
+        // Item without active listing - this is normal (listing may have been deleted or is draft/archived)
         // Only log in development mode for debugging
         if (process.env.NODE_ENV === 'development') {
-          console.debug('[Watchlist] Item without listing, treating as unavailable', {
+          console.debug('[Watchlist] Item without active listing, treating as unavailable', {
             id: item.id,
             property_id: item.property_id,
+            hasProperty: !!item.property,
+            hasActiveListing: !!item.active_listing,
           });
         }
         unavailable.push(item);
