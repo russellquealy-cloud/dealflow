@@ -483,7 +483,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         property_id: listingId,
-      })
+      } as never)
       .select('id, user_id, property_id, created_at')
       .single();
     
@@ -529,7 +529,7 @@ export async function POST(request: NextRequest) {
         .from('listings')
         .select('owner_id, title')
         .eq('id', listingId)
-        .maybeSingle();
+        .maybeSingle<{ owner_id: string | null; title: string | null }>();
 
       if (listingData?.owner_id && listingData.owner_id !== user.id) {
         await notifyBuyerInterest({
@@ -561,7 +561,7 @@ export async function POST(request: NextRequest) {
         'id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, latitude, longitude, created_at'
       )
       .eq('id', listingId)
-      .maybeSingle();
+      .maybeSingle<ListingSummary>();
 
     if (listingError) {
       logger.error('Watchlist POST: Error fetching listing', {
