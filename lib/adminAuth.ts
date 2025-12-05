@@ -135,9 +135,10 @@ export async function getAdminContext(request?: { headers: Headers }): Promise<A
     }
 
     // Fetch profile to check admin status
+    // Note: email is in auth.users, not profiles table
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,role,segment,tier,membership_tier")
+      .select("id,role,segment,tier,membership_tier")
       .eq("id", user.id)
       .single<AdminProfile>();
 
@@ -266,9 +267,10 @@ export async function getProOrAdminContext(request?: { headers: Headers }): Prom
   }
   
   // Fetch profile
+  // Note: email is in auth.users (session.user.email), not profiles table
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id,email,role,segment,tier,membership_tier")
+    .select("id,role,segment,tier,membership_tier")
     .eq("id", user.id)
     .single<AdminProfile>();
   
@@ -284,9 +286,10 @@ export async function getProOrAdminContext(request?: { headers: Headers }): Prom
   }
   
   // Check if admin (admins always have access)
+  // Use email from session.user, not profile
   const role = profile.role ?? null;
   const segment = profile.segment ?? null;
-  const email = profile.email ?? null;
+  const email = session.user.email ?? null;
   const isAdminUser = role === 'admin' ||
     segment === 'admin' ||
     (email && email.toLowerCase() === 'admin@offaxisdeals.com');

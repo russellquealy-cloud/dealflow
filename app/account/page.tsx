@@ -810,33 +810,29 @@ export default function AccountPage() {
   };
 
   const handleChangePassword = async () => {
-    const newPassword = prompt('Enter your new password:');
-    if (!newPassword) {
-      return; // User cancelled
-    }
-    
-    if (newPassword.length < 6) {
-      alert('Password must be at least 6 characters long');
-      return;
-    }
-    
-    const confirmPassword = prompt('Confirm your new password:');
-    if (newPassword !== confirmPassword) {
-      alert('Passwords do not match');
+    if (!user?.email) {
+      alert('Unable to send password reset email: no email address found.');
       return;
     }
     
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      const redirectTo = `${siteUrl}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo,
+      });
+      
       if (error) {
-        console.error('Password update error:', error);
-        alert(`Failed to update password: ${error.message}`);
+        console.error('Password reset email error:', error);
+        alert(`Failed to send password reset email: ${error.message}`);
         return;
       }
-      alert('Password updated successfully!');
+      
+      alert(`Password reset email sent to ${user.email}. Please check your inbox and follow the instructions to reset your password.`);
     } catch (error) {
-      console.error('Password update exception:', error);
-      alert('Failed to update password. Please try again.');
+      console.error('Password reset exception:', error);
+      alert('Failed to send password reset email. Please try again.');
     }
   };
 

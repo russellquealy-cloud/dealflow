@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { getSupabaseRouteClient } from '../../lib/supabaseRoute';
 import { getSupabaseServiceRole } from '@/lib/supabase/service';
 import { logger } from '@/lib/logger';
 import { notifyBuyerInterest } from '@/lib/notifications';
@@ -89,7 +89,7 @@ export const dynamic = 'force-dynamic';
 // GET: Fetch user's watchlist
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = await getSupabaseRouteClient();
 
     // CRITICAL FIX: Try getSession first (reads from cookies), then getUser as fallback
     // Also check Authorization header if provided
@@ -201,11 +201,13 @@ export async function GET(request: NextRequest) {
       userId: user.id,
     });
 
-    const { data: watchlistRows, error: watchlistError } = await supabase
+    const { data: watchlistRowsData, error: watchlistError } = await supabase
       .from('watchlists')
       .select('id, user_id, property_id, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+    
+    const watchlistRows = watchlistRowsData as WatchlistRow[] | null;
 
     if (watchlistError) {
       logger.error('Watchlist GET: Error fetching watchlist rows', {
@@ -355,7 +357,7 @@ export async function GET(request: NextRequest) {
 // POST: Add listing to watchlist
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = await getSupabaseRouteClient();
 
     // CRITICAL FIX: Use same auth logic as GET - check Authorization header, then getSession, then getUser
     let user = null;
@@ -476,7 +478,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { data: watchlistRow, error } = await supabase
+    const { data: watchlistRowData, error } = await supabase
       .from('watchlists')
       .insert({
         user_id: user.id,
@@ -484,6 +486,8 @@ export async function POST(request: NextRequest) {
       })
       .select('id, user_id, property_id, created_at')
       .single();
+    
+    const watchlistRow = watchlistRowData as WatchlistRow | null;
 
     if (error) {
       logger.error('Watchlist POST: Error inserting watchlist', {
@@ -590,10 +594,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      watchlist: {
-        ...(watchlistRow as WatchlistRow),
+      watchlist: watchlistRow ? {
+        id: watchlistRow.id,
+        user_id: watchlistRow.user_id,
+        property_id: watchlistRow.property_id,
+        created_at: watchlistRow.created_at,
         listings: listing,
-      },
+      } : null,
     });
   } catch (error) {
     logger.error('Watchlist POST: Unexpected error', {
@@ -609,7 +616,7 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove listing from watchlist
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = await getSupabaseRouteClient();
 
     // CRITICAL FIX: Use same auth logic as GET - check Authorization header, then getSession, then getUser
     let user = null;

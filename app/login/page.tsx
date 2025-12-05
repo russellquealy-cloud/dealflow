@@ -129,21 +129,33 @@ function LoginInner() {
           return;
         }
         
+        // Check if we're already on the target (additional safety check)
+        if (currentPath === targetPath || currentPath.startsWith(targetPath + '/')) {
+          console.log('🔐 [Login] Already on target path, skipping redirect', {
+            currentPath,
+            targetPath,
+          });
+          return;
+        }
+        
+        // Prevent redirect loops - don't redirect if we just came from the target
+        // This prevents /profile -> /login?next=/profile -> /profile -> /login loops
+        if (rawNext && (rawNext === currentPath || currentPath.startsWith(rawNext + '/'))) {
+          console.log('🔐 [Login] Skipping redirect - would create loop', {
+            currentPath,
+            targetPath,
+            rawNext,
+          });
+          // Redirect to default instead to break the loop
+          targetPath = getDefaultRedirectForUser(null);
+        }
+        
         // Check if we should redirect (prevents loops)
         if (!shouldRedirectFromLogin(currentPath, targetPath)) {
           console.log('🔐 [Login] Skipping redirect - loop prevention', {
             currentPath,
             targetPath,
             reason: 'shouldRedirectFromLogin returned false',
-          });
-          return;
-        }
-        
-        // Check if we're already on the target (additional safety check)
-        if (currentPath === targetPath || currentPath.startsWith(targetPath + '/')) {
-          console.log('🔐 [Login] Already on target path, skipping redirect', {
-            currentPath,
-            targetPath,
           });
           return;
         }
