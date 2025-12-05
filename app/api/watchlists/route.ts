@@ -205,28 +205,65 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isInWatchlist: !!watchlist });
     }
 
-    // Fetch watchlist items for the user
-    logger.log('Watchlist GET: Fetching watchlist rows', {
+    // Fetch watchlist items for the user with joined listing data
+    // Use Supabase's relationship syntax to join listings via property_id FK
+    // The FK is: watchlists.property_id -> listings.id
+    logger.log('Watchlist GET: Fetching watchlist rows with listings', {
       userId: user.id,
     });
 
-    const { data: watchlistRowsData, error: watchlistError } = await supabase
+    const { data: watchlistData, error: watchlistError } = await supabase
       .from('watchlists')
-      .select('id, user_id, property_id, created_at')
+      .select(`
+        id,
+        user_id,
+        property_id,
+        created_at,
+        listings:listings (
+          id,
+          owner_id,
+          title,
+          address,
+          city,
+          state,
+          zip,
+          price,
+          beds,
+          bedrooms,
+          baths,
+          bathrooms,
+          sqft,
+          home_sqft,
+          arv,
+          repairs,
+          spread,
+          roi,
+          images,
+          cover_image_url,
+          featured,
+          featured_until,
+          status,
+          latitude,
+          longitude,
+          created_at
+        )
+      `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    
-    const watchlistRows = watchlistRowsData as WatchlistRow[] | null;
 
     if (watchlistError) {
       logger.error('Watchlist GET: Error fetching watchlist rows', {
         error_code: watchlistError.code,
         error_message: watchlistError.message,
+        error_details: watchlistError.details,
+        error_hint: watchlistError.hint,
         user_id: user.id,
       });
       console.error('Watchlist GET: Error fetching watchlist rows', {
         error: watchlistError.message,
         code: watchlistError.code,
+        details: watchlistError.details,
+        hint: watchlistError.hint,
       });
       if (watchlistError.code === '42501') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -234,103 +271,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
     }
 
-    logger.log('Watchlist GET: Fetched watchlist rows', {
-      count: watchlistRows?.length || 0,
-      propertyIds: watchlistRows?.map(w => w.property_id) || [],
+    logger.log('Watchlist GET: Fetched watchlist data', {
+      count: watchlistData?.length || 0,
+      propertyIds: watchlistData?.map((w: any) => w.property_id) || [],
     });
 
-    if (!watchlistRows || watchlistRows.length === 0) {
+    if (!watchlistData || watchlistData.length === 0) {
       logger.log('Watchlist GET: No watchlist items found', {
         userId: user.id,
       });
       return NextResponse.json({ watchlists: [] });
     }
 
-    // Get all listing IDs
-    const listingIds = watchlistRows.map((w) => w.property_id).filter(Boolean) as string[];
-
-    if (listingIds.length === 0) {
-      logger.warn('Watchlist GET: Watchlist rows exist but no property_ids found', {
-        watchlistRows: watchlistRows.length,
-        userId: user.id,
-      });
-      return NextResponse.json({ 
-        watchlists: watchlistRows.map((w) => ({
-          id: w.id,
-          user_id: w.user_id,
-          property_id: w.property_id,
-          created_at: w.created_at,
-          listings: null,
-        }))
-      });
-    }
-
-    // CRITICAL: Use service-role client to fetch listings (bypasses RLS)
-    // This ensures users can see listings they've saved, even if RLS would normally block them
-    // The user already has access to these listings via their watchlist, so this is safe
-    console.log('Watchlist listingIds', listingIds);
-
-    const serviceClient = await getSupabaseServiceRole();
-
-    const { data: listingsData, error: listingsError } = await serviceClient
-      .from('listings')
-      .select('id, owner_id, title, address, city, state, zip, price, beds, bedrooms, baths, bathrooms, sqft, home_sqft, arv, repairs, spread, roi, images, cover_image_url, featured, featured_until, status, latitude, longitude, created_at')
-      .in('id', listingIds);
-
-    if (listingsError) {
-      console.error('Watchlist listings query error', {
-        error: listingsError.message,
-        code: listingsError.code,
-        listingIds,
-      });
-      logger.error('Watchlist GET: Error fetching listings', {
-        error_code: listingsError.code,
-        error_message: listingsError.message,
-        listing_ids: listingIds,
-        user_id: user.id,
-      });
-      // Continue even if listings fail - return watchlist items with null listings
-    } else {
-      console.log('Watchlist listings result', {
-        requestedCount: listingIds.length,
-        returnedCount: listingsData?.length ?? 0,
-      });
-      logger.log('Watchlist GET: Fetched listings for watchlist', {
-        requestedIds: listingIds.length,
-        foundListings: listingsData?.length || 0,
-        foundListingIds: listingsData?.map(l => l.id) || [],
-        missingListingIds: listingIds.filter(id => !listingsData?.some(l => l.id === id)),
-      });
-
-      // Log missing listings for debugging
-      const missingIds = listingIds.filter(id => !listingsData?.some(l => l.id === id));
-      if (missingIds.length > 0) {
-        logger.warn('Watchlist GET: Some listings not found (may be deleted)', {
-          missingIds,
-          totalRequested: listingIds.length,
-          found: listingsData?.length || 0,
-        });
-      }
-    }
-
-    // Create a map of listing ID to listing data
-    const listingsMap = new Map<string, ListingSummary>();
-    (listingsData || []).forEach((listing) => {
-      listingsMap.set(listing.id, listing as ListingSummary);
-    });
-
-    // Enrich watchlist items with listing data
-    const enriched = watchlistRows.map((item) => {
-      const listingData = listingsMap.get(item.property_id);
-      const listing = listingData ? sanitizeListing(listingData) : null;
+    // Transform the data to match frontend expectations
+    // Supabase returns listings as an array for each watchlist item (even though FK is 1:1)
+    // We need to extract the first (and only) listing and sanitize it
+    const enriched = watchlistData.map((item: any) => {
+      // Supabase join returns listings as an array, but it's actually a 1:1 relationship
+      // So we take the first element if it exists
+      const listingArray = Array.isArray(item.listings) ? item.listings : (item.listings ? [item.listings] : []);
+      const listingData = listingArray.length > 0 ? listingArray[0] : null;
+      const listing = listingData ? sanitizeListing(listingData as ListingSummary) : null;
       
-      if (!listing) {
+      if (!listing && item.property_id) {
         logger.warn('Watchlist GET: Watchlist item has no listing data', {
           watchlistId: item.id,
           propertyId: item.property_id,
           possibleReasons: [
             'Listing was deleted from database',
             'Listing ID mismatch',
+            'RLS policy on listings table blocking access',
           ],
         });
       }
@@ -340,7 +310,7 @@ export async function GET(request: NextRequest) {
         user_id: item.user_id,
         property_id: item.property_id,
         created_at: item.created_at,
-        listings: listing,
+        listings: listing, // Frontend expects 'listings' (singular object, not array)
       };
     });
 
