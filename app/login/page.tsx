@@ -120,6 +120,15 @@ function LoginInner() {
         // Normalize and validate the redirect path
         targetPath = normalizeRedirectPath(targetPath, '/listings');
         
+        // Prevent redirecting back to /login to avoid loops
+        if (targetPath === '/login' || targetPath.startsWith('/login?')) {
+          console.log('🔐 [Login] Skipping redirect - target is login page', {
+            currentPath,
+            targetPath,
+          });
+          return;
+        }
+        
         // Check if we should redirect (prevents loops)
         if (!shouldRedirectFromLogin(currentPath, targetPath)) {
           console.log('🔐 [Login] Skipping redirect - loop prevention', {

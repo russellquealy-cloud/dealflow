@@ -277,25 +277,74 @@ export async function GET(request: NextRequest) {
       email: user.email,
     });
 
+    // Log to help debug why messages aren't showing
+    console.log('[messages/conversations] Querying conversations for user:', {
+      userId: user.id,
+      expectedUserId: 'd2a0b594-5bad-4280-9582-e5bfaedd388d', // wholesaler.free user ID from your data
+      userIdsMatch: user.id === 'd2a0b594-5bad-4280-9582-e5bfaedd388d',
+    });
+
     const { data, error } = await supabase
       .from("messages_conversations_view")
       .select("*")
       .eq("user_id", user.id)
       .order("last_message_at", { ascending: false });
+    
+    console.log('[messages/conversations] View query result', {
+      hasData: !!data,
+      dataLength: data?.length ?? 0,
+      error: error?.message,
+      errorCode: error?.code,
+    });
 
     if (error) {
-      console.error("Error fetching conversations view, attempting fallback", error);
+      console.error("Error fetching conversations view, attempting fallback", {
+        error: error.message,
+        errorCode: error.code,
+        errorHint: error.hint,
+        userId: user.id,
+      });
       try {
+        console.log('[messages/conversations] Building fallback conversations for user:', user.id);
         const fallback = await buildConversationFallback(supabase, user.id);
+        console.log('[messages/conversations] Fallback built', {
+          conversationCount: fallback?.length ?? 0,
+        });
         const hydratedFallback = await hydrateConversations(
           supabase,
           user.id,
           fallback
         );
+        console.log('[messages/conversations] Fallback hydrated', {
+          conversationCount: hydratedFallback?.length ?? 0,
+        });
         return NextResponse.json({ conversations: hydratedFallback });
       } catch (fallbackError) {
         console.error("Fallback conversations error", fallbackError);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
+      }
+    }
+    
+    // If view returns empty array but no error, try fallback anyway to ensure we get data
+    if (!data || data.length === 0) {
+      console.log('[messages/conversations] View returned empty array, trying fallback');
+      try {
+        const fallback = await buildConversationFallback(supabase, user.id);
+        console.log('[messages/conversations] Fallback built (empty view case)', {
+          conversationCount: fallback?.length ?? 0,
+        });
+        const hydratedFallback = await hydrateConversations(
+          supabase,
+          user.id,
+          fallback
+        );
+        console.log('[messages/conversations] Fallback hydrated (empty view case)', {
+          conversationCount: hydratedFallback?.length ?? 0,
+        });
+        return NextResponse.json({ conversations: hydratedFallback });
+      } catch (fallbackError) {
+        console.error("Fallback conversations error (empty view case)", fallbackError);
+        // Continue with empty array from view if fallback fails
       }
     }
 

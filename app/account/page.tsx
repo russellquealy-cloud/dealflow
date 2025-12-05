@@ -809,6 +809,37 @@ export default function AccountPage() {
     }
   };
 
+  const handleChangePassword = async () => {
+    const newPassword = prompt('Enter your new password:');
+    if (!newPassword) {
+      return; // User cancelled
+    }
+    
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+    
+    const confirmPassword = prompt('Confirm your new password:');
+    if (newPassword !== confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        console.error('Password update error:', error);
+        alert(`Failed to update password: ${error.message}`);
+        return;
+      }
+      alert('Password updated successfully!');
+    } catch (error) {
+      console.error('Password update exception:', error);
+      alert('Failed to update password. Please try again.');
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -1401,15 +1432,18 @@ export default function AccountPage() {
       }}>
         <h2 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>Account Actions</h2>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button style={{ 
-            padding: '8px 16px', 
-            border: '1px solid #6b7280', 
-            borderRadius: 8, 
-            background: '#fff', 
-            color: '#374151', 
-            cursor: 'pointer',
-            fontWeight: 600
-          }}>
+          <button 
+            onClick={handleChangePassword}
+            style={{ 
+              padding: '8px 16px', 
+              border: '1px solid #6b7280', 
+              borderRadius: 8, 
+              background: '#fff', 
+              color: '#374151', 
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+          >
             Change Password
           </button>
           <Link

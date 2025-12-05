@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Use shared auth helper - allows Pro tier or admin
+    // Use shared auth helper - allows Pro tier or admin (includes bearer token fallback)
     const ctx = await getProOrAdminContext(request);
 
     console.log('[api/analytics]', {

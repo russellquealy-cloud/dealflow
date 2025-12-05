@@ -1,14 +1,20 @@
 import { redirect } from 'next/navigation';
-import { requireAuthServer } from '@/lib/auth/server';
+import { getAuthUserServer } from '@/lib/auth/server';
 import ProfileForm from '@/components/ProfileForm';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProfilePage() {
-  // Use consistent auth helper that prevents redirect loops
-  const { user, supabase } = await requireAuthServer('/profile');
+  // Use getAuthUserServer directly with bearer token fallback support
+  const { user, supabase, error } = await getAuthUserServer();
   
-  if (!user) {
-    // requireAuthServer already handles redirect, but TypeScript needs this check
-    return null;
+  if (!user || error) {
+    console.log('[profile/page] Auth failed, redirecting to login', {
+      hasUser: !!user,
+      error: error?.message,
+    });
+    // Redirect to login - the login page will handle redirecting back if user is already authenticated
+    redirect('/login?next=/profile');
   }
 
   const { data: profile } = await supabase

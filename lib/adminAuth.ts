@@ -216,73 +216,111 @@ export type ProOrAdminContext =
     };
 
 export async function getProOrAdminContext(request?: { headers: Headers }): Promise<ProOrAdminContext> {
-  // Use PKCE-aware authentication for analytics routes
-  const { requireAdminApi } = await import('@/lib/pkceAuth');
-  const pkceAuth = await requireAdminApi();
-
-  // If not authenticated via PKCE, return auth error
-  if (!pkceAuth.ok) {
+  // Use PKCE-aware auth helper (same as getAdminContext but don't require admin)
+  const supabase = await getSupabaseRouteClient();
+  
+  // Try getUser first
+  let { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  // Fallback to bearer token if available
+  if ((userError || !user) && request?.headers) {
+    const authHeader = request.headers.get('authorization');
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (bearerToken) {
+      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+      if (tokenUser && !tokenError) {
+        user = tokenUser;
+        userError = null;
+      }
+    }
+  }
+  
+  // Fallback to getSession
+  let session: { user: { id: string; email?: string | null }; access_token?: string } | null = null;
+  if (userError || !user) {
+    const { data: { session: sessionData }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionData && !sessionError) {
+      session = {
+        user: sessionData.user,
+        access_token: sessionData.access_token,
+      };
+      user = sessionData.user;
+      userError = null;
+    }
+  } else {
+    session = {
+      user: user,
+      access_token: undefined,
+    };
+  }
+  
+  if (userError || !user || !session) {
     return {
-      status: pkceAuth.status as 401 | 403,
+      status: 401,
       session: null,
       profile: null,
       isAdmin: false,
       isProOrAdmin: false,
-      error: pkceAuth.message,
+      error: userError?.message ?? "Not authenticated",
     };
   }
-
-  // If admin, they always have access
-  const profile = pkceAuth.profile;
+  
+  // Fetch profile
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id,email,role,segment,tier,membership_tier")
+    .eq("id", user.id)
+    .single<AdminProfile>();
+  
+  if (profileError || !profile) {
+    return {
+      status: 401,
+      session,
+      profile: null,
+      isAdmin: false,
+      isProOrAdmin: false,
+      error: profileError?.message ?? "Not authorized (no profile found)",
+    };
+  }
+  
+  // Check if admin (admins always have access)
   const role = profile.role ?? null;
   const segment = profile.segment ?? null;
   const email = profile.email ?? null;
-  const isAdminUser =
-    role === 'admin' ||
+  const isAdminUser = role === 'admin' ||
     segment === 'admin' ||
-    (email && email.toLowerCase() === 'admin@offaxisdeals.com') ||
-    profile.tier === 'enterprise' ||
-    profile.membership_tier === 'enterprise';
-
+    (email && email.toLowerCase() === 'admin@offaxisdeals.com');
+  
+  // Check if Pro tier (non-admin Pro users also have access)
+  const tier = (profile.tier || profile.membership_tier || 'free').toLowerCase();
+  const isProTier = tier === 'pro' || tier === 'enterprise' || tier === 'basic';
+  
   if (isAdminUser) {
     return {
       status: 200,
-      session: {
-        user: pkceAuth.user,
-        access_token: undefined, // Not needed for this context
-      },
-      profile: profile as AdminProfile,
+      session,
+      profile,
       isAdmin: true,
       isProOrAdmin: true,
       error: null,
     };
   }
-
-  // Check if Pro tier (non-admin Pro users also have access)
-  const tier = profile.tier || profile.membership_tier || 'free';
-  const isProTier = tier === 'pro' || tier === 'enterprise' || tier === 'basic';
-
+  
   if (isProTier) {
     return {
       status: 200,
-      session: {
-        user: pkceAuth.user,
-        access_token: undefined,
-      },
-      profile: profile as AdminProfile,
+      session,
+      profile,
       isAdmin: false,
       isProOrAdmin: true,
       error: null,
     };
   }
-
+  
   return {
     status: 403,
-    session: {
-      user: pkceAuth.user,
-      access_token: undefined,
-    },
-    profile: profile as AdminProfile,
+    session,
+    profile,
     isAdmin: false,
     isProOrAdmin: false,
     error: "Pro tier or admin access required",
