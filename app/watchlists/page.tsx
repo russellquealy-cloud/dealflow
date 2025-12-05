@@ -2,54 +2,50 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-// import Link from 'next/link'; // Temporarily unused in debug mode
-// import ListingCard from '@/components/ListingCard'; // Temporarily unused in debug mode
+import Link from 'next/link';
+import ListingCard from '@/components/ListingCard';
 import type { ListingLike } from '@/components/ListingCard';
 import { useAuth } from '@/providers/AuthProvider';
 
-// Type matching the new API response shape
+// Type matching the API response shape
+type Listing = {
+  id: string;
+  title: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  price: number | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  featured_image_url: string | null;
+};
+
 type WatchlistItem = {
   id: string;
   user_id: string;
   property_id: string | null;
   created_at: string;
-  listing: {
-    id: string;
-    title: string | null;
-    city: string | null;
-    state: string | null;
-    price: number | null;
-    featured_image_url: string | null;
-  } | null;
+  listing: Listing | null;
 };
 
 export default function WatchlistsPage() {
   const router = useRouter();
   const { session, loading: authLoading } = useAuth();
   const [watchlists, setWatchlists] = useState<WatchlistItem[]>([]);
-  const [rawItems, setRawItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [debugMode, setDebugMode] = useState<boolean>(true);
   const authToken = useMemo(() => session?.access_token ?? null, [session]);
 
   const loadWatchlists = React.useCallback(async () => {
     if (!session) {
-      console.log('📋 Watchlist: No session, skipping load');
       return;
     }
 
     const headers: HeadersInit = {};
     if (session.access_token) {
       headers['Authorization'] = `Bearer ${session.access_token}`;
-    }
-
-    // Log only in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📋 Watchlist: Loading watchlists...', {
-        userId: session.user.id,
-        hasToken: !!session.access_token,
-      });
     }
 
     setLoading(true);
@@ -64,10 +60,6 @@ export default function WatchlistsPage() {
       if (!response.ok) {
         // Handle 401 gracefully - stop retrying to prevent loops
         if (response.status === 401) {
-          const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
-          console.error('❌ Watchlist: Unauthorized (401)', {
-            error: errorData.error,
-          });
           setError('Please sign in to view your watchlist.');
           setWatchlists([]);
           setLoading(false);
@@ -80,11 +72,6 @@ export default function WatchlistsPage() {
         
         const errorText = await response.text().catch(() => '');
         const errorMessage = `Failed to load watchlists: ${response.status} ${errorText}`;
-        console.error('❌ Watchlist: Error loading watchlists', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-        });
         setError(errorMessage);
         setWatchlists([]);
         return;
@@ -93,29 +80,10 @@ export default function WatchlistsPage() {
       const data = await response.json();
       
       // Extract watchlist array from API response
-      // The API returns { watchlists: [{ id, property_id, property: {...}, ... }] }
       const watchlistArray = Array.isArray(data.watchlists) ? data.watchlists : [];
-      
-      // Store raw items for debugging
-      const rawApiItems = watchlistArray as WatchlistItem[];
-      setRawItems(rawApiItems);
-      
-      // Log raw items in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📋 Watchlist RAW items', rawApiItems);
-        console.log('✅ Watchlist: Watchlists loaded', {
-          count: rawApiItems.length,
-        });
-      }
-      
-      // Still set watchlists for backward compatibility (but we'll use rawItems for debug view)
-      setWatchlists(watchlistArray);
+      setWatchlists(watchlistArray as WatchlistItem[]);
       setError(null);
     } catch (error) {
-      console.error('❌ Watchlist: Error loading watchlists', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        fullError: error,
-      });
       setError(error instanceof Error ? error.message : 'Failed to load watchlists');
       setWatchlists([]);
     } finally {
@@ -133,16 +101,13 @@ export default function WatchlistsPage() {
       return;
     }
 
-    // Only load once when session becomes available
-    // The loadWatchlists callback handles its own state, so we can call it safely
     loadWatchlists();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, session, router]); // Only reload when auth state changes, not when loadWatchlists changes
+  }, [authLoading, session, router]);
 
   // Listen for watchlist updates from other pages
   useEffect(() => {
-    const handleWatchlistUpdate = (event: CustomEvent) => {
-      console.log('📋 Watchlist: Watchlist updated event received', event.detail);
+    const handleWatchlistUpdate = () => {
       // Reload watchlists when a property is saved/unsaved
       loadWatchlists();
     };
@@ -153,77 +118,67 @@ export default function WatchlistsPage() {
     };
   }, [loadWatchlists]);
 
-  const handleRemove = async (watchlistId: string, listingId: string) => {
+  const handleRemove = async (watchlistId: string, propertyId: string) => {
     try {
       const headers: HeadersInit = {};
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
-      console.log('📋 Watchlist: Removing item', { watchlistId, listingId });
-
-      const response = await fetch(`/api/watchlists?listingId=${listingId}`, {
+      const response = await fetch(`/api/watchlists?listingId=${propertyId}`, {
         method: 'DELETE',
         credentials: 'include',
         headers,
       });
 
       if (response.ok) {
-        console.log('✅ Watchlist: Successfully removed item', { watchlistId, listingId });
         setWatchlists(watchlists.filter(w => w.id !== watchlistId));
         // Dispatch event to notify other components
-        window.dispatchEvent(new CustomEvent('watchlist:updated', { detail: { action: 'remove', listingId } }));
+        window.dispatchEvent(new CustomEvent('watchlist:updated', { detail: { action: 'remove', listingId: propertyId } }));
       } else {
-        console.error('❌ Watchlist: Failed to remove item', {
-          status: response.status,
-          watchlistId,
-          listingId,
-        });
         setError('Failed to remove item from watchlist. Please try again.');
       }
-    } catch (error) {
-      console.error('❌ Watchlist: Error removing item', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        watchlistId,
-        listingId,
-      });
+    } catch {
       setError('Error removing item from watchlist. Please try again.');
     }
   };
 
-  // Helper to check if item has a valid listing
-  const hasListing = (item: WatchlistItem): boolean => !!item.listing;
-
   // Split items into available (with listing) and unavailable (without listing)
-  // Simple logic: if listing exists, it's available; otherwise it's unavailable
-  const { itemsWithListings, itemsWithoutListings } = useMemo(() => {
-    const activeItems: WatchlistItem[] = [];
-    const unavailableItems: WatchlistItem[] = [];
+  const { availableItems, unavailableItems } = useMemo(() => {
+    const available: WatchlistItem[] = [];
+    const unavailable: WatchlistItem[] = [];
     
     watchlists.forEach((item) => {
-      if (hasListing(item)) {
-        // Item has a valid listing - render in main list
-        activeItems.push(item);
+      if (item.listing) {
+        available.push(item);
       } else {
-        // Item without listing - show in unavailable section
-        unavailableItems.push(item);
+        unavailable.push(item);
       }
     });
     
-    // Log summary in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📋 Watchlist: Loaded items', {
-        count: watchlists.length,
-        activeCount: activeItems.length,
-        unavailableCount: unavailableItems.length,
-      });
-    }
-    
     return {
-      itemsWithListings: activeItems,
-      itemsWithoutListings: unavailableItems,
+      availableItems: available,
+      unavailableItems: unavailable,
     };
   }, [watchlists]);
+
+  // Convert API listing format to ListingLike format for ListingCard
+  const convertListingToCardFormat = (listing: Listing): ListingLike => {
+    return {
+      id: listing.id,
+      title: listing.title ?? undefined,
+      address: listing.address ?? undefined,
+      city: listing.city ?? undefined,
+      state: listing.state ?? undefined,
+      zip: listing.zip ?? undefined,
+      price: listing.price ?? undefined,
+      bedrooms: listing.beds ?? undefined,
+      bathrooms: listing.baths ?? undefined,
+      home_sqft: listing.sqft ?? undefined,
+      cover_image_url: listing.featured_image_url ?? undefined,
+      images: listing.featured_image_url ? [listing.featured_image_url] : undefined,
+    };
+  };
 
   if (loading || authLoading) {
     return (
@@ -252,14 +207,6 @@ export default function WatchlistsPage() {
         }}>
           <h2 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 600 }}>Error Loading Watchlist</h2>
           <p style={{ margin: 0, fontSize: 14, marginBottom: 16 }}>{error}</p>
-          <div style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 16, padding: 12, background: '#fee2e2', borderRadius: 6 }}>
-            <strong>Debug Info:</strong>
-            <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
-              <li>Check browser console for detailed logs</li>
-              <li>Verify you&apos;re logged in</li>
-              <li>Check network tab for API response</li>
-            </ul>
-          </div>
           <button
             onClick={() => {
               setError(null);
@@ -282,9 +229,7 @@ export default function WatchlistsPage() {
     );
   }
 
-  // Simplified debug view - use raw items directly
-  const items = rawItems ?? [];
-  const hasAnyItems = items.length > 0;
+  const hasAnyItems = watchlists.length > 0;
 
   return (
     <main style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
@@ -295,73 +240,115 @@ export default function WatchlistsPage() {
         </p>
       </div>
 
-      {/* Debug toggle */}
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <input
-            type="checkbox"
-            checked={debugMode}
-            onChange={(e) => setDebugMode(e.target.checked)}
-          />
-          Debug: show raw watchlist items
-        </label>
-      </div>
-
-      {/* Debug JSON block */}
-      {debugMode && (
-        <pre
-          style={{
-            background: '#111827',
-            color: '#e5e7eb',
-            padding: '12px',
+      {!hasAnyItems ? (
+        <div style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: 12,
+          padding: 48,
+          textAlign: 'center',
+          background: '#fff'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</div>
+          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>No Saved Properties</h2>
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+            Start saving properties you&apos;re interested in to track them here.
+          </p>
+          <Link href="/listings" style={{
+            display: 'inline-block',
+            padding: '12px 24px',
+            background: '#3b82f6',
+            color: 'white',
             borderRadius: '8px',
-            maxHeight: '260px',
-            overflow: 'auto',
-            fontSize: '12px',
-            marginBottom: '16px',
-            border: '1px solid #374151',
-          }}
-        >
-          {JSON.stringify(rawItems, null, 2)}
-        </pre>
-      )}
-
-      {/* Simplified raw items view */}
-      {hasAnyItems ? (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {items.map((item) => (
-            <li
-              key={item.id}
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: 8,
-                padding: 12,
-                marginBottom: 8,
-              }}
-            >
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                Watchlist ID: {item.id}
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
-                property_id: {String(item.property_id ?? 'null')}
-                {' · '}
-                listing?.id: {String(item.listing?.id ?? 'null')}
-              </div>
-              <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
-                listing?.title: {item.listing?.title ?? 'null'}
-              </div>
-              <div style={{ fontSize: 12, marginBottom: 4, wordBreak: 'break-word' }}>
-                listing:{' '}
-                {item.listing ? JSON.stringify(item.listing, null, 2) : 'null'}
-              </div>
-            </li>
-          ))}
-        </ul>
+            textDecoration: 'none',
+            fontWeight: '600'
+          }}>
+            Browse Listings
+          </Link>
+        </div>
       ) : (
-        <p>No raw watchlist items.</p>
-      )}
+        <>
+          {/* Unavailable Properties Section */}
+          {unavailableItems.length > 0 && (
+            <div style={{
+              marginBottom: 24,
+              padding: 16,
+              background: '#fef3c7',
+              border: '1px solid #fbbf24',
+              borderRadius: 8,
+              fontSize: 14,
+              color: '#92400e'
+            }}>
+              <strong>⚠️ Unavailable Properties:</strong> {unavailableItems.length} saved {unavailableItems.length === 1 ? 'property' : 'properties'} {unavailableItems.length === 1 ? 'is' : 'are'} no longer available. This may be because the listing was deleted or is no longer accessible.
+              <div style={{ marginTop: 12, fontSize: 12, color: '#78350f' }}>
+                {unavailableItems.map((item) => (
+                  <div key={item.id} style={{ marginBottom: 8, padding: 8, background: '#fde68a', borderRadius: 4 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Property ID: {item.property_id}</div>
+                    <div style={{ fontSize: 11, color: '#92400e', marginBottom: 8 }}>
+                      Saved on: {new Date(item.created_at).toLocaleDateString()}
+                    </div>
+                    <button
+                      onClick={() => handleRemove(item.id, item.property_id || '')}
+                      style={{
+                        padding: '4px 12px',
+                        background: '#fff',
+                        border: '1px solid #dc2626',
+                        borderRadius: 4,
+                        color: '#dc2626',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Remove from Watchlist
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-      {/* TEMPORARILY COMMENTED OUT - Original rendering logic will be restored after debugging */}
+          {/* Available Properties Section */}
+          {availableItems.length > 0 && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: 20
+            }}>
+              {availableItems.map((item) => {
+                if (!item.listing) return null;
+
+                const listingForCard = convertListingToCardFormat(item.listing);
+
+                return (
+                  <div key={item.id} style={{ position: 'relative' }}>
+                    <ListingCard listing={listingForCard} />
+                    <button
+                      onClick={() => handleRemove(item.id, item.property_id || '')}
+                      style={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        padding: '6px 12px',
+                        background: '#fff',
+                        border: '1px solid #dc2626',
+                        borderRadius: 6,
+                        color: '#dc2626',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
     </main>
   );
 }

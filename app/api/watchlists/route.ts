@@ -19,9 +19,14 @@ type WatchlistRow = {
 type ListingSummary = {
   id: string;
   title: string | null;
+  address: string | null;
   city: string | null;
   state: string | null;
+  zip: string | null;
   price: number | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
   featured_image_url: string | null;
 };
 
@@ -254,7 +259,7 @@ export async function GET(request: NextRequest) {
     // 4) Fetch listings in one query
     const { data: listingRows, error: listingError } = await supabase
       .from('listings')
-      .select('id, title, city, state, price, images')
+      .select('id, title, address, city, state, zip, price, beds, baths, sqft, images')
       .in('id', listingIds);
 
     if (listingError) {
@@ -275,9 +280,14 @@ export async function GET(request: NextRequest) {
         const row = listing as {
           id: string;
           title?: string | null;
+          address?: string | null;
           city?: string | null;
           state?: string | null;
+          zip?: string | null;
           price?: number | null;
+          beds?: number | null;
+          baths?: number | null;
+          sqft?: number | null;
           images?: unknown;
         };
         if (row && row.id) {
@@ -289,9 +299,14 @@ export async function GET(request: NextRequest) {
           listingMap.set(row.id, {
             id: row.id,
             title: row.title ?? null,
+            address: row.address ?? null,
             city: row.city ?? null,
             state: row.state ?? null,
+            zip: row.zip ?? null,
             price: row.price ?? null,
+            beds: row.beds ?? null,
+            baths: row.baths ?? null,
+            sqft: row.sqft ?? null,
             featured_image_url: featuredImageUrl,
           });
         }
