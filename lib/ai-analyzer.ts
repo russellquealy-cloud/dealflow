@@ -1,5 +1,24 @@
 import { logAIAnalysis } from '@/lib/subscription';
 
+export interface MarketContext {
+  zhviMidAll: number | null;
+  zhviMidSfr: number | null;
+  zoriRentIndex: number | null;
+  inventoryForSale: number | null;
+  newListings: number | null;
+  newPending: number | null;
+  salesCount: number | null;
+  marketTempIndex: number | null;
+  pctSoldAboveList: number | null;
+  pctListingsPriceCut: number | null;
+  medianDaysToClose: number | null;
+  zhvfGrowth1m: number | null;
+  zhvfGrowth3m: number | null;
+  zhvfGrowth12m: number | null;
+  regionName?: string | null;
+  stateName?: string | null;
+}
+
 export interface AIAnalysisInput extends Record<string, unknown> {
   address: string;
   beds: number;
@@ -10,6 +29,7 @@ export interface AIAnalysisInput extends Record<string, unknown> {
   propertyType?: 'single_family' | 'condo' | 'townhouse' | 'multi_family';
   yearBuilt?: number;
   lotSize?: number;
+  marketContext?: MarketContext;
 }
 
 export interface AIAnalysisOutput extends Record<string, unknown> {
@@ -91,6 +111,25 @@ async function callAIService(input: AIAnalysisInput): Promise<AIAnalysisOutput> 
 }
 
 function createAnalysisPrompt(input: AIAnalysisInput): string {
+  const marketSection = input.marketContext ? `
+Market Context (${input.marketContext.regionName || 'Metro'}, ${input.marketContext.stateName || 'State'}):
+- ZHVI Mid-Tier All Homes: ${input.marketContext.zhviMidAll ? `$${input.marketContext.zhviMidAll.toLocaleString()}` : 'N/A'}
+- ZHVI Mid-Tier Single Family: ${input.marketContext.zhviMidSfr ? `$${input.marketContext.zhviMidSfr.toLocaleString()}` : 'N/A'}
+- Rent Index (ZORI): ${input.marketContext.zoriRentIndex ? input.marketContext.zoriRentIndex.toLocaleString() : 'N/A'}
+- Inventory for Sale: ${input.marketContext.inventoryForSale ? input.marketContext.inventoryForSale.toLocaleString() : 'N/A'}
+- New Listings: ${input.marketContext.newListings ? input.marketContext.newListings.toLocaleString() : 'N/A'}
+- New Pending Sales: ${input.marketContext.newPending ? input.marketContext.newPending.toLocaleString() : 'N/A'}
+- Sales Count: ${input.marketContext.salesCount ? input.marketContext.salesCount.toLocaleString() : 'N/A'}
+- Market Temperature Index: ${input.marketContext.marketTempIndex !== null ? input.marketContext.marketTempIndex.toFixed(2) : 'N/A'} ${input.marketContext.marketTempIndex !== null ? (input.marketContext.marketTempIndex > 50 ? '(Hot Market)' : input.marketContext.marketTempIndex < 30 ? '(Cool Market)' : '(Moderate Market)') : ''}
+- % Sold Above List Price: ${input.marketContext.pctSoldAboveList !== null ? `${input.marketContext.pctSoldAboveList.toFixed(1)}%` : 'N/A'}
+- % Listings with Price Cuts: ${input.marketContext.pctListingsPriceCut !== null ? `${input.marketContext.pctListingsPriceCut.toFixed(1)}%` : 'N/A'}
+- Median Days to Close: ${input.marketContext.medianDaysToClose !== null ? `${input.marketContext.medianDaysToClose} days` : 'N/A'}
+- ZHVI Growth (1 month): ${input.marketContext.zhvfGrowth1m !== null ? `${input.marketContext.zhvfGrowth1m > 0 ? '+' : ''}${input.marketContext.zhvfGrowth1m.toFixed(2)}%` : 'N/A'}
+- ZHVI Growth (3 months): ${input.marketContext.zhvfGrowth3m !== null ? `${input.marketContext.zhvfGrowth3m > 0 ? '+' : ''}${input.marketContext.zhvfGrowth3m.toFixed(2)}%` : 'N/A'}
+- ZHVI Growth (12 months): ${input.marketContext.zhvfGrowth12m !== null ? `${input.marketContext.zhvfGrowth12m > 0 ? '+' : ''}${input.marketContext.zhvfGrowth12m.toFixed(2)}%` : 'N/A'}
+
+` : '';
+
   return `
 Analyze this real estate property and provide a comprehensive market analysis:
 
@@ -103,13 +142,21 @@ Property Details:
 - Year Built: ${input.yearBuilt || 'Unknown'}
 - Lot Size: ${input.lotSize || 'Unknown'}
 - Notes: ${input.notes || 'None'}
-
+${marketSection}
 Please provide:
 1. ARV (After Repair Value) range with low, high, and median estimates
 2. Repair cost estimates broken down by category (cosmetic, structural, systems)
 3. MAO (Maximum Allowable Offer) calculation
 4. Comparable sales data (3-5 recent sales)
 5. Analysis notes and confidence score
+${input.marketContext ? `
+IMPORTANT: Use the Market Context data above to inform your analysis. Consider:
+- Market temperature (hot/cool) when assessing demand and pricing
+- Inventory levels (tight inventory suggests higher prices, loose inventory suggests buyer's market)
+- Growth trends (positive ZHVI growth indicates appreciating market)
+- Days to close and % sold above list (competitive market indicators)
+- Mention market conditions in your analysis notes (e.g., "This metro shows strong growth" or "Inventory is tight")
+` : ''}
 
 Return the response as a JSON object with the following structure:
 {

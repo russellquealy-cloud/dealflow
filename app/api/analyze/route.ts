@@ -74,8 +74,148 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Perform AI analysis
-    const analysis = await analyzeProperty(user.id, listingId, input);
+    // Fetch listing to get city/state for market snapshot lookup
+    const { data: listing } = await supabase
+      .from('listings')
+      .select('city, state, address')
+      .eq('id', listingId)
+      .single<{ city: string | null; state: string | null; address: string | null }>();
+
+    // Fetch market snapshot data for the metro
+    let marketContext = undefined;
+    if (listing?.city && listing?.state) {
+      try {
+        // Try to find market snapshot by region_name and state_name match
+        // Region names in market_snapshots are typically like "Phoenix-Mesa-Scottsdale, AZ"
+        // So we'll search for regions that contain the city name or match state
+        type MarketSnapshotRow = {
+          region_name: string | null;
+          state_name: string | null;
+          zhvi_mid_all: number | null;
+          zhvi_mid_sfr: number | null;
+          zori_rent_index: number | null;
+          inventory_for_sale: number | null;
+          new_listings: number | null;
+          new_pending: number | null;
+          sales_count: number | null;
+          market_temp_index: number | null;
+          pct_sold_above_list: number | null;
+          pct_listings_price_cut: number | null;
+          median_days_to_close: number | null;
+          zhvf_growth_1m: number | null;
+          zhvf_growth_3m: number | null;
+          zhvf_growth_12m: number | null;
+        };
+
+        const { data: marketSnapshot, error: marketError } = await supabase
+          .from('market_snapshots')
+          .select(`
+            region_name,
+            state_name,
+            zhvi_mid_all,
+            zhvi_mid_sfr,
+            zori_rent_index,
+            inventory_for_sale,
+            new_listings,
+            new_pending,
+            sales_count,
+            market_temp_index,
+            pct_sold_above_list,
+            pct_listings_price_cut,
+            median_days_to_close,
+            zhvf_growth_1m,
+            zhvf_growth_3m,
+            zhvf_growth_12m
+          `)
+          .eq('region_type', 'msa')
+          .eq('state_name', listing.state)
+          .ilike('region_name', `%${listing.city}%`)
+          .limit(1)
+          .maybeSingle<MarketSnapshotRow>();
+
+        if (marketSnapshot && !marketError) {
+          marketContext = {
+            zhviMidAll: marketSnapshot.zhvi_mid_all ? Number(marketSnapshot.zhvi_mid_all) : null,
+            zhviMidSfr: marketSnapshot.zhvi_mid_sfr ? Number(marketSnapshot.zhvi_mid_sfr) : null,
+            zoriRentIndex: marketSnapshot.zori_rent_index ? Number(marketSnapshot.zori_rent_index) : null,
+            inventoryForSale: marketSnapshot.inventory_for_sale ? Number(marketSnapshot.inventory_for_sale) : null,
+            newListings: marketSnapshot.new_listings ? Number(marketSnapshot.new_listings) : null,
+            newPending: marketSnapshot.new_pending ? Number(marketSnapshot.new_pending) : null,
+            salesCount: marketSnapshot.sales_count ? Number(marketSnapshot.sales_count) : null,
+            marketTempIndex: marketSnapshot.market_temp_index ? Number(marketSnapshot.market_temp_index) : null,
+            pctSoldAboveList: marketSnapshot.pct_sold_above_list ? Number(marketSnapshot.pct_sold_above_list) : null,
+            pctListingsPriceCut: marketSnapshot.pct_listings_price_cut ? Number(marketSnapshot.pct_listings_price_cut) : null,
+            medianDaysToClose: marketSnapshot.median_days_to_close ? Number(marketSnapshot.median_days_to_close) : null,
+            zhvfGrowth1m: marketSnapshot.zhvf_growth_1m ? Number(marketSnapshot.zhvf_growth_1m) : null,
+            zhvfGrowth3m: marketSnapshot.zhvf_growth_3m ? Number(marketSnapshot.zhvf_growth_3m) : null,
+            zhvfGrowth12m: marketSnapshot.zhvf_growth_12m ? Number(marketSnapshot.zhvf_growth_12m) : null,
+            regionName: marketSnapshot.region_name,
+            stateName: marketSnapshot.state_name,
+          };
+          console.log(`[analyze] Found market snapshot for ${listing.city}, ${listing.state}`);
+        } else {
+          // Try fallback: just match by state if city match fails
+          const { data: stateSnapshot } = await supabase
+            .from('market_snapshots')
+            .select(`
+              region_name,
+              state_name,
+              zhvi_mid_all,
+              zhvi_mid_sfr,
+              zori_rent_index,
+              inventory_for_sale,
+              new_listings,
+              new_pending,
+              sales_count,
+              market_temp_index,
+              pct_sold_above_list,
+              pct_listings_price_cut,
+              median_days_to_close,
+              zhvf_growth_1m,
+              zhvf_growth_3m,
+              zhvf_growth_12m
+            `)
+            .eq('region_type', 'msa')
+            .eq('state_name', listing.state)
+            .order('size_rank', { ascending: true })
+            .limit(1)
+            .maybeSingle<MarketSnapshotRow>();
+
+          if (stateSnapshot) {
+            marketContext = {
+              zhviMidAll: stateSnapshot.zhvi_mid_all ? Number(stateSnapshot.zhvi_mid_all) : null,
+              zhviMidSfr: stateSnapshot.zhvi_mid_sfr ? Number(stateSnapshot.zhvi_mid_sfr) : null,
+              zoriRentIndex: stateSnapshot.zori_rent_index ? Number(stateSnapshot.zori_rent_index) : null,
+              inventoryForSale: stateSnapshot.inventory_for_sale ? Number(stateSnapshot.inventory_for_sale) : null,
+              newListings: stateSnapshot.new_listings ? Number(stateSnapshot.new_listings) : null,
+              newPending: stateSnapshot.new_pending ? Number(stateSnapshot.new_pending) : null,
+              salesCount: stateSnapshot.sales_count ? Number(stateSnapshot.sales_count) : null,
+              marketTempIndex: stateSnapshot.market_temp_index ? Number(stateSnapshot.market_temp_index) : null,
+              pctSoldAboveList: stateSnapshot.pct_sold_above_list ? Number(stateSnapshot.pct_sold_above_list) : null,
+              pctListingsPriceCut: stateSnapshot.pct_listings_price_cut ? Number(stateSnapshot.pct_listings_price_cut) : null,
+              medianDaysToClose: stateSnapshot.median_days_to_close ? Number(stateSnapshot.median_days_to_close) : null,
+              zhvfGrowth1m: stateSnapshot.zhvf_growth_1m ? Number(stateSnapshot.zhvf_growth_1m) : null,
+              zhvfGrowth3m: stateSnapshot.zhvf_growth_3m ? Number(stateSnapshot.zhvf_growth_3m) : null,
+              zhvfGrowth12m: stateSnapshot.zhvf_growth_12m ? Number(stateSnapshot.zhvf_growth_12m) : null,
+              regionName: stateSnapshot.region_name,
+              stateName: stateSnapshot.state_name,
+            };
+            console.log(`[analyze] Found market snapshot by state for ${listing.state}`);
+          } else {
+            console.log(`[analyze] No market snapshot found for ${listing.city}, ${listing.state}`);
+          }
+        }
+      } catch (marketErr) {
+        console.error('[analyze] Error fetching market snapshot:', marketErr);
+        // Continue without market context if there's an error
+      }
+    }
+
+    // Perform AI analysis with market context
+    const analysis = await analyzeProperty(user.id, listingId, {
+      ...input,
+      marketContext,
+    });
 
     return NextResponse.json({
       analysis,

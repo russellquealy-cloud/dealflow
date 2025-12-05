@@ -140,26 +140,30 @@ export default function MarketSnapshotsMap() {
                 let lat: number;
                 let lng: number;
                 
-                if ('lat' in location && typeof location.lat === 'function') {
-                  // LatLng object with methods
-                  const latLng = location as google.maps.LatLng;
-                  lat = latLng.lat();
-                  lng = latLng.lng();
-                } else if ('lat' in location && typeof location.lat === 'number') {
-                  // Plain object with lat/lng properties
-                  lat = location.lat as number;
-                  lng = (location as { lng: number }).lng;
-                } else {
-                  return; // Skip if we can't extract coordinates
-                }
+                try {
+                  // Try calling lat() method first (LatLng object)
+                  if (location && typeof (location as unknown as { lat: () => number }).lat === 'function') {
+                    const latLng = location as unknown as google.maps.LatLng;
+                    lat = latLng.lat();
+                    lng = latLng.lng();
+                  } else {
+                    // Assume it's a plain object with lat/lng properties
+                    const loc = location as unknown as { lat: number; lng: number };
+                    lat = loc.lat;
+                    lng = loc.lng;
+                  }
 
-                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-                  geocoded.push({
-                    ...snapshot,
-                    lat,
-                    lng,
-                    normalizedTemp: 0, // Will be calculated after all geocoding
-                  });
+                  if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                    geocoded.push({
+                      ...snapshot,
+                      lat,
+                      lng,
+                      normalizedTemp: 0, // Will be calculated after all geocoding
+                    });
+                  }
+                } catch (coordError) {
+                  logger.warn('Error extracting coordinates', { error: coordError });
+                  // Skip this snapshot if we can't extract coordinates
                 }
               }
             } catch (err) {
