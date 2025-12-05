@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 // import Link from 'next/link'; // Temporarily unused in debug mode
 // import ListingCard from '@/components/ListingCard'; // Temporarily unused in debug mode
