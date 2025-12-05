@@ -36,19 +36,47 @@ export async function getAuthUserServer(): Promise<{
 }> {
   const supabase = await getSupabaseRouteClient();
   
+  // Enhanced logging for debugging
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const dealflowToken = cookieStore.get('dealflow-auth-token');
+  
   // Try getUser first (standard approach)
   let { data: { user }, error: userError } = await supabase.auth.getUser();
   
+  console.log('[getAuthUserServer] getUser result', {
+    hasUser: !!user,
+    userEmail: user?.email,
+    error: userError?.message,
+    errorCode: userError?.status,
+    hasDealflowCookie: !!dealflowToken,
+  });
+  
   // Fallback to getSession if getUser fails (helps with some edge cases)
   if (userError || !user) {
+    console.log('[getAuthUserServer] Trying getSession fallback...');
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('[getAuthUserServer] getSession result', {
+      hasSession: !!session,
+      sessionUser: session?.user?.email,
+      sessionError: sessionError?.message,
+    });
+    
     if (session && !sessionError) {
       user = session.user;
       userError = null;
+      console.log('[getAuthUserServer] Using session user from getSession fallback');
     }
   }
 
   if (userError || !user) {
+    // Log detailed cookie info for debugging
+    console.log('[getAuthUserServer] No user found', {
+      userError: userError?.message,
+      cookieNames: cookieStore.getAll().map(c => c.name),
+      hasDealflowCookie: !!dealflowToken,
+      dealflowTokenPreview: dealflowToken?.value?.substring(0, 100),
+    });
     return { user: null, error: userError, supabase };
   }
 

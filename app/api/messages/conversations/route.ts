@@ -216,15 +216,66 @@ async function hydrateConversations(
 
 export async function GET(request: NextRequest) {
   try {
-    // Use PKCE-aware auth helper that correctly reads dealflow-auth-token cookies
-    const { user, supabase, error: userError } = await getAuthUserServer();
+    // Use getSupabaseRouteClient directly to have more control over auth
+    const { getSupabaseRouteClient } = await import('../../../lib/supabaseRoute');
+    const supabase = await getSupabaseRouteClient();
+    
+    // Try getUser first (standard approach)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If getUser fails, try Authorization header bearer token (same pattern as billing route)
+    if ((userError || !user)) {
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      
+      if (bearerToken) {
+        console.log('[messages/conversations] Cookie auth failed, trying bearer token');
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
+        if (tokenUser && !tokenError) {
+          user = tokenUser;
+          userError = null;
+          console.log('[messages/conversations] Bearer token auth succeeded', { userId: user.id });
+        } else {
+          console.log('[messages/conversations] Bearer token auth also failed', { error: tokenError?.message });
+        }
+      }
+    }
+    
+    // Fallback to getSession if getUser fails (helps with some edge cases)
     if (userError || !user) {
+      console.log('[messages/conversations] Trying getSession fallback...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[messages/conversations] Using session user from getSession fallback');
+      }
+    }
+    
+    if (userError || !user) {
+      // Enhanced logging to diagnose auth issues
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const dealflowToken = cookieStore.get('dealflow-auth-token');
+      const authHeader = request.headers.get('authorization');
+      
       console.log('[messages/conversations] Auth failed', {
         hasUser: !!user,
         error: userError?.message,
+        errorCode: userError?.status,
+        hasDealflowCookie: !!dealflowToken,
+        dealflowCookieLength: dealflowToken?.value?.length ?? 0,
+        hasAuthHeader: !!authHeader,
+        cookieNames: cookieStore.getAll().map(c => c.name),
       });
+      
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    
+    console.log('[messages/conversations] Auth success', {
+      userId: user.id,
+      email: user.email,
+    });
 
     const { data, error } = await supabase
       .from("messages_conversations_view")
