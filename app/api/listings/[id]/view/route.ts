@@ -26,9 +26,6 @@ export async function POST(
     }
 
     const supabase = await createServerClient();
-    
-    // Get user if authenticated (optional - views work for everyone)
-    const { data: { user } } = await supabase.auth.getUser();
 
     // Verify listing exists and is live
     const { data: listing, error: fetchError } = await supabase
@@ -51,6 +48,7 @@ export async function POST(
     }
 
     // Use Postgres function to safely increment views (bypasses RLS but enforces constraints)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: functionResult, error: functionError } = await (supabase.rpc as any)(
       'increment_listing_view',
       { listing_uuid: id }
