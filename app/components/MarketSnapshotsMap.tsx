@@ -96,7 +96,6 @@ export default function MarketSnapshotsMap() {
   const [selectedSnapshot, setSelectedSnapshot] = useState<MarketSnapshotWithCoords | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'dealflow-market-map',
@@ -210,10 +209,22 @@ export default function MarketSnapshotsMap() {
 
               if (result?.geometry?.location) {
                 const location = result.geometry.location;
-                const lat = typeof location.lat === 'function' ? location.lat() : location.lat;
-                const lng = typeof location.lng === 'function' ? location.lng() : location.lng;
+                let lat: number;
+                let lng: number;
+                
+                // Extract lat/lng - handle both LatLng objects and plain objects
+                if (typeof (location as unknown as { lat: () => number }).lat === 'function') {
+                  const latLng = location as unknown as google.maps.LatLng;
+                  lat = latLng.lat();
+                  lng = latLng.lng();
+                } else {
+                  const loc = location as unknown as { lat: number; lng: number };
+                  lat = loc.lat;
+                  lng = loc.lng;
+                }
 
-                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                // Ensure we have valid numbers
+                if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
                   const score = getScoreValue(snapshot, selectedScoreType);
                   geocoded.push({
                     ...snapshot,
@@ -271,10 +282,22 @@ export default function MarketSnapshotsMap() {
   const handleMarkerHover = useCallback((snapshot: MarketSnapshotWithCoords, event: google.maps.MapMouseEvent) => {
     if (event.latLng) {
       setHoveredSnapshot(snapshot);
-      setTooltipPosition({
-        lat: typeof event.latLng.lat === 'function' ? event.latLng.lat() : event.latLng.lat,
-        lng: typeof event.latLng.lng === 'function' ? event.latLng.lng() : event.latLng.lng,
-      });
+      let lat: number;
+      let lng: number;
+      
+      if (typeof (event.latLng as unknown as { lat: () => number }).lat === 'function') {
+        const latLng = event.latLng as unknown as google.maps.LatLng;
+        lat = latLng.lat();
+        lng = latLng.lng();
+      } else {
+        const loc = event.latLng as unknown as { lat: number; lng: number };
+        lat = loc.lat;
+        lng = loc.lng;
+      }
+      
+      if (typeof lat === 'number' && typeof lng === 'number') {
+        setTooltipPosition({ lat, lng });
+      }
     }
   }, []);
 

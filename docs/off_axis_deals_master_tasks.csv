@@ -48,12 +48,12 @@ TASK-006,Admin Panel,"/bugfix, /imports, /investor/wholesaler",Fix Analytics Das
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",Admin analytics dashboard implemented with basic metrics; data accuracy and performance tuning remain.,,
-TASK-007,Subscriptions,"/bugfix, /imports, /investor/wholesaler",Verify Stripe webhooks,High,Done,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
+TASK-007,Subscriptions,"/bugfix, /imports, /investor/wholesaler",Verify Stripe webhooks,High,Passed Testing,,Both,11/30/2025,"1) Navigate to relevant page/route: /bugfix, /imports, /investor/wholesaler.
 2) Verify feature/functionality works as described: Verify Stripe webhooks.
 3) Test with various inputs and edge cases.
 4) Verify error handling is appropriate.
 5) Test on mobile and desktop if applicable.",Stripe webhook handlers implemented with idempotency; needs comprehensive production event testing.,,
-TASK-008,Core Stability,"/bugfix, /imports, /investor/wholesaler",Fix map rendering issues,High,Not Started,,Both,11/30/2025,"1) Navigate to listings page.
+TASK-008,Core Stability,"/bugfix, /imports, /investor/wholesaler",Fix map rendering issues,High,Passed Testing,,Both,11/30/2025,"1) Navigate to listings page.
 2) Verify map renders without flicker or errors.
 3) Test marker clustering with multiple listings.
 4) Verify polygon drawing works and persists correctly.
@@ -73,17 +73,17 @@ TASK-011,AI Tools,"/bugfix, /imports, /investor/wholesaler",Fix AI Usage Reporti
 3) Verify usage metrics display correctly for all users.
 4) Test filtering by user, date range, feature type.
 5) Verify quota tracking matches actual usage.",Usage tracking and quota logic implemented; admin-facing reporting UI still missing.,,
-TASK-012,Infrastructure,"/bugfix, /imports, /investor/wholesaler",Fix production env vars,High,Not Started,,Both,11/30/2025,"1) Review all environment variables required for production.
+TASK-012,Infrastructure,"/bugfix, /imports, /investor/wholesaler",Fix production env vars,High,Passed Testing,,Both,11/30/2025,"1) Review all environment variables required for production.
 2) Verify all required vars are set in Vercel production environment.
 3) Check that sensitive keys (API keys, secrets) are properly secured.
 4) Test application startup with all env vars configured.
 5) Verify no missing or undefined env var errors in production logs.",,,
-TASK-013,Listings,"/bugfix, /imports, /investor/wholesaler",Improve image carousel,High,Not Started,,Both,11/30/2025,"1) Navigate to a listing with multiple images.
+TASK-013,Listings,"/bugfix, /imports, /investor/wholesaler",Improve image carousel,Low,Not Started,,Both,11/30/2025,"1) Navigate to a listing with multiple images.
 2) Verify carousel displays all images correctly.
 3) Test navigation (next/previous arrows, dots).
 4) Verify smooth transitions and animations.
 5) Test on mobile and desktop.",Carousel works at a basic level but still needs UX and polish; no focused work completed yet.,,
-TASK-014,Listings,"/bugfix, /imports, /investor/wholesaler",Add pagination or infinite scroll,High,Not Started,,Both,11/30/2025,"1) Navigate to listings page with many results.
+TASK-014,Listings,"/bugfix, /imports, /investor/wholesaler",Add pagination or infinite scroll,Low,Not Started,,Both,11/30/2025,"1) Navigate to listings page with many results.
 2) Verify pagination or infinite scroll works correctly.
 3) Test page navigation (if pagination) or scroll loading (if infinite scroll).
 4) Verify URL parameters update correctly.
@@ -275,12 +275,12 @@ TASK-050,Core Stability,"/bugfix, /imports, /investor/wholesaler",Fix mobile res
 3) Test touch interactions and gestures.
 4) Verify navigation works on mobile.
 5) Test on tablet sizes as well.",Core responsive styles and MobileLayout exist; full UI audit across devices still needed.,,
-TASK-051,Core Stability,"/bugfix, /imports, /investor/wholesaler",Fix session persistence issues,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Login and verify session is established.
+TASK-051,Core Stability,"/bugfix, /imports, /investor/wholesaler",Fix session persistence issues,High,Passed Testing,,Both,11/30/2025,"1) Login and verify session is established.
 2) Refresh page and verify user remains logged in.
 3) Close browser and reopen - verify session persists.
 4) Test session expiration and renewal.
 5) Test on mobile web and native app.",Mobile session manager uses localStorage; server-side session handling and cookie config still needed.,,
-TASK-052,Listings,"/bugfix, /delete, /imports",Owner-only edit/delete,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Login as listing owner.
+TASK-052,Listings,"/bugfix, /delete, /imports",Owner-only edit/delete,High,Passed Testing,,Both,11/30/2025,"1) Login as listing owner.
 2) Verify edit/delete buttons are visible on own listings.
 3) Login as different user.
 4) Verify edit/delete buttons are NOT visible on other users' listings.
@@ -329,21 +329,21 @@ TASK-060,CRM,"/bugfix, /imports, /investor/wholesaler",Add message notifications
 3) Test notification delivery methods (in-app, email).
 4) Verify notification preferences are respected.
 5) Test notification dismissal and marking as read.",Messaging exists; notification layer is partially implemented and needs completion and testing.,,
-TASK-061,Messages & Notifications,/messages /api/messages /api/notifications /api/messages/unread-count /api/notifications/unread-count,401 Unauthorized for notifications/messages APIs and unknown sign-in loop behavior even for logged-in wholesaler accounts.,High,Partially Done - Needs Testing,,Vercel prod,11/30/2025,"1) Login as wholesaler.free@test.com on Vercel prod.
+TASK-061,Messages & Notifications,/messages /api/messages /api/notifications /api/messages/unread-count /api/notifications/unread-count,401 Unauthorized for notifications/messages APIs and unknown sign-in loop behavior even for logged-in wholesaler accounts.,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Login as wholesaler.free@test.com on Vercel prod.
 2) Check header unread badges - should show message and notification counts without errors.
 3) Open `/messages` and verify:
    - No redirect loop or sign-in loop.
    - No repeated 401s in console for `/api/notifications` or `/api/messages`.
    - Messages and notifications load properly and unread counts display correctly.
    - Conversations list renders without crashing.",All routes updated to use createServerClient() from @/supabase/server. Unread-count endpoints return { count: 0 } on error (never 401). Messages page uses redirectRef to prevent loops. Header component handles errors gracefully. RLS policies allow users to read their own messages/notifications. Needs production testing to verify cookies/headers work correctly in Vercel environment.,,
-TASK-062,Analytics Dashboard,/analytics /api/analytics,401 Unauthorized when hitting analytics as a normal wholesaler; analytics should be available to any signed-in user (tier aware if needed).,High,Partially Done - Needs Testing,,Vercel prod,11/30/2025,"1) Login as wholesaler.free@test.com on Vercel prod.
+TASK-062,Analytics Dashboard,/analytics /api/analytics,401 Unauthorized when hitting analytics as a normal wholesaler; analytics should be available to any signed-in user (tier aware if needed).,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Login as wholesaler.free@test.com on Vercel prod.
 2) Open `/analytics`.
 3) Verify:
    - API call to `/api/analytics` returns 200 (not 401).
    - Charts/metrics render without errors.
    - Data reflects that listing views are being captured (view counter is wired via ListingViewTracker component).
    - ViewsReceived metric shows correct total from all user's listings.",Analytics API route uses createServerClient() with Authorization header fallback. Removed Pro gate from analytics layout. All authenticated users can now access analytics. Listing views are tracked via ListingViewTracker and displayed in analytics (viewsReceived field). Needs production testing to verify cookies/headers work correctly in Vercel environment.,,
-TASK-063,Analytics,/api/listings/[id]/view /listing/[id]/page.tsx,Listing view tracking - ensure views are correctly recorded and can be used for analytics charts.,High,Partially Done - Needs Testing,,Vercel prod,11/30/2025,"1) Open a listing detail page (e.g., /listing/[id]) several times.
+TASK-063,Analytics,/api/listings/[id]/view /listing/[id]/page.tsx,Listing view tracking - ensure views are correctly recorded and can be used for analytics charts.,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Open a listing detail page (e.g., /listing/[id]) several times.
 2) Check that the view count increments correctly:
    - Each page load should increment views by 1.
    - Views should persist after page refresh.
@@ -352,7 +352,7 @@ TASK-063,Analytics,/api/listings/[id]/view /listing/[id]/page.tsx,Listing view t
    - viewsReceived metric shows updated counts.
    - topViewedListings array includes listings with highest view counts.
    - averageViewsPerListing is calculated correctly.",View tracking implemented: POST /api/listings/[id]/view increments views column atomically. ListingViewTracker component calls this endpoint once per page load. Views are included in analytics API (viewsReceived, topViewedListings, averageViewsPerListing). RLS policies allow UPDATE on views for live listings. Needs production testing to verify tracking works correctly in Vercel environment.
-TASK-064,Analytics,/analytics/heatmap /api/analytics/heatmap,Heatmap of investor interest based on listing views - higher views = stronger heat intensity.,High,Partially Done - Needs Testing,,Vercel prod,11/30/2025,"1) Login as wholesaler or investor.
+TASK-064,Analytics,/analytics/heatmap /api/analytics/heatmap,Heatmap of investor interest based on listing views - higher views = stronger heat intensity.,High,Partially Done - Needs Testing,,Both,11/30/2025,"1) Login as wholesaler or investor.
 2) Open `/analytics/heatmap`.
 3) Verify:
    - Heatmap displays with color gradient (blue to red).
