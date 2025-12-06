@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getAuthUserServer } from '@/lib/auth/server';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import DistressHeatmapClient from './DistressHeatmapClient';
 import { isPro } from '@/lib/analytics/proGate';
 
