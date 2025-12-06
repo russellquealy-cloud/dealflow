@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { cookies, headers as nextHeaders } from 'next/headers';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { createApiSupabaseFromAuthHeader } from '@/lib/auth/apiSupabase';
 import { notifyLeadMessage } from '@/lib/notifications';
 
 // Generate deterministic UUID v5 from a string
@@ -25,7 +24,9 @@ export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
+    const authHeader = request.headers.get('authorization');
+    const supabase = createApiSupabaseFromAuthHeader(authHeader);
+    
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (!user || userError) {
@@ -66,24 +67,20 @@ type MessageBody = {
   message: string;
 };
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     console.log('[api/messages][POST] ENTER');
 
-    // Log cookie and header info before creating client (same pattern as canonical route)
-    const cookieStore = await cookies();
-    const headerStore = await nextHeaders();
-    
-    console.log('[api/messages][POST] cookie keys:', cookieStore.getAll().map(c => c.name));
-    console.log('[api/messages][POST] auth header present:', !!headerStore.get('authorization'));
+    const authHeader = req.headers.get('authorization');
+    console.log('[api/messages][POST] auth header present:', Boolean(authHeader));
 
-    // Use the same Supabase server client as canonical route
-    const supabase = await createSupabaseServer();
+    const supabase = createApiSupabaseFromAuthHeader(authHeader);
 
-    console.log('[api/messages][POST] after createSupabaseServer');
-
-    // Try getUser first (same as canonical route)
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Resolve current user from Supabase using the bearer token
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
     console.log('[api/messages][POST] getUser result', {
       userId: user?.id ?? null,
@@ -91,48 +88,29 @@ export async function POST(request: NextRequest) {
       error: userError ? { message: userError.message, name: userError.name } : null,
     });
 
-    // Fallback to getSession if getUser fails (same as canonical route)
     if (userError || !user) {
-      console.log('[api/messages][POST] getUser failed, trying getSession', {
-        error: userError?.message,
-        errorCode: userError?.status,
-      });
-
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (session && !sessionError) {
-        user = session.user;
-        userError = null;
-        console.log('[api/messages][POST] got session from getSession', {
-          userId: user.id,
-          email: user.email,
-        });
-      } else {
-        console.log('[api/messages][POST] getSession also failed', {
-          sessionError: sessionError?.message,
-          hasSession: !!session,
-        });
-      }
-    }
-
-    if (!user || userError) {
       console.error('[api/messages][POST] NO AUTH USER', {
         hasUser: !!user,
         errorMessage: userError?.message ?? null,
       });
 
       return NextResponse.json(
-        { error: 'Unable to determine authenticated user', message: null },
+        {
+          error: 'Unable to determine authenticated user',
+          details: userError ? userError.message : 'No user in Supabase session',
+          message: null,
+        },
         { status: 401 },
       );
     }
 
-    const body = (await request.json()) as MessageBody;
+    // Parse request body
+    const body = (await req.json()) as MessageBody;
     const trimmed = body.message.trim();
 
     if (!body.listingId || !body.recipientId || !trimmed) {
       return NextResponse.json(
-        { error: 'Message cannot be empty', message: null },
+        { error: 'Missing required fields', message: null },
         { status: 400 },
       );
     }
@@ -156,6 +134,7 @@ export async function POST(request: NextRequest) {
     const threadId = uuidFromString(threadString);
 
     // Insert new message using from_id (matching RLS policy: auth.uid() = from_id)
+    // IMPORTANT: use user.id as from_id; do not trust client for that
     const { data: newMessage, error: messageError } = await supabase
       .from("messages")
       .insert({
@@ -169,20 +148,23 @@ export async function POST(request: NextRequest) {
       .select("*")
       .single();
 
-    if (messageError) {
+    if (messageError || !newMessage) {
       console.error('[api/messages][POST] insert error', {
-        message: messageError.message,
-        details: messageError.details,
-        code: messageError.code,
+        message: messageError?.message,
+        details: messageError?.details,
+        code: messageError?.code,
+        hasNewMessage: !!newMessage,
       });
 
       return NextResponse.json(
-        { error: 'Failed to send message', message: null },
+        { error: 'Failed to send message', message: null, details: messageError?.message ?? 'Unknown error' },
         { status: 400 },
       );
     }
 
-    console.log('[api/messages][POST] success', { id: newMessage.id, listing_id: newMessage.listing_id });
+    // TypeScript needs explicit type assertion for single() result
+    const message = newMessage as { id: string; listing_id: string | null; [key: string]: unknown };
+    console.log('[api/messages][POST] success', { id: message.id, listing_id: message.listing_id });
 
     let followUp = false;
     if (listing.owner_id) {

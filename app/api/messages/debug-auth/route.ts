@@ -1,64 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies, headers as nextHeaders } from 'next/headers';
-import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { createApiSupabaseFromAuthHeader } from '@/lib/auth/apiSupabase';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(_request: NextRequest) {
-  console.log('[api/messages/debug-auth] ENTER');
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
+  const supabase = createApiSupabaseFromAuthHeader(authHeader);
 
-  // Mirror cookie/header debug from admin route
-  const cookieStore = await cookies();
-  const headerStore = await nextHeaders();
+  try {
+    const { data, error } = await supabase.auth.getUser();
 
-  console.log('[api/messages/debug-auth] cookie keys:', cookieStore.getAll().map(c => c.name));
-  console.log('[api/messages/debug-auth] auth header present:', !!headerStore.get('authorization'));
-
-  const supabase = await createSupabaseServer();
-
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  console.log('[api/messages/debug-auth] getUser result', {
-    userId: user?.id ?? null,
-    email: user?.email ?? null,
-    error: error ? { message: error.message, name: error.name } : null,
-  });
-
-  // Fallback to getSession if getUser fails (same as canonical route)
-  let finalUser = user;
-  let finalError = error;
-
-  if (error || !user) {
-    console.log('[api/messages/debug-auth] getUser failed, trying getSession', {
-      error: error?.message,
-      errorCode: error?.status,
-    });
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (session && !sessionError) {
-      finalUser = session.user;
-      finalError = null;
-      console.log('[api/messages/debug-auth] got session from getSession', {
-        userId: finalUser.id,
-        email: finalUser.email,
-      });
-    } else {
-      console.log('[api/messages/debug-auth] getSession also failed', {
-        sessionError: sessionError?.message,
-        hasSession: !!session,
-      });
+    if (error || !data?.user) {
+      return NextResponse.json(
+        {
+          userId: null,
+          email: null,
+          authHeaderPresent: Boolean(authHeader),
+          error: error
+            ? { name: error.name, message: error.message }
+            : { name: 'NoUser', message: 'No user from supabase.auth.getUser()' },
+        },
+        { status: 200 },
+      );
     }
+
+    return NextResponse.json(
+      {
+        userId: data.user.id,
+        email: data.user.email,
+        authHeaderPresent: Boolean(authHeader),
+        error: null,
+      },
+      { status: 200 },
+    );
+  } catch (e: unknown) {
+    return NextResponse.json(
+      {
+        userId: null,
+        email: null,
+        authHeaderPresent: Boolean(authHeader),
+        error: {
+          name: 'UnexpectedError',
+          message: e instanceof Error ? e.message : String(e),
+        },
+      },
+      { status: 200 },
+    );
   }
-
-  return NextResponse.json(
-    {
-      userId: finalUser?.id ?? null,
-      email: finalUser?.email ?? null,
-      error: finalError ? { message: finalError.message, name: finalError.name } : null,
-    },
-    { status: 200 }
-  );
 }
-
