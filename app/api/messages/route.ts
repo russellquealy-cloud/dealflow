@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
+import { createServerClient } from "../../supabase/server";
 import { getAuthUserServer } from "@/lib/auth/server";
 import { notifyLeadMessage } from "@/lib/notifications";
 
@@ -24,126 +25,38 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Use PKCE-aware auth helper that correctly reads dealflow-auth-token cookies
-    const { user, supabase, error: userError } = await getAuthUserServer();
-    
-    if (userError || !user) {
-      console.log('[messages] Auth failed', {
-        hasUser: !!user,
-        error: userError?.message,
-      });
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const supabase = await createServerClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (!user || userError) {
+      console.error('[api/messages] No auth user for request', { userError });
+      return NextResponse.json({ messages: [], error: 'Not authenticated' }, { status: 200 });
     }
 
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get("listingId");
-    let threadId = searchParams.get("threadId");
 
     if (!listingId) {
-      return NextResponse.json({ error: "Listing ID required" }, { status: 400 });
+      return NextResponse.json({ messages: [], error: 'Missing listingId' }, { status: 400 });
     }
 
-    // Get listing to find owner
-    const { data: listing, error: listingQueryError } = await supabase
-      .from("listings")
-      .select("owner_id")
-      .eq("id", listingId)
-      .single<{ owner_id: string | null }>();
-
-    if (listingQueryError) {
-      console.error("Error fetching listing:", listingQueryError);
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
-    }
-
-    if (!listing) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
-    }
-
-    if (!listing.owner_id) {
-      console.error("Listing has no owner_id:", listingId);
-      return NextResponse.json({ error: "Listing owner not found" }, { status: 404 });
-    }
-
-    if (!threadId) {
-      const { data: existingThread } = await supabase
-        .from("messages")
-        .select("thread_id")
-        .eq("listing_id", listingId)
-        .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle<{ thread_id: string; [key: string]: unknown }>();
-
-      if (existingThread?.thread_id) {
-        threadId = existingThread.thread_id;
-      }
-    }
-
-    if (!threadId) {
-      const threadString = [user.id, listing.owner_id, listingId].sort().join("-");
-      threadId = uuidFromString(threadString);
-    }
-
-    // Get messages for this conversation (thread)
-    // Fetch messages without joins to avoid foreign key syntax issues
-    const { data: messages, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("thread_id", threadId)
-      .order("created_at", { ascending: true })
-      .returns<{ from_id: string | null; to_id: string | null; [key: string]: unknown }[]>();
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id, from_id, to_id, body, created_at, read_at')
+      .eq('listing_id', listingId)
+      .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
+      .order('created_at', { ascending: true });
 
     if (error) {
-      console.error("Error fetching messages:", error);
-      return NextResponse.json(
-        {
-          error: "Failed to fetch messages",
-          details: error.message,
-          code: error.code,
-          hint: error.hint,
-        },
-        { status: 500 }
-      );
+      console.error('[api/messages] DB error', error);
+      return NextResponse.json({ messages: [], error: 'Database error' }, { status: 500 });
     }
 
-    if (messages?.length) {
-      await supabase
-        .from("messages")
-        .update({ read_at: new Date().toISOString() } as never)
-        .eq("thread_id", threadId)
-        .eq("to_id", user.id)
-        .is("read_at", null);
-    }
-
-    let counterpartId: string | null = null;
-    if (messages && messages.length > 0) {
-      for (const msg of messages) {
-        if (msg.from_id !== user.id) {
-          counterpartId = msg.from_id;
-          break;
-        }
-        if (msg.to_id !== user.id) {
-          counterpartId = msg.to_id;
-          break;
-        }
-      }
-      if (!counterpartId && listing.owner_id && listing.owner_id !== user.id) {
-        counterpartId = listing.owner_id;
-      }
-    } else if (listing.owner_id && listing.owner_id !== user.id) {
-      counterpartId = listing.owner_id;
-    }
-
-    return NextResponse.json({
-      messages: messages || [],
-      threadId,
-      counterpartId,
-    });
+    return NextResponse.json({ messages: data ?? [] }, { status: 200 });
   } catch (error) {
     console.error("Error in messages GET:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Full error details:", JSON.stringify(error, null, 2));
-    return NextResponse.json({ error: "Internal server error", details: errorMessage }, { status: 500 });
+    return NextResponse.json({ messages: [], error: "Internal server error", details: errorMessage }, { status: 200 });
   }
 }
 
