@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAuthUserServer } from "@/lib/auth/server";
+import { getUserFromRequest } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
@@ -214,74 +214,14 @@ async function hydrateConversations(
   return hydrated;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    // Use getSupabaseRouteClient directly to have more control over auth
-    const { getSupabaseRouteClient } = await import('../../../lib/supabaseRoute');
-    const supabase = await getSupabaseRouteClient();
-    
-    // Try getUser first (standard approach)
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    // If getUser fails, try Authorization header bearer token (same pattern as billing route)
-    if ((userError || !user)) {
-      const authHeader = request.headers.get('authorization');
-      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      
-      if (bearerToken) {
-        console.log('[messages/conversations] Cookie auth failed, trying bearer token');
-        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
-        if (tokenUser && !tokenError) {
-          user = tokenUser;
-          userError = null;
-          console.log('[messages/conversations] Bearer token auth succeeded', { userId: user.id });
-        } else {
-          console.log('[messages/conversations] Bearer token auth also failed', { error: tokenError?.message });
-        }
-      }
-    }
-    
-    // Fallback to getSession if getUser fails (helps with some edge cases)
-    if (userError || !user) {
-      console.log('[messages/conversations] Trying getSession fallback...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (session && !sessionError) {
-        user = session.user;
-        userError = null;
-        console.log('[messages/conversations] Using session user from getSession fallback');
-      }
-    }
-    
-    if (userError || !user) {
-      // Enhanced logging to diagnose auth issues
-      const { cookies } = await import('next/headers');
-      const cookieStore = await cookies();
-      const dealflowToken = cookieStore.get('dealflow-auth-token');
-      const authHeader = request.headers.get('authorization');
-      
-      console.log('[messages/conversations] Auth failed', {
-        hasUser: !!user,
-        error: userError?.message,
-        errorCode: userError?.status,
-        hasDealflowCookie: !!dealflowToken,
-        dealflowCookieLength: dealflowToken?.value?.length ?? 0,
-        hasAuthHeader: !!authHeader,
-        cookieNames: cookieStore.getAll().map(c => c.name),
-      });
-      
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Use the unified auth helper (tries cookies first, falls back to Bearer token)
+    const { user, supabase } = await getUserFromRequest(req);
     
     console.log('[messages/conversations] Auth success', {
       userId: user.id,
       email: user.email,
-    });
-
-    // Log to help debug why messages aren't showing
-    console.log('[messages/conversations] Querying conversations for user:', {
-      userId: user.id,
-      expectedUserId: 'd2a0b594-5bad-4280-9582-e5bfaedd388d', // wholesaler.free user ID from your data
-      userIdsMatch: user.id === 'd2a0b594-5bad-4280-9582-e5bfaedd388d',
     });
 
     const { data, error } = await supabase
@@ -356,6 +296,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ conversations: hydrated });
   } catch (error) {
+    // Handle 401 Response from getUserFromRequest
+    if (error instanceof Response) {
+      return error;
+    }
     console.error("Error in conversations GET", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

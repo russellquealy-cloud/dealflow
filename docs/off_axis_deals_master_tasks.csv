@@ -126,7 +126,7 @@ TASK-020,UX,"/bugfix, /imports, /investor/wholesaler",Add testimonials and trust
 3) Verify trust badges/logos are visible.
 4) Test on mobile and desktop.
 5) Verify testimonials rotate or display appropriately.",No testimonials/trust content currently displayed.,,
-TASK-021,UX,"/bugfix, /imports, /investor/wholesaler",Add loading skeletons,Medium,Not Started,Both,11/30/2025,"1) Navigate to listings page.
+TASK-021,UX,"/bugfix, /imports, /investor/wholesaler",Add loading skeletons,Low,Not Started,Both,11/30/2025,"1) Navigate to listings page.
 2) Trigger slow network (throttle in dev tools).
 3) Verify skeleton loaders display during data fetch.
 4) Verify skeletons match final content layout.
@@ -479,3 +479,4 @@ TASK-177,Watchlist Skeleton Loader,/watchlists,Add skeleton placeholders when lo
 TASK-178,Grid Save-Unsave Button,/listings and /search,Allow saving or unsaving properties directly from listing cards with a heart icon.,High,Not Started,Production,12/5/2025,Click save or unsave on card and verify watchlist count updates.,Optimistic UI recommended for fast feedback.,,
 TASK-179,Watchlist Analytics Tracking,/admin/analytics,Track total watchlist saves per listing and save-to-inquiry conversions.,Medium,Not Started,Production,12/5/2025,Open analytics page and verify counters update when users save items.,Used for scaling insights and marketing optimization.,,
 TASK-180,Watchlist Organization Tools,/watchlists,Enable grouping such as Hot Deals or Follow Up for saved properties.,Low,Not Started,Production,12/5/2025,Add a property to a category and confirm it persists on reload.,Start with fixed categories and allow custom categories later.,,
+TASK-181,Sign up,,Make the signup process better. Add in profile build and such,High,Not Started,Both,12/6/2025,,,,

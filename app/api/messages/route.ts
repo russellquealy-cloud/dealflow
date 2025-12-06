@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getUserFromRequest } from '@/lib/auth/server';
-import { notifyLeadMessage } from '@/lib/notifications';
+import { notifyLeadMessage, createNotification } from '@/lib/notifications';
+import { getSupabaseServiceRole } from '@/lib/supabase/service';
 
 // Generate deterministic UUID v5 from a string
 function uuidFromString(str: string): string {
@@ -137,33 +138,94 @@ export async function POST(req: NextRequest) {
 
     // TypeScript needs explicit type assertion for single() result
     const message = newMessage as { id: string; listing_id: string | null; [key: string]: unknown };
-    console.log('[api/messages][POST] success', { id: message.id, listing_id: message.listing_id });
+    console.log('[api/messages][POST] Message inserted', { 
+      id: message.id, 
+      listing_id: message.listing_id,
+      from_id: user.id,
+      to_id: body.recipientId,
+    });
 
+    // Determine if this is a follow-up message (not the first in the thread)
     let followUp = false;
-    if (listing.owner_id) {
+    try {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("thread_id", threadId);
+      followUp = (count ?? 0) > 1;
+    } catch (countError) {
+      console.warn("Failed to count messages in thread", countError);
+    }
+
+    const listingTitle = typeof listing.title === "string" ? listing.title : null;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://offaxisdeals.com';
+    const messageUrl = `${siteUrl}/messages/${body.listingId}${threadId ? `?thread=${threadId}` : ''}`;
+
+    // Create notification for the RECIPIENT (always, if recipient is not the sender)
+    if (body.recipientId !== user.id) {
       try {
-        const { count } = await supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("thread_id", threadId);
-        followUp = (count ?? 0) > 1;
-      } catch (countError) {
-        console.warn("Failed to count messages in thread", countError);
+        // Get recipient's profile name for personalized notification
+        const { data: recipientProfile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", body.recipientId)
+          .single();
+
+        const senderName = user.email || 'Someone';
+        const title = listingTitle
+          ? followUp
+            ? `New message on ${listingTitle}`
+            : `New message about ${listingTitle}`
+          : followUp
+          ? 'New message'
+          : 'New message';
+
+        const bodyText = listingTitle
+          ? `${senderName} sent you a message about "${listingTitle}".`
+          : `${senderName} sent you a message.`;
+
+        const serviceSupabase = await getSupabaseServiceRole();
+        await createNotification({
+          userId: body.recipientId,
+          type: 'lead_message', // Reuse lead_message type for all message notifications
+          title,
+          body: bodyText,
+          listingId: body.listingId,
+          metadata: {
+            threadId,
+            fromUserId: user.id,
+            messageId: message.id,
+          },
+          supabaseClient: serviceSupabase,
+          sendEmail: true,
+          emailSubject: title,
+          emailBody: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #1f2937;">${title}</h2>
+              <p style="color: #374151; font-size: 16px; line-height: 1.6;">${bodyText}</p>
+              <p style="margin-top: 24px;"><a href="${messageUrl}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Message</a></p>
+              <p style="margin-top: 24px; color: #6b7280; font-size: 14px;">You can manage your notification preferences in your <a href="${siteUrl}/settings/notifications">account settings</a>.</p>
+            </div>
+          `,
+        });
+      } catch (recipientNotificationError) {
+        console.error("Failed to create notification for recipient", recipientNotificationError);
       }
     }
 
-    if (listing.owner_id) {
+    // Also notify the listing OWNER if they're different from the recipient
+    if (listing.owner_id && listing.owner_id !== body.recipientId && listing.owner_id !== user.id) {
       try {
         await notifyLeadMessage({
           ownerId: listing.owner_id,
-          listingTitle: typeof listing.title === "string" ? listing.title : null,
+          listingTitle,
           senderEmail: user.email ?? null,
           listingId: body.listingId,
           threadId,
           followUp,
         });
-      } catch (notificationError) {
-        console.error("Failed to queue lead notification", notificationError);
+      } catch (ownerNotificationError) {
+        console.error("Failed to queue lead notification for owner", ownerNotificationError);
       }
     }
 
