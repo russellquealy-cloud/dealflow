@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { createApiSupabaseFromAuthHeader } from '@/lib/auth/apiSupabase';
+import { getUserFromRequest } from '@/lib/auth/server';
 import { notifyLeadMessage } from '@/lib/notifications';
 
 // Generate deterministic UUID v5 from a string
@@ -22,19 +22,12 @@ function uuidFromString(str: string): string {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    const supabase = createApiSupabaseFromAuthHeader(authHeader);
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use the unified auth helper (tries cookies first, falls back to Bearer token)
+    const { user, supabase } = await getUserFromRequest(req);
 
-    if (!user || userError) {
-      console.error('[api/messages] No auth user for request', { userError });
-      return NextResponse.json({ messages: [], error: 'Not authenticated' }, { status: 200 });
-    }
-
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const listingId = searchParams.get("listingId");
 
     if (!listingId) {
@@ -55,6 +48,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ messages: data ?? [] }, { status: 200 });
   } catch (error) {
+    // Handle 401 Response from getUserFromRequest
+    if (error instanceof Response) {
+      return error;
+    }
     console.error("Error in messages GET:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ messages: [], error: "Internal server error", details: errorMessage }, { status: 200 });
@@ -71,38 +68,14 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[api/messages][POST] ENTER');
 
-    const authHeader = req.headers.get('authorization');
-    console.log('[api/messages][POST] auth header present:', Boolean(authHeader));
+    // Use the unified auth helper (tries cookies first, falls back to Bearer token)
+    const { user, supabase, source } = await getUserFromRequest(req);
 
-    const supabase = createApiSupabaseFromAuthHeader(authHeader);
-
-    // Resolve current user from Supabase using the bearer token
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    console.log('[api/messages][POST] getUser result', {
-      userId: user?.id ?? null,
-      email: user?.email ?? null,
-      error: userError ? { message: userError.message, name: userError.name } : null,
+    console.log('[api/messages][POST] Authenticated user', {
+      userId: user.id,
+      email: user.email,
+      source,
     });
-
-    if (userError || !user) {
-      console.error('[api/messages][POST] NO AUTH USER', {
-        hasUser: !!user,
-        errorMessage: userError?.message ?? null,
-      });
-
-      return NextResponse.json(
-        {
-          error: 'Unable to determine authenticated user',
-          details: userError ? userError.message : 'No user in Supabase session',
-          message: null,
-        },
-        { status: 401 },
-      );
-    }
 
     // Parse request body
     const body = (await req.json()) as MessageBody;
@@ -199,6 +172,10 @@ export async function POST(req: NextRequest) {
       { status: 200 },
     );
   } catch (err) {
+    // Handle 401 Response from getUserFromRequest
+    if (err instanceof Response) {
+      return err;
+    }
     console.error('[api/messages][POST] Unexpected error', err);
     return NextResponse.json(
       { error: 'Unexpected server error', message: null },

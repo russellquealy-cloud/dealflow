@@ -1,6 +1,7 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { NextRequest } from "next/server";
 import { getSupabaseRouteClient } from "../../app/lib/supabaseRoute";
+import { createApiSupabaseFromAuthHeader } from "./apiSupabase";
 import type { Database } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
@@ -103,7 +104,6 @@ export async function requireAuthServer(currentPath: string = '/'): Promise<{
   // Prevent redirect loops - don't redirect if we're already on login
   // This case should rarely happen in practice, but we handle it to prevent loops
   if (currentPath.startsWith('/login')) {
-    const supabase = await getSupabaseRouteClient();
     // This should not happen in normal flow, but TypeScript needs a return value
     throw new Error('Cannot require auth on login page - this indicates a redirect loop');
   }
@@ -125,4 +125,88 @@ export async function requireAuthServer(currentPath: string = '/'): Promise<{
 
   // TypeScript knows user is non-null here because of the redirect above
   return { user, supabase };
+}
+
+/**
+ * Authenticated user type for unified auth helper
+ */
+export type AuthenticatedUser = {
+  id: string;
+  email: string | null;
+};
+
+/**
+ * Unified server auth helper that tries cookie-based auth first, then falls back to Bearer token
+ * 
+ * This is the primary authentication method for API routes. It:
+ * 1. First tries Supabase's standard cookie-based auth (PKCE flow)
+ * 2. If that fails with "Auth session missing!", falls back to Authorization: Bearer <jwt> header
+ * 3. Returns 401 Response if neither method yields a user
+ * 
+ * @param req - Next.js request object
+ * @returns { user: AuthenticatedUser, supabase: SupabaseClient, source: "cookie" | "bearer" }
+ * @throws Response with status 401 if authentication fails
+ */
+export async function getUserFromRequest(
+  req: NextRequest
+): Promise<{ user: AuthenticatedUser; supabase: SupabaseClient<Database>; source: "cookie" | "bearer" }> {
+  // 1) Try cookie-based session first (standard Supabase PKCE flow)
+  try {
+    const supabase = await getSupabaseRouteClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error && error.message !== "Auth session missing!") {
+      console.error("[auth] getUser() cookie error", error);
+    }
+
+    if (user) {
+      return {
+        user: { id: user.id, email: user.email ?? null },
+        supabase,
+        source: "cookie",
+      };
+    }
+  } catch (err) {
+    console.error("[auth] getUser() cookie exception", err);
+  }
+
+  // 2) Fallback: Authorization: Bearer <jwt>
+  const authHeader = req.headers.get("authorization") ?? "";
+  const prefix = "Bearer ";
+
+  if (authHeader.startsWith(prefix)) {
+    const token = authHeader.slice(prefix.length).trim();
+
+    if (token) {
+      try {
+        // Create a Supabase client with bearer token
+        const bearerSupabase = createApiSupabaseFromAuthHeader(authHeader);
+        const { data: { user }, error } = await bearerSupabase.auth.getUser();
+
+        if (error) {
+          console.error("[auth] getUser(token) bearer error", error);
+        }
+
+        if (user) {
+          return {
+            user: { id: user.id, email: user.email ?? null },
+            supabase: bearerSupabase,
+            source: "bearer",
+          };
+        }
+      } catch (err) {
+        console.error("[auth] getUser(token) bearer exception", err);
+      }
+    }
+  }
+
+  console.warn("[auth] Unable to determine authenticated user (no cookie and no valid bearer token)");
+
+  throw new Response(
+    JSON.stringify({ error: "Unable to determine authenticated user" }),
+    {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }

@@ -23,13 +23,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { getUserFromRequest } from '@/lib/auth/server';
 import { isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(_request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
+    const kind = req.nextUrl.searchParams.get('kind');
+
+    // Handle messages debug endpoint using unified auth helper
+    if (kind === 'messages') {
+      try {
+        const { user, source } = await getUserFromRequest(req);
+        return NextResponse.json({
+          ok: true,
+          userId: user.id,
+          email: user.email,
+          source,
+        });
+      } catch (err) {
+        // Handle 401 Response from getUserFromRequest
+        if (err instanceof Response) {
+          return NextResponse.json({
+            ok: false,
+            reason: 'unauthenticated',
+            userId: null,
+            email: null,
+            source: null,
+          }, { status: 401 });
+        }
+        return NextResponse.json({
+          ok: false,
+          reason: 'unauthenticated',
+          userId: null,
+          email: null,
+          source: null,
+        }, { status: 401 });
+      }
+    }
+
     console.log('[admin/debug-auth] ENTER');
 
     // Log cookie and header info before creating client

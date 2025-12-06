@@ -1,25 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createApiSupabaseFromAuthHeader } from '@/lib/auth/apiSupabase';
+import { getUserFromRequest } from '@/lib/auth/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  const supabase = createApiSupabaseFromAuthHeader(authHeader);
-
   try {
-    const { data, error } = await supabase.auth.getUser();
+    const { user, source } = await getUserFromRequest(req);
 
-    if (error || !data?.user) {
+    return NextResponse.json(
+      {
+        ok: true,
+        userId: user.id,
+        email: user.email,
+        source,
+        authHeaderPresent: true, // If we got here, auth worked
+        error: null,
+      },
+      { status: 200 },
+    );
+  } catch (e: unknown) {
+    // Handle 401 Response from getUserFromRequest
+    if (e instanceof Response) {
+      const errorData = await e.json();
       return NextResponse.json(
         {
+          ok: false,
           userId: null,
           email: null,
-          authHeaderPresent: Boolean(authHeader),
-          error: error
-            ? { name: error.name, message: error.message }
-            : { name: 'NoUser', message: 'No user from supabase.auth.getUser()' },
+          source: null,
+          authHeaderPresent: !!req.headers.get('authorization'),
+          error: {
+            name: 'Unauthorized',
+            message: errorData.error || 'Unable to determine authenticated user',
+          },
         },
         { status: 200 },
       );
@@ -27,19 +41,11 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       {
-        userId: data.user.id,
-        email: data.user.email,
-        authHeaderPresent: Boolean(authHeader),
-        error: null,
-      },
-      { status: 200 },
-    );
-  } catch (e: unknown) {
-    return NextResponse.json(
-      {
+        ok: false,
         userId: null,
         email: null,
-        authHeaderPresent: Boolean(authHeader),
+        source: null,
+        authHeaderPresent: !!req.headers.get('authorization'),
         error: {
           name: 'UnexpectedError',
           message: e instanceof Error ? e.message : String(e),
