@@ -117,8 +117,14 @@ function LoginInner() {
         // Get user profile to determine default redirect if no 'next' param
         let targetPath = rawNext;
         
+        // Validate and normalize next param - ensure it's a valid path
+        if (targetPath && (!targetPath.startsWith('/') || targetPath.startsWith('//'))) {
+          // Invalid next param - use safe fallback
+          targetPath = null;
+        }
+        
         if (!targetPath) {
-          // No 'next' param - determine default based on user profile
+          // No 'next' param or invalid - determine default based on user profile
           const { data: profile } = await supabase
             .from('profiles')
             .select('segment, role')
@@ -129,8 +135,8 @@ function LoginInner() {
           targetPath = getDefaultRedirectForUser(segment);
         }
         
-        // Normalize and validate the redirect path
-        targetPath = normalizeRedirectPath(targetPath, '/listings');
+        // Normalize and validate the redirect path (fallback to /dashboard for safety)
+        targetPath = normalizeRedirectPath(targetPath, '/dashboard');
         
         // Prevent redirecting back to /login to avoid loops
         if (targetPath === '/login' || targetPath.startsWith('/login')) {

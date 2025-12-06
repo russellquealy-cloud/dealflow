@@ -10,8 +10,11 @@ export const dynamic = 'force-dynamic';
  * Server-side layout protection for /admin routes
  * This ensures only admin users can access admin pages
  * 
+ * HOTFIX: Relaxed server-side checks to prevent redirect loops when Supabase cookies
+ * are missing but dealflow-auth-token exists (client-side auth works but server doesn't see it).
+ * 
  * Behavior:
- * - If user is not signed in -> redirect to /login?next=/admin
+ * - If user is not signed in (server can't verify) -> let client-side handle it (no redirect to /login)
  * - If user is signed in but not admin -> redirect to /dashboard (safe default, no loop)
  * - If user is admin -> allow access
  */
@@ -27,8 +30,12 @@ export default async function AdminLayout({
     if (!adminCheck.ok) {
       // User is not authenticated or not admin
       if (adminCheck.reason === 'unauthenticated') {
-        // Not signed in -> redirect to login
-        redirect('/login?next=' + encodeURIComponent('/admin'));
+        // HOTFIX: Don't redirect to /login - this causes loops when client has auth but server doesn't see cookies
+        // Instead, let the client-side page component handle authentication
+        // The client can read dealflow-auth-token even if server can't see Supabase cookies
+        // This breaks the redirect loop: /admin -> /login?next=/admin -> /admin -> /login
+        console.log('[AdminLayout] Server-side auth check failed (no Supabase cookies), allowing client-side check');
+        return <>{children}</>;
       } else {
         // Signed in but not admin -> redirect to dashboard (safe default, no loop)
         redirect('/dashboard');

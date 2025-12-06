@@ -24,6 +24,10 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  // NOTE: /admin routes are handled by app/admin/layout.tsx server-side checks
+  // Middleware does NOT redirect /admin to /login to prevent redirect loops
+  // when client has dealflow-auth-token but server doesn't see Supabase cookies
+
   // Add paywall headers for protected routes
   if (pathname.startsWith('/analyzer') || 
       pathname.startsWith('/watchlists') || 
