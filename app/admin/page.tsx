@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -40,11 +40,10 @@ export default function AdminDashboard() {
           
           const { data: { session: retrySession } } = await supabase.auth.getSession();
           if (!retrySession) {
-            console.log('Admin page: No session after retry, redirecting to login');
+            console.log('Admin page: No session after retry');
             setIsAdmin(false);
             setLoading(false);
-            // Redirect to login if no session after retry
-            window.location.href = '/login?next=' + encodeURIComponent('/admin');
+            // Layout already handles redirects - don't redirect here to avoid loops
             return;
           }
           
@@ -53,10 +52,10 @@ export default function AdminDashboard() {
         }
 
         if (!session) {
-          console.log('Admin page: No session found, redirecting to login');
+          console.log('Admin page: No session found');
           setIsAdmin(false);
           setLoading(false);
-          window.location.href = '/login?next=' + encodeURIComponent('/admin');
+          // Layout already handles redirects - don't redirect here to avoid loops
           return;
         }
 

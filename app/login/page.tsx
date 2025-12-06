@@ -82,6 +82,13 @@ function LoginInner() {
 
   // Handle redirect for already-authenticated users
   useEffect(() => {
+    // CRITICAL: Only redirect if we're actually on the /login page
+    // This prevents redirect loops when already on the target page
+    const currentPath = pathname || window.location.pathname;
+    if (currentPath !== '/login') {
+      return; // Not on login page, don't redirect
+    }
+
     // Wait for auth to finish loading
     if (authLoading) {
       return;
@@ -97,8 +104,6 @@ function LoginInner() {
       return;
     }
 
-    const currentPath = pathname || window.location.pathname;
-    
     // Get user profile to determine default redirect
     const determineRedirect = async () => {
       try {
@@ -121,15 +126,17 @@ function LoginInner() {
         targetPath = normalizeRedirectPath(targetPath, '/listings');
         
         // Prevent redirecting back to /login to avoid loops
-        if (targetPath === '/login' || targetPath.startsWith('/login?')) {
+        if (targetPath === '/login' || targetPath.startsWith('/login')) {
           console.log('🔐 [Login] Skipping redirect - target is login page', {
             currentPath,
             targetPath,
           });
-          return;
+          // Redirect to safe default instead
+          targetPath = getDefaultRedirectForUser(null);
         }
         
         // Check if we're already on the target (additional safety check)
+        // This prevents redirecting when already on the target page
         if (currentPath === targetPath || currentPath.startsWith(targetPath + '/')) {
           console.log('🔐 [Login] Already on target path, skipping redirect', {
             currentPath,
@@ -139,12 +146,12 @@ function LoginInner() {
         }
         
         // Prevent redirect loops - don't redirect if we just came from the target
-        // This prevents /profile -> /login?next=/profile -> /profile -> /login loops
-        // Also check for analytics routes to prevent loops
+        // This prevents /admin -> /login?next=/admin -> /admin -> /login loops
         if (rawNext && (
           rawNext === currentPath || 
           currentPath.startsWith(rawNext + '/') ||
-          (rawNext.startsWith('/analytics/') && currentPath.startsWith('/analytics/'))
+          (rawNext.startsWith('/analytics/') && currentPath.startsWith('/analytics/')) ||
+          (rawNext.startsWith('/admin') && currentPath.startsWith('/admin'))
         )) {
           console.log('🔐 [Login] Skipping redirect - would create loop', {
             currentPath,
@@ -165,7 +172,7 @@ function LoginInner() {
           return;
         }
         
-        // Mark redirect as attempted
+        // Mark redirect as attempted BEFORE redirecting
         redirectAttemptedRef.current = true;
         setAutoRedirected(true);
         
@@ -182,7 +189,7 @@ function LoginInner() {
       } catch (error) {
         console.error('🔐 [Login] Error determining redirect:', error);
         // Fallback to safe default on error
-        if (!currentPath.startsWith('/listings')) {
+        if (currentPath === '/login') {
           router.replace('/listings');
         }
       }
