@@ -383,8 +383,6 @@ export default function AdminAnalytics() {
                 };
                 
                 return (
-                
-                return (
                   <div key={dateStr} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', width: '100%', height: '100%' }}>
                       <div style={{
