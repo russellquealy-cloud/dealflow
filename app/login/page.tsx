@@ -18,7 +18,6 @@ function LoginInner() {
   // Normalize next path (will be used for redirect after login)
   const next = normalizeRedirectPath(rawNext, '/listings');
   const { session, loading: authLoading, refreshSession } = useAuth();
-  const [autoRedirected, setAutoRedirected] = useState(false);
   const redirectAttemptedRef = useRef(false);
 
   const [email, setEmail] = useState('');
@@ -99,14 +98,22 @@ function LoginInner() {
       return;
     }
 
-    // Prevent multiple redirect attempts
-    if (redirectAttemptedRef.current || autoRedirected) {
+    // Prevent multiple redirect attempts - check ref FIRST
+    if (redirectAttemptedRef.current) {
       return;
     }
 
     // Get user profile to determine default redirect
     const determineRedirect = async () => {
+      // Double-check ref inside async function
+      if (redirectAttemptedRef.current) {
+        return;
+      }
+
       try {
+        // Mark redirect as attempted IMMEDIATELY to prevent re-runs
+        redirectAttemptedRef.current = true;
+
         // Get user profile to determine default redirect if no 'next' param
         let targetPath = rawNext;
         
@@ -137,29 +144,39 @@ function LoginInner() {
         
         // Check if we're already on the target (additional safety check)
         // This prevents redirecting when already on the target page
-        if (currentPath === targetPath || currentPath.startsWith(targetPath + '/')) {
+        const currentPathNoQuery = currentPath.split('?')[0];
+        const targetPathNoQuery = targetPath.split('?')[0];
+        if (currentPathNoQuery === targetPathNoQuery || currentPathNoQuery.startsWith(targetPathNoQuery + '/')) {
           console.log('🔐 [Login] Already on target path, skipping redirect', {
             currentPath,
             targetPath,
           });
+          redirectAttemptedRef.current = false; // Reset if we're not redirecting
           return;
         }
         
         // Prevent redirect loops - don't redirect if we just came from the target
         // This prevents /admin -> /login?next=/admin -> /admin -> /login loops
-        if (rawNext && (
-          rawNext === currentPath || 
-          currentPath.startsWith(rawNext + '/') ||
-          (rawNext.startsWith('/analytics/') && currentPath.startsWith('/analytics/')) ||
-          (rawNext.startsWith('/admin') && currentPath.startsWith('/admin'))
-        )) {
-          console.log('🔐 [Login] Skipping redirect - would create loop', {
-            currentPath,
-            targetPath,
-            rawNext,
-          });
-          // Redirect to default instead to break the loop
-          targetPath = getDefaultRedirectForUser(null);
+        if (rawNext) {
+          const rawNextNoQuery = rawNext.split('?')[0];
+          if (rawNextNoQuery === currentPathNoQuery || 
+              currentPathNoQuery.startsWith(rawNextNoQuery + '/') ||
+              (rawNextNoQuery.startsWith('/analytics/') && currentPathNoQuery.startsWith('/analytics/')) ||
+              (rawNextNoQuery.startsWith('/admin') && currentPathNoQuery.startsWith('/admin'))) {
+            console.log('🔐 [Login] Skipping redirect - would create loop', {
+              currentPath,
+              targetPath,
+              rawNext,
+            });
+            // Redirect to default instead to break the loop
+            targetPath = getDefaultRedirectForUser(null);
+            // Re-check after changing target
+            const newTargetNoQuery = targetPath.split('?')[0];
+            if (currentPathNoQuery === newTargetNoQuery || currentPathNoQuery.startsWith(newTargetNoQuery + '/')) {
+              redirectAttemptedRef.current = false;
+              return;
+            }
+          }
         }
         
         // Check if we should redirect (prevents loops)
@@ -169,12 +186,9 @@ function LoginInner() {
             targetPath,
             reason: 'shouldRedirectFromLogin returned false',
           });
+          redirectAttemptedRef.current = false; // Reset if we're not redirecting
           return;
         }
-        
-        // Mark redirect as attempted BEFORE redirecting
-        redirectAttemptedRef.current = true;
-        setAutoRedirected(true);
         
         console.log('🔐 [Login] Already signed in, redirecting to:', {
           from: currentPath,
@@ -184,19 +198,24 @@ function LoginInner() {
           email: session.user.email,
         });
         
-        // Use replace to avoid adding to history
-        router.replace(targetPath);
+        // Use window.location.replace for a hard redirect that prevents React re-renders
+        // This ensures the redirect happens once and doesn't trigger the effect again
+        // Using replace instead of href prevents adding to history
+        window.location.replace(targetPath);
       } catch (error) {
         console.error('🔐 [Login] Error determining redirect:', error);
+        redirectAttemptedRef.current = false; // Reset on error
         // Fallback to safe default on error
         if (currentPath === '/login') {
-          router.replace('/listings');
+          window.location.replace('/listings');
         }
       }
     };
 
     determineRedirect();
-  }, [authLoading, session, rawNext, router, pathname, autoRedirected]);
+    // Only depend on authLoading and session - pathname and rawNext changes shouldn't retrigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, session]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
