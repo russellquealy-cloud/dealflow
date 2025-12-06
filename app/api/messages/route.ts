@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
-import { cookies } from "next/headers";
-import { createServerClient } from "@/supabase/server";
-import { notifyLeadMessage } from "@/lib/notifications";
+import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
+import { createSupabaseServer } from '@/lib/createSupabaseServer';
+import { notifyLeadMessage } from '@/lib/notifications';
 
 // Generate deterministic UUID v5 from a string
 function uuidFromString(str: string): string {
@@ -20,12 +19,12 @@ function uuidFromString(str: string): string {
   ].join("-");
 }
 
-export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createSupabaseServer();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (!user || userError) {
@@ -62,23 +61,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    // Use the same Supabase server client as canonical route
+    const supabase = await createSupabaseServer();
 
-    // Debug logging: check cookies
-    const cookieStore = await cookies();
-    const cookieDump = cookieStore.getAll().map(c => ({ name: c.name, hasValue: !!c.value, valueLength: c.value?.length ?? 0 }));
-    const dealflowToken = cookieStore.get('dealflow-auth-token');
-
-    // Try getUser first (same as working routes)
+    // Try getUser first (same as canonical route)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    // Fallback to getSession if getUser fails (same as debug-auth route)
+    // Fallback to getSession if getUser fails (same as canonical route)
     if (userError || !user) {
       console.log('[api/messages][POST] getUser failed, trying getSession', {
         error: userError?.message,
         errorCode: userError?.status,
-        hasDealflowCookie: !!dealflowToken,
-        cookieNames: cookieDump.map(c => c.name),
       });
 
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -98,9 +91,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[api/messages][POST] cookieDump', cookieDump);
-    console.log('[api/messages][POST] user', user ? { id: user.id, email: user.email } : null);
-    console.log('[api/messages][POST] userError', userError);
+    console.log('[api/messages][POST] user', user?.id, user?.email);
 
     if (!user || userError) {
       console.error('[api/messages][POST] No auth user', { user, userError });
@@ -125,6 +116,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const trimmed = message.trim();
+
     // Get listing to verify it exists and get owner
     const { data: listing, error: listingError } = await supabase
       .from("listings")
@@ -143,7 +136,7 @@ export async function POST(request: NextRequest) {
     const threadString = [user.id, recipientId, listingId].sort().join("-");
     const threadId = uuidFromString(threadString);
 
-    // Insert new message
+    // Insert new message using from_id (matching RLS policy)
     const { data: newMessage, error: messageError } = await supabase
       .from("messages")
       .insert({
@@ -151,7 +144,7 @@ export async function POST(request: NextRequest) {
         from_id: user.id,
         to_id: recipientId,
         listing_id: listingId,
-        body: message.trim(),
+        body: trimmed,
         read_at: null
       } as never)
       .select("*")
@@ -159,10 +152,8 @@ export async function POST(request: NextRequest) {
 
     if (messageError) {
       console.error('[api/messages][POST] Insert error', messageError);
-      // If this is an RLS error, it may show "new row violates row-level security policy".
-      // Return 400/500, but NOT 401.
       return NextResponse.json(
-        { error: 'Failed to send message', message: null, supabaseError: messageError.message },
+        { error: 'Failed to send message', message: null },
         { status: 400 },
       );
     }
@@ -207,4 +198,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
