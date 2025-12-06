@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseRouteClient } from '../../lib/supabaseRoute';
+import { getUserFromRequest } from '@/lib/auth/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,48 +14,12 @@ function parseBoolean(value: string | null): boolean | null {
   return null;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    // Use PKCE-aware auth helper with bearer token fallback (same pattern as messages route)
-    const supabase = await getSupabaseRouteClient();
-    
-    // Try getUser first (standard approach)
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    // If getUser fails, try Authorization header bearer token (same pattern as billing/messages routes)
-    if ((userError || !user)) {
-      const authHeader = request.headers.get('authorization');
-      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      
-      if (bearerToken) {
-        console.log('[notifications] Cookie auth failed, trying bearer token');
-        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
-        if (tokenUser && !tokenError) {
-          user = tokenUser;
-          userError = null;
-          console.log('[notifications] Bearer token auth succeeded', { userId: user.id });
-        }
-      }
-    }
-    
-    // Fallback to getSession if getUser fails
-    if (userError || !user) {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (session && !sessionError) {
-        user = session.user;
-        userError = null;
-      }
-    }
+    // Use the unified auth helper (tries cookies first, falls back to Bearer token)
+    const { user, supabase } = await getUserFromRequest(req);
 
-    if (userError || !user) {
-      console.log('[notifications] Auth failed', {
-        hasUser: !!user,
-        error: userError?.message,
-      });
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const unreadOnly = parseBoolean(searchParams.get('unreadOnly')) ?? false;
 
     const limitParam = searchParams.get('limit');
@@ -84,7 +48,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (unreadOnly) {
-      query = query.eq('is_read', false);
+      query = query.is('read_at', null);
     }
 
     if (limit > 0) {
@@ -103,6 +67,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data ?? []);
   } catch (error) {
+    // Handle 401 Response from getUserFromRequest
+    if (error instanceof Response) {
+      return error;
+    }
     console.error('Error loading notifications', error);
     return NextResponse.json(
       { error: 'Failed to load notifications' },
@@ -132,42 +100,12 @@ function isPatchPayload(input: unknown): input is PatchPayload {
   return ids.every((id) => typeof id === 'string' && id.length > 0);
 }
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(req: NextRequest) {
   try {
-    // Use PKCE-aware auth helper with bearer token fallback
-    const supabase = await getSupabaseRouteClient();
-    
-    // Try getUser first
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    // Fallback to bearer token if available
-    if ((userError || !user)) {
-      const authHeader = request.headers.get('authorization');
-      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      
-      if (bearerToken) {
-        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(bearerToken);
-        if (tokenUser && !tokenError) {
-          user = tokenUser;
-          userError = null;
-        }
-      }
-    }
-    
-    // Fallback to getSession
-    if (userError || !user) {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (session && !sessionError) {
-        user = session.user;
-        userError = null;
-      }
-    }
+    // Use the unified auth helper (tries cookies first, falls back to Bearer token)
+    const { user, supabase } = await getUserFromRequest(req);
 
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json().catch(() => null);
+    const body = await req.json().catch(() => null);
     if (!isPatchPayload(body) || body.ids.length === 0) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
@@ -188,6 +126,10 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    // Handle 401 Response from getUserFromRequest
+    if (error instanceof Response) {
+      return error;
+    }
     console.error('Error updating notifications', error);
     return NextResponse.json(
       { error: 'Failed to update notifications' },

@@ -512,7 +512,7 @@ export async function POST(request: NextRequest) {
       watchlistId: watchlistRow?.id,
     });
 
-    // Notify listing owner of buyer interest
+    // Notify listing owner using the simple helper (as requested)
     try {
       const { data: listingData } = await supabase
         .from('listings')
@@ -521,14 +521,8 @@ export async function POST(request: NextRequest) {
         .maybeSingle<{ owner_id: string | null; title: string | null }>();
 
       if (listingData?.owner_id && listingData.owner_id !== user.id) {
-        await notifyBuyerInterest({
-          ownerId: listingData.owner_id,
-          listingTitle: typeof listingData.title === 'string' ? listingData.title : null,
-          buyerEmail: user.email ?? null,
-          listingId,
-          action: 'saved',
-          supabaseClient: supabase,
-        });
+        const { createNotification } = await import('@/lib/notifications');
+        await createNotification(listingData.owner_id, 'saved', listingId);
         logger.log('Buyer interest notification sent', {
           ownerId: listingData.owner_id,
           listingId,

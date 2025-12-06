@@ -160,10 +160,11 @@ async function getUserEmail(supabase: SupabaseClient, userId: string): Promise<s
 }
 
 /**
- * Central notification dispatcher
+ * Central notification dispatcher (full version with email support)
  * Creates in-app notification and optionally sends email
+ * @deprecated Use createNotification() for simple notifications. This is kept for backward compatibility.
  */
-export async function createNotification({
+export async function createNotificationWithEmail({
   userId,
   type,
   title,
@@ -248,6 +249,63 @@ export async function createNotification({
   return { skipped: false, emailSent };
 }
 
+/**
+ * Simple notification creator (as requested in notifications system fix)
+ * Creates a basic notification row with minimal fields using service role
+ * 
+ * @param userId - The user ID to notify
+ * @param type - Notification type ('message', 'saved', 'alert', 'system', etc.)
+ * @param refId - Optional reference ID (messageId, listingId, etc.)
+ * @returns The created notification ID or null on error
+ */
+export async function createNotification(
+  userId: string,
+  type: string,
+  refId?: string
+): Promise<{ id: string } | null> {
+  try {
+    const supabase = await getSupabaseServiceRole();
+
+    // Determine title and body based on type
+    let title = 'Notification';
+    let body = 'You have a new notification.';
+    
+    if (type === 'message') {
+      title = 'New message';
+      body = 'You have a new message.';
+    } else if (type === 'saved') {
+      title = 'Property saved';
+      body = 'Someone saved your property.';
+    }
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        type, // Use the type directly (migration adds support for 'message', 'saved', etc.)
+        ref_id: refId ?? null,
+        title,
+        body,
+        listing_id: refId && (type === 'saved' || type === 'message') ? refId : null,
+        metadata: refId ? { refId } : null,
+        is_read: false,
+        read_at: null,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      logger.error('Failed to create notification', { error, userId, type, refId });
+      return null;
+    }
+
+    return data ? { id: data.id } : null;
+  } catch (error) {
+    logger.error('Exception creating notification', { error, userId, type, refId });
+    return null;
+  }
+}
+
 // ============================================================================
 // SPECIFIC NOTIFICATION HELPERS
 // ============================================================================
@@ -299,7 +357,7 @@ export async function notifyLeadMessage(params: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: ownerId,
     type: 'lead_message',
     title,
@@ -345,7 +403,7 @@ export async function notifyBuyerInterest(params: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: ownerId,
     type: 'buyer_interest',
     title,
@@ -387,7 +445,7 @@ export async function notifyFeedbackRating(params: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: ownerId,
     type: 'feedback_rating',
     title,
@@ -417,7 +475,7 @@ export async function notifyListingPerformanceSummary(options: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: options.ownerId,
     type: 'listing_performance',
     title: options.summaryTitle,
@@ -456,7 +514,7 @@ export async function notifyRepairEstimateReady(options: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: options.ownerId,
     type: 'repair_estimate_ready',
     title,
@@ -495,7 +553,7 @@ export async function notifyPropertyVerification(options: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: options.ownerId,
     type: 'property_verification',
     title,
@@ -528,7 +586,7 @@ export async function notifyMarketTrend(options: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: options.ownerId,
     type: 'market_trend',
     title: options.title,
@@ -561,7 +619,7 @@ export async function notifySubscriptionRenewal(options: {
     </div>
   `;
 
-  await createNotification({
+  await createNotificationWithEmail({
     userId: options.ownerId,
     type: 'subscription_renewal',
     title: options.title,

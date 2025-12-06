@@ -12,6 +12,8 @@ type NotificationRecord = {
   listing_id: string | null;
   metadata: Record<string, unknown> | null;
   is_read: boolean;
+  read_at: string | null;
+  ref_id: string | null;
   created_at: string;
 };
 
@@ -60,22 +62,19 @@ export default function NotificationsPage() {
           setError(null);
         }
 
-        const unreadIds = payload
-          .filter((item) => !item.is_read)
-          .map((item) => item.id);
-
-        if (unreadIds.length > 0) {
-          const patchHeaders: HeadersInit = {
-            'Content-Type': 'application/json',
+        // Mark all unread notifications as read when entering the page (as requested)
+        const hasUnread = payload.some((item) => !item.is_read || item.read_at === null);
+        
+        if (hasUnread) {
+          const headers: HeadersInit = {
             Authorization: `Bearer ${session.access_token}`,
           };
-          await fetch('/api/notifications', {
-            method: 'PATCH',
-            headers: patchHeaders,
+          await fetch('/api/notifications/mark-read', {
+            method: 'POST',
+            headers,
             credentials: 'include',
-            body: JSON.stringify({ ids: unreadIds, is_read: true }),
-          }).catch((patchError) => {
-            console.error('Failed to mark notifications as read', patchError);
+          }).catch((markReadError) => {
+            console.error('Failed to mark notifications as read', markReadError);
           });
 
           if (typeof window !== 'undefined') {

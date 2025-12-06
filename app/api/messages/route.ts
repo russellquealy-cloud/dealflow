@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getUserFromRequest } from '@/lib/auth/server';
-import { notifyLeadMessage, createNotification } from '@/lib/notifications';
-import { getSupabaseServiceRole } from '@/lib/supabase/service';
+import { notifyLeadMessage } from '@/lib/notifications';
+import { createNotification } from '@/lib/notifications';
 
 // Generate deterministic UUID v5 from a string
 function uuidFromString(str: string): string {
@@ -161,53 +161,10 @@ export async function POST(req: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://offaxisdeals.com';
     const messageUrl = `${siteUrl}/messages/${body.listingId}${threadId ? `?thread=${threadId}` : ''}`;
 
-    // Create notification for the RECIPIENT (always, if recipient is not the sender)
+    // Create notification for the RECIPIENT using the simple helper (as requested)
     if (body.recipientId !== user.id) {
       try {
-        // Get recipient's profile name for personalized notification
-        const { data: recipientProfile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", body.recipientId)
-          .single();
-
-        const senderName = user.email || 'Someone';
-        const title = listingTitle
-          ? followUp
-            ? `New message on ${listingTitle}`
-            : `New message about ${listingTitle}`
-          : followUp
-          ? 'New message'
-          : 'New message';
-
-        const bodyText = listingTitle
-          ? `${senderName} sent you a message about "${listingTitle}".`
-          : `${senderName} sent you a message.`;
-
-        const serviceSupabase = await getSupabaseServiceRole();
-        await createNotification({
-          userId: body.recipientId,
-          type: 'lead_message', // Reuse lead_message type for all message notifications
-          title,
-          body: bodyText,
-          listingId: body.listingId,
-          metadata: {
-            threadId,
-            fromUserId: user.id,
-            messageId: message.id,
-          },
-          supabaseClient: serviceSupabase,
-          sendEmail: true,
-          emailSubject: title,
-          emailBody: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #1f2937;">${title}</h2>
-              <p style="color: #374151; font-size: 16px; line-height: 1.6;">${bodyText}</p>
-              <p style="margin-top: 24px;"><a href="${messageUrl}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Message</a></p>
-              <p style="margin-top: 24px; color: #6b7280; font-size: 14px;">You can manage your notification preferences in your <a href="${siteUrl}/settings/notifications">account settings</a>.</p>
-            </div>
-          `,
-        });
+        await createNotification(body.recipientId, 'message', message.id);
       } catch (recipientNotificationError) {
         console.error("Failed to create notification for recipient", recipientNotificationError);
       }
