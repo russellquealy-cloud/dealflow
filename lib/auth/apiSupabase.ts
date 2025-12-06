@@ -8,7 +8,7 @@
  * This does NOT replace or change any existing cookie-based auth helpers.
  * Use this only for API routes that need to authenticate via Authorization header.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -27,14 +27,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * If authHeader is null or empty, the client will still be created but
  * auth.getUser() will fail. The caller should handle this gracefully.
  */
-export function createApiSupabaseFromAuthHeader(authHeader: string | null): SupabaseClient<Database> {
+export function createApiSupabaseFromAuthHeader(authHeader: string | null) {
   const headers: Record<string, string> = {};
   
   if (authHeader) {
     headers['Authorization'] = authHeader;
   }
 
-  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  // TypeScript needs non-null assertions here since we've already validated above
+  return createClient(supabaseUrl!, supabaseAnonKey!, {
     global: {
       headers,
     },
