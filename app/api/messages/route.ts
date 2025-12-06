@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
-import { createServerClient } from "../../supabase/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@/supabase/server";
 import { notifyLeadMessage } from "@/lib/notifications";
 
 // Generate deterministic UUID v5 from a string
@@ -62,14 +63,50 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    // Debug logging: check cookies
+    const cookieStore = await cookies();
+    const cookieDump = cookieStore.getAll().map(c => ({ name: c.name, hasValue: !!c.value, valueLength: c.value?.length ?? 0 }));
+    const dealflowToken = cookieStore.get('dealflow-auth-token');
+
+    // Try getUser first (same as working routes)
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    // Fallback to getSession if getUser fails (same as debug-auth route)
+    if (userError || !user) {
+      console.log('[api/messages][POST] getUser failed, trying getSession', {
+        error: userError?.message,
+        errorCode: userError?.status,
+        hasDealflowCookie: !!dealflowToken,
+        cookieNames: cookieDump.map(c => c.name),
+      });
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (session && !sessionError) {
+        user = session.user;
+        userError = null;
+        console.log('[api/messages][POST] got session from getSession', {
+          userId: user.id,
+          email: user.email,
+        });
+      } else {
+        console.log('[api/messages][POST] getSession also failed', {
+          sessionError: sessionError?.message,
+          hasSession: !!session,
+        });
+      }
+    }
+
+    console.log('[api/messages][POST] cookieDump', cookieDump);
+    console.log('[api/messages][POST] user', user ? { id: user.id, email: user.email } : null);
+    console.log('[api/messages][POST] userError', userError);
 
     if (!user || userError) {
-      console.error('[api/messages][POST] No auth user', { userError });
-      // IMPORTANT: do not send 401 here, that causes login loops
+      console.error('[api/messages][POST] No auth user', { user, userError });
       return NextResponse.json(
-        { error: 'Not authenticated', message: null },
-        { status: 200 },
+        { error: 'Unable to determine authenticated user', message: null },
+        { status: 401 },
       );
     }
 

@@ -71,6 +71,7 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [counterpartProfile, setCounterpartProfile] = useState<ProfileSnapshot | null>(null);
   const redirectRef = useRef(false);
@@ -232,6 +233,7 @@ export default function MessagesPage() {
 
     const messageText = newMessage.trim();
     setSending(true);
+    setSendError(null);
 
     try {
       const postHeaders: HeadersInit = { 'Content-Type': 'application/json' };
@@ -255,8 +257,8 @@ export default function MessagesPage() {
 
       if (!response.ok || data.error) {
         console.error('[Messages] Failed to send message', response.status, data);
-        alert(data.error ?? 'Failed to send message. Please try again.');
-        // IMPORTANT: DO NOT do router.push('/login') or similar here
+        // Set error state instead of showing alert
+        setSendError(data.error ?? 'Failed to send message. Please try again.');
         return;
       }
 
@@ -265,10 +267,11 @@ export default function MessagesPage() {
         setMessages((prev) => [...prev, data.message]);
       }
       setNewMessage('');
+      setSendError(null);
       // Scroll will happen via useEffect
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Error sending message. Please try again.');
+      setSendError('Error sending message. Please try again.');
     } finally {
       setSending(false);
     }
@@ -564,53 +567,72 @@ export default function MessagesPage() {
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSendMessage} style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: 12,
-              padding: '12px',
-              background: '#fff',
-              display: 'flex',
-              gap: 8,
-              flexShrink: 0
-            }}>
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '10px 14px',
-                  minHeight: '44px',
-                  border: '1px solid #d1d5db',
+            <>
+              {sendError && (
+                <div style={{
+                  marginBottom: 8,
+                  padding: 12,
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
                   borderRadius: 8,
-                  fontSize: '16px',
-                  boxSizing: 'border-box'
-                }}
-                disabled={sending}
-              />
-              <button
-                type="submit"
-                disabled={sending || !newMessage.trim()}
-                style={{
-                  padding: '10px 20px',
-                  minHeight: '44px',
-                  minWidth: '80px',
-                  border: 'none',
-                  borderRadius: 8,
-                  background: sending || !newMessage.trim() ? '#9ca3af' : '#3b82f6',
-                  color: '#fff',
-                  fontWeight: 600,
-                  cursor: sending || !newMessage.trim() ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  touchAction: 'manipulation',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {sending ? 'Sending...' : 'Send'}
-              </button>
-            </form>
+                  color: '#dc2626',
+                  fontSize: 14,
+                  flexShrink: 0
+                }}>
+                  {sendError}
+                </div>
+              )}
+              <form onSubmit={handleSendMessage} style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: 12,
+                padding: '12px',
+                background: '#fff',
+                display: 'flex',
+                gap: 8,
+                flexShrink: 0
+              }}>
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    setSendError(null);
+                  }}
+                  placeholder="Type your message..."
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '10px 14px',
+                    minHeight: '44px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 8,
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                  disabled={sending}
+                />
+                <button
+                  type="submit"
+                  disabled={sending || !newMessage.trim()}
+                  style={{
+                    padding: '10px 20px',
+                    minHeight: '44px',
+                    minWidth: '80px',
+                    border: 'none',
+                    borderRadius: 8,
+                    background: sending || !newMessage.trim() ? '#9ca3af' : '#3b82f6',
+                    color: '#fff',
+                    fontWeight: 600,
+                    cursor: sending || !newMessage.trim() ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    touchAction: 'manipulation',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {sending ? 'Sending...' : 'Send'}
+                </button>
+              </form>
+            </>
           )}
         </div>
       </div>
