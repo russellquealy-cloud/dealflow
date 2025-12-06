@@ -28,13 +28,28 @@ import { isAdmin } from '@/lib/admin';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
+    console.log('[admin/debug-auth] ENTER');
+
+    // Log cookie and header info before creating client
+    const cookieStore = await cookies();
+    const headerStore = await import('next/headers').then(m => m.headers());
+    
+    console.log('[admin/debug-auth] cookie keys:', cookieStore.getAll().map(c => c.name));
+    console.log('[admin/debug-auth] auth header present:', !!headerStore.get('authorization'));
+
     // Use the same Supabase server client as admin layout
     const supabase = await createSupabaseServer();
 
     // Try getUser first (same as admin layout)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    console.log('[admin/debug-auth] getUser result', {
+      userId: user?.id ?? null,
+      email: user?.email ?? null,
+      error: userError ? { message: userError.message, name: userError.name } : null,
+    });
 
     // Fallback to getSession if getUser fails (same as admin layout)
     if (userError || !user) {

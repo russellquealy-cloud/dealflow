@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
+import { cookies, headers as nextHeaders } from 'next/headers';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
 import { notifyLeadMessage } from '@/lib/notifications';
 
@@ -59,13 +60,36 @@ export async function GET(request: NextRequest) {
   }
 }
 
+type MessageBody = {
+  listingId: string;
+  recipientId: string;
+  message: string;
+};
+
 export async function POST(request: NextRequest) {
   try {
+    console.log('[api/messages][POST] ENTER');
+
+    // Log cookie and header info before creating client (same pattern as canonical route)
+    const cookieStore = await cookies();
+    const headerStore = await nextHeaders();
+    
+    console.log('[api/messages][POST] cookie keys:', cookieStore.getAll().map(c => c.name));
+    console.log('[api/messages][POST] auth header present:', !!headerStore.get('authorization'));
+
     // Use the same Supabase server client as canonical route
     const supabase = await createSupabaseServer();
 
+    console.log('[api/messages][POST] after createSupabaseServer');
+
     // Try getUser first (same as canonical route)
     let { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    console.log('[api/messages][POST] getUser result', {
+      userId: user?.id ?? null,
+      email: user?.email ?? null,
+      error: userError ? { message: userError.message, name: userError.name } : null,
+    });
 
     // Fallback to getSession if getUser fails (same as canonical route)
     if (userError || !user) {
@@ -91,38 +115,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[api/messages][POST] user', user?.id, user?.email);
-
     if (!user || userError) {
-      console.error('[api/messages][POST] No auth user', { user, userError });
+      console.error('[api/messages][POST] NO AUTH USER', {
+        hasUser: !!user,
+        errorMessage: userError?.message ?? null,
+      });
+
       return NextResponse.json(
         { error: 'Unable to determine authenticated user', message: null },
         { status: 401 },
       );
     }
 
-    const body = await request.json() as {
-      listingId?: string;
-      recipientId?: string;
-      message?: string;
-    };
+    const body = (await request.json()) as MessageBody;
+    const trimmed = body.message.trim();
 
-    const { listingId, recipientId, message } = body;
-
-    if (!listingId || !recipientId || !message || !message.trim()) {
+    if (!body.listingId || !body.recipientId || !trimmed) {
       return NextResponse.json(
-        { error: 'Missing required fields', message: null },
+        { error: 'Message cannot be empty', message: null },
         { status: 400 },
       );
     }
-
-    const trimmed = message.trim();
 
     // Get listing to verify it exists and get owner
     const { data: listing, error: listingError } = await supabase
       .from("listings")
       .select("owner_id, title")
-      .eq("id", listingId)
+      .eq("id", body.listingId)
       .single<{ owner_id: string | null; title: string | null }>();
 
     if (listingError || !listing) {
@@ -133,17 +152,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate thread_id from user IDs and listing ID for consistent thread identification
-    const threadString = [user.id, recipientId, listingId].sort().join("-");
+    const threadString = [user.id, body.recipientId, body.listingId].sort().join("-");
     const threadId = uuidFromString(threadString);
 
-    // Insert new message using from_id (matching RLS policy)
+    // Insert new message using from_id (matching RLS policy: auth.uid() = from_id)
     const { data: newMessage, error: messageError } = await supabase
       .from("messages")
       .insert({
         thread_id: threadId,
         from_id: user.id,
-        to_id: recipientId,
-        listing_id: listingId,
+        to_id: body.recipientId,
+        listing_id: body.listingId,
         body: trimmed,
         read_at: null
       } as never)
@@ -151,12 +170,19 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (messageError) {
-      console.error('[api/messages][POST] Insert error', messageError);
+      console.error('[api/messages][POST] insert error', {
+        message: messageError.message,
+        details: messageError.details,
+        code: messageError.code,
+      });
+
       return NextResponse.json(
         { error: 'Failed to send message', message: null },
         { status: 400 },
       );
     }
+
+    console.log('[api/messages][POST] success', { id: newMessage.id, listing_id: newMessage.listing_id });
 
     let followUp = false;
     if (listing.owner_id) {
@@ -177,7 +203,7 @@ export async function POST(request: NextRequest) {
           ownerId: listing.owner_id,
           listingTitle: typeof listing.title === "string" ? listing.title : null,
           senderEmail: user.email ?? null,
-          listingId,
+          listingId: body.listingId,
           threadId,
           followUp,
         });
