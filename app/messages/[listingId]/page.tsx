@@ -137,17 +137,6 @@ export default function MessagesPage() {
           headers,
         });
 
-        if (response.status === 401) {
-          if (!redirectRef.current) {
-            redirectRef.current = true;
-            router.push(`/login?next=/messages/${listingId}`);
-          }
-          if (!cancelled) {
-            setLoading(false);
-          }
-          return;
-        }
-
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           console.error('Error loading messages:', response.status, response.statusText, errorData);
@@ -262,23 +251,19 @@ export default function MessagesPage() {
         cache: 'no-store',
       });
 
-      if (response.status === 401) {
-        if (!redirectRef.current) {
-          redirectRef.current = true;
-          router.push(`/login?next=/messages/${listingId}`);
-        }
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Message send error:', errorData);
-        alert(errorData.error || 'Failed to send message. Please try again.');
-        return;
-      }
-
       const data = await response.json();
-      setMessages((prev) => [...prev, data.message]);
+
+      if (!response.ok || data.error) {
+        console.error('[Messages] Failed to send message', response.status, data);
+        alert(data.error ?? 'Failed to send message. Please try again.');
+        // IMPORTANT: DO NOT do router.push('/login') or similar here
+        return;
+      }
+
+      // Append the new message to local state if needed
+      if (data.message) {
+        setMessages((prev) => [...prev, data.message]);
+      }
       setNewMessage('');
       // Scroll will happen via useEffect
     } catch (error) {

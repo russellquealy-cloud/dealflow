@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { createServerClient } from "../../supabase/server";
-import { getAuthUserServer } from "@/lib/auth/server";
 import { notifyLeadMessage } from "@/lib/notifications";
 
 // Generate deterministic UUID v5 from a string
@@ -62,26 +61,30 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Use PKCE-aware auth helper that correctly reads dealflow-auth-token cookies
-    const { user, supabase, error: userError } = await getAuthUserServer();
-    
-    if (userError || !user) {
-      console.log('[messages] Auth failed', {
-        hasUser: !!user,
-        error: userError?.message,
-      });
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const supabase = await createServerClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (!user || userError) {
+      console.error('[api/messages][POST] No auth user', { userError });
+      // IMPORTANT: do not send 401 here, that causes login loops
+      return NextResponse.json(
+        { error: 'Not authenticated', message: null },
+        { status: 200 },
+      );
     }
 
-    const body = await request.json();
-    const listingId = body?.listingId as string | undefined;
-    const recipientId = body?.recipientId as string | undefined;
-    const message = body?.message as string | undefined;
+    const body = await request.json() as {
+      listingId?: string;
+      recipientId?: string;
+      message?: string;
+    };
 
-    if (!listingId || !recipientId || !message) {
+    const { listingId, recipientId, message } = body;
+
+    if (!listingId || !recipientId || !message || !message.trim()) {
       return NextResponse.json(
-        { error: "Listing ID, recipient ID, and message are required" },
-        { status: 400 }
+        { error: 'Missing required fields', message: null },
+        { status: 400 },
       );
     }
 
@@ -93,15 +96,17 @@ export async function POST(request: NextRequest) {
       .single<{ owner_id: string | null; title: string | null }>();
 
     if (listingError || !listing) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Listing not found', message: null },
+        { status: 400 },
+      );
     }
 
     // Generate thread_id from user IDs and listing ID for consistent thread identification
     const threadString = [user.id, recipientId, listingId].sort().join("-");
     const threadId = uuidFromString(threadString);
 
-    // Create message
-    // Use simpler syntax without foreign key names
+    // Insert new message
     const { data: newMessage, error: messageError } = await supabase
       .from("messages")
       .insert({
@@ -109,57 +114,60 @@ export async function POST(request: NextRequest) {
         from_id: user.id,
         to_id: recipientId,
         listing_id: listingId,
-        body: message,
+        body: message.trim(),
         read_at: null
       } as never)
       .select("*")
       .single();
 
-      if (messageError) {
-        console.error("Error creating message:", messageError);
-        // Return detailed error for debugging
-        return NextResponse.json({ 
-          error: "Failed to send message",
-          details: messageError.message,
-          code: messageError.code,
-          hint: messageError.hint
-        }, { status: 500 });
-      }
+    if (messageError) {
+      console.error('[api/messages][POST] Insert error', messageError);
+      // If this is an RLS error, it may show "new row violates row-level security policy".
+      // Return 400/500, but NOT 401.
+      return NextResponse.json(
+        { error: 'Failed to send message', message: null, supabaseError: messageError.message },
+        { status: 400 },
+      );
+    }
 
-      let followUp = false;
-      if (listing.owner_id) {
-        try {
-          const { count } = await supabase
-            .from("messages")
-            .select("id", { count: "exact", head: true })
-            .eq("thread_id", threadId);
-          followUp = (count ?? 0) > 1;
-        } catch (countError) {
-          console.warn("Failed to count messages in thread", countError);
-        }
+    let followUp = false;
+    if (listing.owner_id) {
+      try {
+        const { count } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("thread_id", threadId);
+        followUp = (count ?? 0) > 1;
+      } catch (countError) {
+        console.warn("Failed to count messages in thread", countError);
       }
+    }
 
-      if (listing.owner_id) {
-        try {
-          await notifyLeadMessage({
-            ownerId: listing.owner_id,
-            listingTitle: typeof listing.title === "string" ? listing.title : null,
-            senderEmail: user.email ?? null,
-            listingId,
-            threadId,
-            followUp,
-          });
-        } catch (notificationError) {
-          console.error("Failed to queue lead notification", notificationError);
-        }
+    if (listing.owner_id) {
+      try {
+        await notifyLeadMessage({
+          ownerId: listing.owner_id,
+          listingTitle: typeof listing.title === "string" ? listing.title : null,
+          senderEmail: user.email ?? null,
+          listingId,
+          threadId,
+          followUp,
+        });
+      } catch (notificationError) {
+        console.error("Failed to queue lead notification", notificationError);
       }
+    }
 
-      return NextResponse.json({ message: newMessage });
-  } catch (error) {
-    console.error("Error in messages POST:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Full error details:", JSON.stringify(error, null, 2));
-    return NextResponse.json({ error: "Internal server error", details: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: null, message: newMessage },
+      { status: 200 },
+    );
+  } catch (err) {
+    console.error('[api/messages][POST] Unexpected error', err);
+    return NextResponse.json(
+      { error: 'Unexpected server error', message: null },
+      { status: 500 },
+    );
   }
 }
 
