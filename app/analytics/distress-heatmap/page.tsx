@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation';
 import { getAuthUserServer } from '@/lib/auth/server';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
-import HeatmapClient from './HeatmapClient';
+import DistressHeatmapClient from './DistressHeatmapClient';
 import { isPro } from '@/lib/analytics/proGate';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Heatmap page with Pro tier gating
+ * Distressed Area Heatmap page with Pro tier gating
  * 
  * Access rules:
  * - Not signed in -> redirect to login (handled by layout)
@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
  * - Signed in as Investor Pro or Wholesaler Pro -> allow access
  * - Admin -> always allow access
  */
-export default async function HeatmapPage() {
+export default async function DistressHeatmapPage() {
   // Layout already checks auth, but verify user here for consistency
   const { user, supabase, error: authError } = await getAuthUserServer();
   
@@ -81,7 +81,7 @@ export default async function HeatmapPage() {
               fontSize: "14px",
             }}
           >
-            Geographic heatmaps are available for {isInvestor ? 'Investor' : 'Wholesaler'} Pro subscribers.
+            Distressed area heatmaps are available for {isInvestor ? 'Investor' : 'Wholesaler'} Pro subscribers.
           </p>
           <a
             href={`/pricing?segment=${isInvestor ? 'investor' : 'wholesaler'}&tier=pro`}
@@ -103,7 +103,7 @@ export default async function HeatmapPage() {
     }
   }
 
-  // User has Pro access or is admin - show heatmap
+  // User has Pro access or is admin - show distress heatmap
   return (
     <div
       style={{
@@ -120,7 +120,7 @@ export default async function HeatmapPage() {
           fontWeight: 600,
         }}
       >
-        Investor Interest Heatmap
+        Distressed Area Heatmap
       </h2>
       <p
         style={{
@@ -129,9 +129,10 @@ export default async function HeatmapPage() {
           fontSize: "14px",
         }}
       >
-        This heatmap shows investor interest based on listing view counts. Higher view counts indicate stronger interest.
+        This heatmap shows distressed areas based on imported property data (price cuts, days on market, 
+        foreclosure indicators, etc.). Higher distress scores indicate areas with more distressed properties.
       </p>
-      <HeatmapClient />
+      <DistressHeatmapClient />
     </div>
   );
 }

@@ -142,14 +142,43 @@ export default function AdminAnalytics() {
         });
       });
 
+      // Ensure all numeric values are safe (no NaN, no undefined)
+      const safeNumber = (value: number | null | undefined): number => {
+        if (value == null || isNaN(value)) return 0;
+        return Math.max(0, Math.round(value));
+      };
+
+      // Use filtered counts when date range is applied, otherwise use total counts
+      const totalListingsCount = dateRange === 'all' 
+        ? safeNumber(listingsResult.count) 
+        : safeNumber(filteredListings.length);
+      const totalUsersCount = dateRange === 'all'
+        ? safeNumber(usersResult.count)
+        : safeNumber(filteredUsers.length);
+      const totalMessagesCount = dateRange === 'all'
+        ? safeNumber(messagesResult.count)
+        : safeNumber(filteredMessages.length);
+      const totalWatchlistsCount = dateRange === 'all'
+        ? safeNumber(watchlistsResult.count)
+        : safeNumber(filteredWatchlists.length);
+
       setAnalytics({
-        totalListings: listingsResult.count || 0,
-        activeListings: filteredListings.filter((l: { status?: string | null }) => (l.status || 'active') !== 'archived' && (l.status || 'active') !== 'draft').length,
-        totalUsers: usersResult.count || 0,
-        totalMessages: messagesResult.count || 0,
-        totalWatchlists: watchlistsResult.count || 0,
-        usersByRole,
-        usersByTier,
+        totalListings: totalListingsCount,
+        activeListings: safeNumber(filteredListings.filter((l: { status?: string | null }) => (l.status || 'active') !== 'archived' && (l.status || 'active') !== 'draft').length),
+        totalUsers: totalUsersCount,
+        totalMessages: totalMessagesCount,
+        totalWatchlists: totalWatchlistsCount,
+        usersByRole: {
+          investor: safeNumber(usersByRole.investor),
+          wholesaler: safeNumber(usersByRole.wholesaler),
+          admin: safeNumber(usersByRole.admin),
+        },
+        usersByTier: {
+          free: safeNumber(usersByTier.free),
+          basic: safeNumber(usersByTier.basic),
+          pro: safeNumber(usersByTier.pro),
+          enterprise: safeNumber(usersByTier.enterprise),
+        },
         listingsByStatus,
         recentActivity,
       });
@@ -342,10 +371,18 @@ export default function AdminAnalytics() {
                 date.setDate(date.getDate() - (6 - i));
                 const dateStr = date.toISOString().split('T')[0];
                 const dayData = analytics.recentActivity.filter(a => a.date === dateStr);
-                const listings = dayData.find(a => a.type === 'listings')?.count || 0;
-                const users = dayData.find(a => a.type === 'users')?.count || 0;
-                const messages = dayData.find(a => a.type === 'messages')?.count || 0;
+                const listings = Math.max(0, dayData.find(a => a.type === 'listings')?.count || 0);
+                const users = Math.max(0, dayData.find(a => a.type === 'users')?.count || 0);
+                const messages = Math.max(0, dayData.find(a => a.type === 'messages')?.count || 0);
                 const maxValue = Math.max(listings, users, messages, 1);
+                // Guard against division by zero and NaN
+                const safeHeight = (value: number, max: number): number => {
+                  if (max <= 0 || isNaN(value) || isNaN(max)) return 0;
+                  const percent = (value / max) * 100;
+                  return isNaN(percent) ? 0 : Math.max(0, Math.min(100, percent));
+                };
+                
+                return (
                 
                 return (
                   <div key={dateStr} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
@@ -353,21 +390,21 @@ export default function AdminAnalytics() {
                       <div style={{
                         flex: 1,
                         background: '#2563eb',
-                        height: `${(listings / maxValue) * 100}%`,
+                        height: `${safeHeight(listings, maxValue)}%`,
                         minHeight: listings > 0 ? '4px' : '0',
                         borderRadius: '4px 4px 0 0'
                       }} title={`Listings: ${listings}`} />
                       <div style={{
                         flex: 1,
                         background: '#059669',
-                        height: `${(users / maxValue) * 100}%`,
+                        height: `${safeHeight(users, maxValue)}%`,
                         minHeight: users > 0 ? '4px' : '0',
                         borderRadius: '4px 4px 0 0'
                       }} title={`Users: ${users}`} />
                       <div style={{
                         flex: 1,
                         background: '#d97706',
-                        height: `${(messages / maxValue) * 100}%`,
+                        height: `${safeHeight(messages, maxValue)}%`,
                         minHeight: messages > 0 ? '4px' : '0',
                         borderRadius: '4px 4px 0 0'
                       }} title={`Messages: ${messages}`} />
@@ -397,7 +434,7 @@ export default function AdminAnalytics() {
 
           {/* Quick Actions */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-            <Link href="/analytics/lead-conversion" style={{
+            <Link href="/admin/analytics/lead-conversion" style={{
               background: 'white',
               border: '1px solid #e9ecef',
               borderRadius: '8px',

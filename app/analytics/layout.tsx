@@ -60,7 +60,8 @@ export default async function AnalyticsLayout({
 
   const navLinks = [
     { href: '/analytics/lead-conversion', label: 'Lead Conversion Trends' },
-    { href: '/analytics/heatmap', label: 'Geographic Heatmap' },
+    { href: '/analytics/heatmap', label: 'Interest Heatmap' },
+    { href: '/analytics/distress-heatmap', label: 'Distressed Areas' },
     { href: '/analytics/export', label: 'CSV & API Export' },
   ];
 

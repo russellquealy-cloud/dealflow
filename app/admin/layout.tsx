@@ -1,6 +1,5 @@
+import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '@/lib/createSupabaseServer';
-// No direct admin check here — admin auth is enforced in API routes.
-// If you want to add server-side admin gating, import requireAdminServer instead:
 import { requireAdminServer } from "@/lib/admin";
 
 // Mark admin routes as dynamic since they use cookies for authentication
@@ -10,6 +9,11 @@ export const dynamic = 'force-dynamic';
 /**
  * Server-side layout protection for /admin routes
  * This ensures only admin users can access admin pages
+ * 
+ * Behavior:
+ * - If user is not signed in -> redirect to /login?next=/admin
+ * - If user is signed in but not admin -> redirect to /dashboard (safe default, no loop)
+ * - If user is admin -> allow access
  */
 export default async function AdminLayout({
   children,
@@ -17,114 +21,19 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   try {
-    const supabase = await createSupabaseServer();
+    // Use requireAdminServer for consistent admin checking
+    const adminCheck = await requireAdminServer();
     
-    // Try getUser first (more reliable than getSession in some cases)
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    console.log('Admin layout: getUser result', {
-      hasUser: !!user,
-      userId: user?.id,
-      email: user?.email,
-      error: userError?.message,
-      errorCode: userError?.status
-    });
-    
-    if (userError || !user) {
-      console.log('Admin layout: getUser failed, trying getSession', { 
-        error: userError?.message,
-        errorCode: userError?.status,
-        hasUser: !!user 
-      });
-      
-      // Fallback to getSession if getUser fails
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('Admin layout: getSession result', {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        email: session?.user?.email,
-        error: sessionError?.message,
-        errorCode: sessionError?.status
-      });
-      
-      if (sessionError || !session) {
-        console.log('Admin layout: No session found on server-side', {
-          sessionError: sessionError?.message,
-          sessionErrorCode: sessionError?.status,
-          hasSession: !!session,
-          getUserError: userError?.message,
-          getUserErrorCode: userError?.status,
-          note: 'Allowing client-side to handle auth check to prevent redirect loops'
-        });
-        // Don't redirect immediately - let client-side handle it
-        // This prevents server-side redirect loops when cookies haven't synced yet
-        // The client-side admin page will check and redirect if needed
-        return <>{children}</>;
+    if (!adminCheck.ok) {
+      // User is not authenticated or not admin
+      if (adminCheck.reason === 'unauthenticated') {
+        // Not signed in -> redirect to login
+        redirect('/login?next=' + encodeURIComponent('/admin'));
+      } else {
+        // Signed in but not admin -> redirect to dashboard (safe default, no loop)
+        redirect('/dashboard');
       }
-      
-      // Use session user if getUser failed
-      const sessionUser = session.user;
-      console.log('Admin layout: Using session user', { 
-        userId: sessionUser.id, 
-        email: sessionUser.email 
-      });
-      
-      // Admin check removed - auth is enforced in API routes
-      // const adminCheck = await requireAdminServer();
-      // if (!adminCheck.ok) {
-      //   return (
-      //     <div style={{ 
-      //       minHeight: '100vh', 
-      //       display: 'flex', 
-      //       alignItems: 'center', 
-      //       justifyContent: 'center',
-      //       padding: '20px',
-      //       textAlign: 'center'
-      //     }}>
-      //       <div style={{ maxWidth: '600px' }}>
-      //         <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
-      //         <p style={{ marginBottom: '24px', fontSize: '18px' }}>
-      //           Admin access required. You are logged in as {sessionUser.email}, but your account does not have admin privileges.
-      //         </p>
-      //         <p style={{ color: '#6b7280', fontSize: '14px' }}>
-      //           If you believe you should have admin access, please contact support.
-      //         </p>
-      //       </div>
-      //     </div>
-      //   );
-      // }
-      return <>{children}</>;
     }
-
-    console.log('Admin layout: Got user from getUser', { 
-      userId: user.id, 
-      email: user.email 
-    });
-
-    // Admin check removed - auth is enforced in API routes
-    // const adminCheck = await requireAdminServer();
-    // if (!adminCheck.ok) {
-    //   return (
-    //     <div style={{ 
-    //       minHeight: '100vh', 
-    //       display: 'flex', 
-    //       alignItems: 'center', 
-    //       justifyContent: 'center',
-    //       padding: '20px',
-    //       textAlign: 'center'
-    //     }}>
-    //       <div style={{ maxWidth: '600px' }}>
-    //         <h1 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h1>
-    //         <p style={{ marginBottom: '24px', fontSize: '18px' }}>
-    //           Admin access required. You are logged in as {user.email}, but your account does not have admin privileges.
-    //         </p>
-    //         <p style={{ color: '#6b7280', fontSize: '14px' }}>
-    //           If you believe you should have admin access, please contact support.
-    //         </p>
-    //       </div>
-    //     </div>
-    //   );
-    // }
 
     // User is admin - allow access
     return <>{children}</>;

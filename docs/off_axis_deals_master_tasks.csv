@@ -329,7 +329,7 @@ TASK-060,CRM,"/bugfix, /imports, /investor/wholesaler",Add message notifications
 3) Test notification delivery methods (in-app, email).
 4) Verify notification preferences are respected.
 5) Test notification dismissal and marking as read.",Messaging exists; notification layer is partially implemented and needs completion and testing.,,
-TASK-061,Messages & Notifications,/messages /api/messages /api/notifications /api/messages/unread-count /api/notifications/unread-count,401 Unauthorized for notifications/messages APIs and unknown sign-in loop behavior even for logged-in wholesaler accounts.,High,Partially Done - Needs Testing,Both,11/30/2025,"1) Login as wholesaler.free@test.com on Vercel prod.
+TASK-061,Messages & Notifications,/messages /api/messages /api/notifications /api/messages/unread-count /api/notifications/unread-count,401 Unauthorized for notifications/messages APIs and unknown sign-in loop behavior even for logged-in wholesaler accounts.,High,Passed Testing,Both,11/30/2025,"1) Login as wholesaler.free@test.com on Vercel prod.
 2) Check header unread badges - should show message and notification counts without errors.
 3) Open `/messages` and verify:
    - No redirect loop or sign-in loop.
